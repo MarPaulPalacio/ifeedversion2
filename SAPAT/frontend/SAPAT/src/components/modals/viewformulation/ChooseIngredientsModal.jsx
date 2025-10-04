@@ -1,25 +1,53 @@
 import { RiCloseLine, RiSearchLine } from 'react-icons/ri'
 import { useState, useEffect } from 'react'
 
-function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult }) {
+function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingredientsFilter }) {
   const [checkedIngredients, setCheckedIngredients] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filteredIngredients, setFilteredIngredients] = useState(ingredients)
-
+  const [groupFilter, setGroupFilter] = useState([])
   // Update filtered ingredients whenever search term or ingredients list changes
-  useEffect(() => {
+  
+  const ingredientFilterMachine = () => {
+
+    const filtered = ingredients.filter(
+        (ingredient) =>
+          
+          groupFilter.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
+    )
+    
+
     if (!searchTerm.trim()) {
-      setFilteredIngredients(ingredients)
+      setFilteredIngredients(filtered)
     } else {
       const term = searchTerm.toLowerCase().trim()
-      const filtered = ingredients.filter(
+      const filtered = filtered.filter(
         (ingredient) =>
           ingredient.name.toLowerCase().includes(term) ||
           (ingredient.group && ingredient.group.toLowerCase().includes(term))
       )
       setFilteredIngredients(filtered)
+      
     }
-  }, [searchTerm, ingredients])
+  }
+  useEffect(() => {
+    ingredientFilterMachine()
+  }, [searchTerm, ingredients, groupFilter])
+
+
+  useEffect(() => {
+    if(ingredientsFilter === "roughage"){
+      setGroupFilter(["Grass", "Legumes"])
+    } else if(ingredientsFilter === "concentrate"){
+      setGroupFilter(["Agricultural by-products", "Industrial by-products"])
+    } else if (ingredientsFilter === "vitamins") {
+      setGroupFilter(["Vitamin-Mineral"])
+    }
+    
+
+  },[isOpen, onClose])
+
+  
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -108,7 +136,7 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult }) {
         </button>
 
         <h3 className="text-deepbrown mb-4 text-lg font-bold">
-          Choose Ingredients
+          Choose Ingredient
         </h3>
         <p className="mb-4 text-sm text-gray-500">Description</p>
 

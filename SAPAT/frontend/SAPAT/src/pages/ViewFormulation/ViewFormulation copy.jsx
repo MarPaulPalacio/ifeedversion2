@@ -93,11 +93,6 @@ function ViewFormulation({
   // un-updated ingredient/nutrient values (when user enters new min/max that has not been optimized yet)
   const [isDirty, setIsDirty] = useState(false)
 
-
-  const [filterIngredientCode, setFilterIngredientCode] = useState('')
-
-  // Used for showing ingredients and the type of ingredient e.g. roughage, vitamins or concentrate
-  const [groupFilter, setGroupFilter] = useState([])
   const isDisabled = userAccess === 'view'
 
   useEffect(() => {
@@ -168,7 +163,6 @@ function ViewFormulation({
           formulation.ingredients.map((item) => item.ingredient_id)
           : specialformulations.find((sf) => sf.name === phase)?.ingredients.map((item) => item.ingredient_id)
       )
-      console.log("FFFRETCH")
 
       // don't include already added ingredients to the ingredients menu
       const unusedIngredients = fetchedData.filter(
@@ -226,9 +220,7 @@ function ViewFormulation({
         `${import.meta.env.VITE_API_URL}/ingredient/filtered/${owner?.userId}?limit=10000`
       )
       const fetchedData = res.data.ingredients
-      console.log("SDFSDFDS ", fetchedData)
       organizeIngredients(fetchedData, 'Custom')
-      
     } catch (err) {
       console.log(err)
     }
@@ -416,7 +408,6 @@ function ViewFormulation({
         { ingredients: ingredientsToAdd }
       )
       const newIngredients = res.data.addedIngredients
-      console.log(ingredientsToAdd, "SDFSDF")
       const formattedIngredients = newIngredients.map((ingredient) => {
         // at initial add, all values are zero
         return {
@@ -426,7 +417,6 @@ function ViewFormulation({
           value: 0,
         }
       })
-
       setSelectedIngredients([...selectedIngredients, ...formattedIngredients])
       const arr2Ids = new Set(
         formattedIngredients.map((item) => item.ingredient_id)
@@ -601,29 +591,8 @@ function ViewFormulation({
   }
 
   // Render function for Ingredients table rows
-  const renderIngredientsTableRows = (group) => {
-        // Ingredients Filtering Roughage, or vitamins, or concentrate
-
-      const groupFilter1 = ["Grass", "Legumes"]
-      const groupFilter2 = ["Agricultural by-products", "Industrial by-products"]
-      const groupFilter3 = ["Vitamin-Mineral"]
-
-      
-      const filtered = ingredients.filter(
-        (ingredient) => {
-          if (group === 'roughage') {
-            return groupFilter1.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
-          } else if (group === 'concentrate') {
-            return groupFilter2.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
-          } else if (group === 'vitamins') {
-            return groupFilter3.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
-          }
-        }
-      )
-      console.log("Group: "+ group, ingredients)
+  const renderIngredientsTableRows = () => {
     if (ingredients) {
-      
-      
       return ingredients.map((ingredient, index) => (
         <tr key={index} className="hover:bg-base-300">
           <td>{ingredient.name}</td>
@@ -1182,12 +1151,12 @@ function ViewFormulation({
                 
                 {/* Tables - Grid on desktop, Stack on mobile */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* Roughage Table */}
+            {/* Ingredients Table */}
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
               <div className="p-4">
-                <h3 className="mb-2 text-sm font-semibold">Roughage (Approx. 70% of total feed)</h3>
+                <h3 className="mb-2 text-sm font-semibold">Ingredients</h3>
                 <p className="flex text-xs text-gray-500">
-                  <Info /> Contains Grasses, Legumes, and other by-products.
+                  <Info /> Ingredient distribution based on {weight} kg total weight. Use 100 kg as your target to convert values into percentages.
                 </p>
               </div>
               <div className="max-h-64 overflow-x-auto overflow-y-auto">
@@ -1201,13 +1170,13 @@ function ViewFormulation({
                       <th></th>
                     </tr>
                   </thead>
-                  <tbody>{renderIngredientsTableRows('roughage')}</tbody>
+                  <tbody>{renderIngredientsTableRows()}</tbody>
                 </table>
               </div>
               <div className="p-4">
                 <button
                   disabled={isDisabled}
-                  onClick={() => {setIsChooseIngredientsModalOpen(true); setFilterIngredientCode('roughage')}}
+                  onClick={() => setIsChooseIngredientsModalOpen(true)}
                   className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
                   <RiAddLine /> Add ingredient
@@ -1215,12 +1184,13 @@ function ViewFormulation({
               </div>
             </div>
 
-            {/* Concentrate Table */}
+            {/* Nutrients Table */}
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
               <div className="p-4">
-                <h3 className="mb-2 text-sm font-semibold">Concentrate (Approx. 27% of total feed)</h3>
+                <h3 className="mb-2 text-sm font-semibold">Nutrients</h3>
                 <p className="flex text-xs text-gray-500">
-                  <Info /> Contains Vitamins and Minerals (3% max), and other supplements rich in a specific nutrient.
+                  <Info /> Nutritional content of your feed. Set min/max values
+                  to meet animal needs.
                 </p>
               </div>
               <div className="max-h-64 overflow-x-auto overflow-y-auto">
@@ -1234,56 +1204,52 @@ function ViewFormulation({
                       <th></th>
                     </tr>
                   </thead>
-                  <tbody>{renderIngredientsTableRows('concentrate')}</tbody>
+                  <tbody>{renderNutrientsTableRows()}</tbody>
                 </table>
               </div>
               <div className="p-4">
                 <button
                   disabled={isDisabled}
-                  onClick={() => {setIsChooseIngredientsModalOpen(true); setFilterIngredientCode('concentrate')}}
+                  onClick={() => setIsChooseNutrientsModalOpen(true)}
                   className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
-                  <RiAddLine /> Add ingredient
+                  <RiAddLine /> Add nutrient
                 </button>
               </div>
             </div>
-
-            
           </div>
-
-          {/* Vitamins Table */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
               <div className="p-4">
-                <h3 className="mb-2 text-sm font-semibold">Vitamins (Approx. 3% of total feed)</h3>
+                <h3 className="mb-2 text-sm font-semibold">Nutrient Ratio</h3>
                 <p className="flex text-xs text-gray-500">
-                  <Info /> Contains Purely Vitamins and Minerals.
+                  <Info /> Nutrient Constraint where you can force a nutrient to be x times more than another ingredient.
                 </p>
               </div>
-              <div className="max-h-64 overflow-x-auto overflow-y-auto">
+
+              <div className="p-4">
+                <div className="max-h-64 overflow-x-auto overflow-y-auto">
                 <table className="table-sm table-pin-rows table w-full">
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Min</th>
-                      <th>Max</th>
-                      <th>Value</th>
-                      <th></th>
+                      <th className="w-1/5">Nutrient 1</th>
+                      <th className="w-1/5">Nutrient 2</th>
+                      <th className="w-1/5 text-center">Operator</th>
+                      <th className="w-1/5 text-center">Ratio</th>
+                      <th className="w-1/5 text-center"></th>
                     </tr>
                   </thead>
-                  <tbody>{renderIngredientsTableRows('vitamins')}</tbody>
+                  <tbody>{renderNutrientRatiosTableRows()}</tbody>
                 </table>
               </div>
-              <div className="p-4">
                 <button
                   disabled={isDisabled}
-                  onClick={() => {setIsChooseIngredientsModalOpen(true); setFilterIngredientCode('vitamins')}}
-                  className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                  onClick={() => {setIsChooseNutrientRatiosModalOpen(true); setNutrientRatioModifyType('Add')}}
+                  className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 mt-4 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
-                  <RiAddLine /> Add ingredient
+                  <RiAddLine /> Add Nutrient Ratio
                 </button>
               </div>
-            </div>
-          
+          </div>
           <div className="flex flex-wrap justify-end gap-2 px-4 pb-5">
             {/* Target Amount */}
             
@@ -1366,7 +1332,6 @@ function ViewFormulation({
         onClose={() => setIsChooseIngredientsModalOpen(false)}
         ingredients={ingredientsMenu}
         onResult={handleAddIngredients}
-        ingredientsFilter={filterIngredientCode}
       />
       <ChooseNutrientsModal
         isOpen={isChooseNutrientsModalOpen}
