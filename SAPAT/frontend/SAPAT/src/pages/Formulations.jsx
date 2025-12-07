@@ -13,6 +13,7 @@ import Search from '../components/Search.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortBy from '../components/SortBy.jsx'
 import FilterBy from '../components/FilterBy.jsx'
+import GroupFormulationModal from '../components/modals/groupformulation/GroupFormulation.jsx'
 
 function Formulations() {
   const { user, loading } = useAuth()
@@ -42,6 +43,9 @@ function Formulations() {
   const [filters, setFilters] = useState('')
   const [sortBy, setSortBy] = useState('')
   const [sortOrder, setSortOrder] = useState('')
+
+  // Determines whether formulation to be edited will be by group or single
+  const [groupFormulation, setGroupFormulation] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -126,9 +130,60 @@ function Formulations() {
     }
   }
 
-  const handleCreateResult = (newFormulation, action, message) => {
-    setIsCreateModalOpen(false)
-    setFormulations([newFormulation, ...formulations])
+  const handleCreateResult = (newFormulation, action, message, carabaoConfiguration, setCarabaoConfiguration) => {
+    if (carabaoConfiguration.multipleCarabaos){
+      console.log("Multiple Carabao Formulations Creation: ", carabaoConfiguration.temporaryNameArray)
+      if (carabaoConfiguration.temporaryNameArray[carabaoConfiguration.currentCarabaoCreation-1]!=null){
+        setCarabaoConfiguration((prev)=>({
+          ...prev,
+          temporaryNameArray: prev.temporaryNameArray.filter(name => name !== prev.temporaryNameArray)
+        }))
+      }
+      
+      // Update the currentCarabaoCreation count faster
+      let temporaryCount = 0
+      console.log("Animal Group of New Formulation:", carabaoConfiguration.sameConfigTypeArray)
+      console.log("Current Carabao Creation:", newFormulation.animal_group)
+      if (carabaoConfiguration.carabaoPhases[ newFormulation.animal_group ] != null && carabaoConfiguration.sameConfigTypeArray.includes(newFormulation.animal_group) ){
+        setCarabaoConfiguration((prev)=>({
+          ...prev,
+          currentCarabaoCreation: prev.currentCarabaoCreation + 1,
+        }))
+        temporaryCount = carabaoConfiguration.currentCarabaoCreation + carabaoConfiguration.carabaoPhases[ newFormulation.animal_group ]-1
+
+      } else {
+        setCarabaoConfiguration((prev) => ({
+          ...prev,
+          currentCarabaoCreation: prev.currentCarabaoCreation + 1,
+        }));
+        temporaryCount = carabaoConfiguration.currentCarabaoCreation + 1-1
+      }
+
+      if (temporaryCount==carabaoConfiguration.numberofCarabaos){
+        
+        setIsCreateModalOpen(false)
+        setCarabaoConfiguration({
+          numberofCarabaos: 1,
+          multipleCarabaos: false,
+          currentCarabaoCreation: 1,
+          carabaoPhases: {},
+          animalGroupSelection: '',
+          moreOpened: false,
+          sameConfigTypeArray: [],
+          temporaryNameArray: [],
+        })
+      }
+
+      
+    } else {
+      setIsCreateModalOpen(false)
+      setCarabaoConfiguration((prev) => ({
+        ...prev,
+        currentCarabaoCreation: 1,
+      }));
+    }
+    
+    setFormulations((prevFormulations) => [newFormulation, ...prevFormulations])
     // toast instructions
     setShowToast(true)
     setMessage(message)
@@ -168,9 +223,12 @@ function Formulations() {
 
   const headers = ['Code', 'Name', 'Description', 'Animal Group', 'Permission']
   const filterOptions = [
-    { value: 'Swine', label: 'Swine' },
-    { value: 'Poultry', label: 'Poultry' },
-    { value: 'Water Buffalo', label: 'Water Buffalo' },
+    { value: 'Heifer | Dumalaga', label: 'Heifer | Dumalaga' },
+    { value: 'Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)', label: 'Calf | Bulo' },
+    { value: 'Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)', label: 'Growing Calves | Lumalaking bula' },
+    { value: 'Junior Bull | Lumalaking bulugan (2 - 3 taon)', label: 'Junior Bull | Lumalaking bulugan' },
+    { value: 'Cow | Inahing kalabaw', label: 'Cow | Inahing kalabaw' },
+    { value: 'Senior Bull | Bulugan (> 3 taon)', label: 'Senior Bull | Bulugan' }
   ]
   const sortOptions = [
     { value: 'na-default', label: 'Default' },
@@ -230,6 +288,18 @@ function Formulations() {
 
       {/* Table Section */}
       <div className="flex-grow overflow-auto p-2 md:px-4">
+        
+        <div className='flex items-center justify-start gap-1 pr-2 pb-5'>
+          <button
+            className={`btn border border-gray-300 btn-sm gap-2 rounded-lg text-xs bg-white text-gray-800 hover:border-green-button h-9`}
+            onClick={() => setGroupFormulation(!groupFormulation)}
+            // disabled={isDisabled}
+          >
+            {/* {groupFormulation===false ? 'Modify Formulation by Group' : 'Currently Modifying'} */}
+            Modify Formulation by Group
+          </button>
+        </div>
+
         <Table
           headers={headers}
           data={formulations}
@@ -258,6 +328,17 @@ function Formulations() {
         userType={user.userType} 
       />
 
+      {/* For Editing */}
+      <GroupFormulationModal
+        formulations={formulations}
+        ownerId={user._id}
+        ownerName={user.displayName}
+        isOpen={groupFormulation}
+        onClose={() => setGroupFormulation(false)}
+        onResult={handleCreateResult}
+        userType={user.userType}
+      />
+
       
       <EditFormulationModal
         formulations={formulations}
@@ -283,6 +364,8 @@ function Formulations() {
         message={message}
         onHide={hideToast}
       />
+
+      
     </div>
   )
 }

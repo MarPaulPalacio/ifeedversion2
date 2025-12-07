@@ -3,11 +3,12 @@ import SpecialFormulation from '../models/special-formulation-model.js';
 import Ingredient from '../models/ingredient-model.js';
 import Nutrient from '../models/nutrient-model.js';
 import User from '../models/user-model.js';
+import Cow from "../models/cow_nutrient_constraint.js";
 
 
 const createFormulation = async (req, res) => {
     const {
-        code, name, description, animal_group, ownerId, ownerName
+        code, name, description, animal_group, body_weight, ownerId, ownerName, nutrients
     } = req.body;
     try {
         const User = (await import('../models/user-model.js')).default;
@@ -16,15 +17,18 @@ const createFormulation = async (req, res) => {
         const newFormulation = await Formulation.create({
             code, name, description, animal_group, 
             collaborators: [{ userId: ownerId, access: 'owner', displayName: ownerName }],
-            isTemplate
+            isTemplate, nutrients, weight:parseInt(body_weight)
         });
+        console.log("New formulation created:", body_weight);
         const filteredFormulation = {
             "_id": newFormulation._id,
             "code": code,
             "name": name,
             "description": description ? description : "",
             "animal_group": animal_group ? animal_group : "",
-            "isTemplate": isTemplate
+            "isTemplate": isTemplate,
+            "nutrients": nutrients,
+            "weight": parseInt(body_weight),
         }
         res.status(200).json({ message: 'success', formulations: filteredFormulation });
     } catch (err) {
@@ -32,6 +36,19 @@ const createFormulation = async (req, res) => {
     }
 };
 
+const getCowFormulation = async (req, res) => {
+    const weight = Number(req.query.weight);
+    console.log("Weight received:", weight);
+    try {
+        const cowFormulation = await Cow.findOne({ weight }).populate('nutrientrequirement.nutrientid');
+        if (!cowFormulation) {
+            return res.status(404).json({ message: 'Cow formulation not found' });
+        }
+        res.status(200).json({ message: 'success', formulation: cowFormulation });
+    } catch (err) {
+        res.status(500).json({ error: err.message, message: 'error' });
+    }
+};
 
 const getAllFormulations = async (req, res) => {
     const { collaboratorId } = req.params;
@@ -293,7 +310,6 @@ const getFormulationOwner = async (req, res) => {
 const addIngredients = async (req, res) => {
     const { id } = req.params;
     const { ingredients } = req.body;
-
     try {
         const formulation = await Formulation.findByIdAndUpdate(
           id,
@@ -616,5 +632,6 @@ export {
     updateCollaborator,
     removeCollaborator,
     getAllTemplateFormulations,
-    cloneTemplateToFormulation
+    cloneTemplateToFormulation,
+    getCowFormulation
 };

@@ -1,11 +1,8 @@
 import { RiCloseLine } from 'react-icons/ri'
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import Info from '../../icons/Info.jsx'
-import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/react'
-import { HiSelector, HiCheck } from 'react-icons/hi'
 
-function CarabaoIdentify({
+function GroupIdentify({
   formulations,
   ownerId,
   ownerName,
@@ -72,6 +69,36 @@ function CarabaoIdentify({
   }
   */
 
+  useEffect(() => {
+    // update formData (get name and unit for each nutrient)
+    fetchNutrientData()
+  }, [])
+
+  const fetchNutrientData = async () => {
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL}/nutrient/filtered/${ownerId}`
+      )
+      const fetchedData = res.data.nutrients
+      const formattedNutrients = fetchedData.map((nutrient) => {
+        return {
+          nutrient: nutrient._id,
+          name: nutrient.name,
+          unit: nutrient.unit,
+          value: 0,
+        }
+      })
+      setFormData((prevFormData) => {
+        return {
+          ...prevFormData,
+          nutrients: formattedNutrients,
+        }
+      })
+      setLocalNutrients(formattedNutrients)
+    } catch (err) {
+      console.log(err)
+    }
+  }
   // Fetch templates from backend when modal opens or animal group changes
   useEffect(() => {
     if (!isOpen) return;
@@ -151,6 +178,7 @@ function CarabaoIdentify({
 
   const handleChange = (e) => {
     const { name, value } = e.target
+    console.log("HANDLE CHANGE TRIGGERED", name, value)
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -176,17 +204,18 @@ const handleArrayChange = (e) => {
 
   });
 };
-
+  const handleNutrientChange = (index, event) => {
+    const { name, value } = event.target
+    const updatedNutrients = formData.nutrients.map((nutrient, i) =>
+      i === index ? { ...nutrient, [name]: value } : nutrient
+    )
+    setFormData((prev) => ({ ...prev, nutrients: updatedNutrients }))
+  }
 
 
   const handleClose = () => {
     setCurrSection(0)
-    setFormData({
-      code: '',
-      name: '',
-      description: '',
-      animal_group: '',
-    })
+    onClose()
   }
 
   const handleCarabaoCategoryPhase = ()=>{
@@ -209,57 +238,6 @@ const handleArrayChange = (e) => {
           {/* Form fields */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             
-            {/* Farmer Name */}
-
-            <div className="form-control w-full">
-              
-              <label className="label">
-                <span className="label-text">Farmer Name</span>
-              </label>
-              <input
-                type="text"
-                name="code"
-                value={formData.code}
-                required
-                disabled={isDisabled}
-                onChange={handleChange}
-                placeholder="Enter code"
-                className={`input input-bordered w-full rounded-xl ${codeError ? 'border-red-500' : ''}`}
-              />
-              {codeError && (
-                <p className="mt-1 text-sm text-red-500" role="alert">
-                  {codeError}
-                </p>
-              )}
-            </div>
-            
-            {/* Carabao Name */}
-
-            {(identifyCurrentCarabaoPhase()!=null && carabaoConfiguration.sameConfigTypeArray.includes(identifyCurrentCarabaoPhase()[1])) ? "":(
-              <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Carabao Name</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                required
-                disabled={isDisabled}
-                onChange={handleChange}
-                placeholder="Enter name"
-                className={`input input-bordered w-full rounded-xl ${nameError ? 'border-red-500' : ''}`}
-              />
-              {nameError && (
-                <p className="mt-1 text-sm text-red-500" role="alert">
-                  {nameError}
-                </p>
-              )}
-            </div>
-            )
-            }
-            
-
             {/* Animal Group Select */}
             <div className="form-control w-full">
               <label className="label">
@@ -283,77 +261,84 @@ const handleArrayChange = (e) => {
                 <option value="Senior Bull | Bulugan (> 3 taon)">Senior Bull | Bulugan ({'>'} 3 taon)</option>
               </select>
             </div>
-            
+
             {/* Body Weight */}
             <div className='form-control w-full'>
               <label className="label">
-                <span className="label-text">Body Weight</span>
+              <span className="label-text">Body Weight</span>
               </label>
-              <input
-                type="number"
+
+              {/* Generate weight options: 50 increments up to 200, then 100 increments up to 1000 */}
+              <select
                 name="body_weight"
-                value={formData.body_weight}
+                value={formData.body_weight ?? ''}
                 required
                 disabled={isDisabled}
                 onChange={handleChange}
-                placeholder="Enter body weight"
-                className={`input input-bordered w-full rounded-xl ${bodyWeightError ? 'border-red-500' : ''}`}
-              />
-              {bodyWeightError && (
-                <p className="mt-1 text-sm text-red-500" role="alert">
-                  {bodyWeightError}
-                </p>
-              )}
-          
+                    
+                className={`select select-bordered w-full rounded-xl ${bodyWeightError ? 'border-red-500' : ''}`}
+                >
+                <option value="" disabled>
+                  Choose body weight range (kg)
+                </option>
+                {(() => {
+                  const ranges = []
+                  // then 200-300, 300-400, ... up to 900-1000
+                  let upper = 100
+                  let lower = 0
+                  while (upper <= 1000) {
+                  ranges.push({ value: `${lower}-${upper}`, label: `${lower}-${upper} kg` })
+                  lower = upper
+                  upper += 100
+                  }
+                  return ranges.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                  ))
+                })()}
+              </select>
+
+            {bodyWeightError && (
+              <p className="mt-1 text-sm text-red-500" role="alert">
+                {bodyWeightError}
+              </p>
+            )}
+                  
             </div>
 
-            {(identifyCurrentCarabaoPhase()!=null && carabaoConfiguration.sameConfigTypeArray.includes(identifyCurrentCarabaoPhase()[1])) ? (<>
-              <div classNamr ="form-control w-full"></div>
-
-              
-              {[...Array(carabaoConfiguration.carabaoPhases[identifyCurrentCarabaoPhase()[1]] || 0)].map((_, i) => (
-                <div key={i} className="form-control w-full md:col-span-2">
-                  <label className="label">
-                    <span className="label-text">Carabao Name {i + 1}</span>
-                  </label>
-                  <input
-                    type="text"
-                    name={i + 1}
-                    value={carabaoConfiguration.temporaryNameArray[i]}
-                    // value="SDDS"
-                    required
-                    disabled={isDisabled}
-                    onChange={handleArrayChange}
-                    placeholder={`Enter name ${i + 1}`}
-                    className={`input input-bordered w-full rounded-xl ${nameError ? 'border-red-500' : ''}`}
-                  />
-
-                  {nameError && (
-                    <p className="mt-1 text-sm text-red-500" role="alert">
-                      {nameError}
-                    </p>
-                  )}
-                </div>
-              ))}
-            
-            </>):(
-              <div className="form-control w-full md:col-span-2">
-                <label className="label">
-                  <span className="label-text">Description</span>
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  disabled={isDisabled}
-                  onChange={handleChange}
-                  placeholder="Enter description"
-                  className="textarea textarea-bordered w-full rounded-xl"
-                  rows="3"
-                  maxLength="60"
-                ></textarea>
-              </div>
-            )
-            }
+            {/* Nutrients table */}
+            <div className="max-h-64 overflow-y-auto rounded-2xl border border-gray-200 col-span-2">
+              <table className="table-zebra table-pin-rows table">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="font-semibold">Name</th>
+                    <th className="font-semibold">Unit</th>
+                    <th className="font-semibold">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formData.nutrients.map((nutrient, index) => (
+                    <tr key={index}>
+                      <td>{nutrient.name}</td>
+                      <td>{nutrient.unit}</td>
+                      <td>
+                        <input
+                          type="number"
+                          name="value"
+                          placeholder="Value"
+                          className="input input-bordered input-sm w-full max-w-xs rounded-xl"
+                          value={nutrient.value}
+                          pattern="[0-9]*"
+                          disabled={isDisabled}
+                          onChange={(e) => handleNutrientChange(index, e)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             
           </div>
 
@@ -379,4 +364,4 @@ const handleArrayChange = (e) => {
   )
 }
 
-export default CarabaoIdentify
+export default GroupIdentify

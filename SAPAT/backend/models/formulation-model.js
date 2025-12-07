@@ -6,6 +6,7 @@ const ingredientConstraintSchema = new Schema({
     minimum: { type: Number, default: 0 },
     maximum: { type: Number, default: 0 },
     value: { type: Number, default: 0 },
+    group: {type: String, default: ''},
 });
 
 const nutrientConstraintSchema = new Schema({

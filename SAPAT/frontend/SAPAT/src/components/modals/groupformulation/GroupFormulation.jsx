@@ -4,14 +4,14 @@ import axios from 'axios'
 import Info from '../../icons/Info.jsx'
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/react'
 import { HiSelector, HiCheck } from 'react-icons/hi'
-import CarabaoIdentify from './CarabaoIdentify.jsx'
-import CarabaoIdentifyContinue from './CarabaoIdentifyContinue.jsx'
-import CarabaoIdentifySetup from './CarabaoIdentifySetup.jsx'
+import GroupIdentify from './GroupIdentify.jsx'
+import CarabaoIdentifyContinue from '../formulations/CarabaoIdentifyContinue.jsx'
+import CarabaoIdentifySetup from '../formulations/CarabaoIdentifySetup.jsx'
 // import CarabaoIdentifyContinue from './CarabaoIdentifyContinue.jsx'
 
-function CreateFormulationModal({
+function GroupFormulationModal({
   formulations,
-  ownerId,
+  ownerId,  
   ownerName,
   isOpen,
   onClose,
@@ -19,17 +19,16 @@ function CreateFormulationModal({
   userType 
 }) {
   const [formData, setFormData] = useState({
-    code: '',
-    name: '',
-    description: '',
     animal_group: '',
-    is_lactating: '',
-    is_pregnant: false,
     body_weight: '',
-    average_daily_gain: '',
-    milk_price: '',
-    milk_yield: '',
-    fat_protein_content: '',
+    carabaos: [],
+    nutrients: [
+      {
+        name: '',
+        unit: '',
+        value: 0,
+      },
+    ],
   })
   
   const [carabaoConfiguration, setCarabaoConfiguration] = useState({
@@ -41,6 +40,7 @@ function CreateFormulationModal({
     moreOpened: false,
     sameConfigTypeArray: [],
     temporaryNameArray: [],
+    
   })
 
   const [isDisabled, setIsDisabled] = useState(false)
@@ -131,21 +131,8 @@ function CreateFormulationModal({
 
   const handleClose = () => {
     onClose()
-    setFormData({
-      code: '',
-      name: '',
-      description: '',
-      animal_group: '',
-      is_lactating: '',
-      is_pregnant: false,
-      body_weight: '',
-      average_daily_gain: '',
-      milk_price: '',
-      milk_yield: '',
-      fat_protein_content: '',
-      
-    })
-    setCurrSection(1)
+    
+    setCurrSection(0)
   }
 
   const identifyCurrentCarabaoPhase = () => {
@@ -192,45 +179,7 @@ function CreateFormulationModal({
 
         
 
-
-        {/* First Part */}
-        {currSection === 0 ? (
-          <CarabaoIdentifySetup
-          formulations={formulations}
-          ownerId={ownerId}
-          ownerName={ownerName}
-          isOpen={isOpen}
-          onClose={onClose}
-          onResult={onResult}
-          userType={userType}
-          formData={formData}
-          setFormData={setFormData}
-          nameError={nameError}
-          setNameError={setNameError}
-          codeError={codeError}
-          setCodeError={setCodeError}
-          bodyWeightError={bodyWeightError}
-          setBodyWeightError={setBodyWeightError}
-          isDisabled={isDisabled}
-          setIsDisabled={setIsDisabled}
-          templateQuery={templateQuery}
-          setTemplateQuery={setTemplateQuery}
-          selectedTemplate={selectedTemplate}
-          setSelectedTemplate={setSelectedTemplate}
-          fetchedTemplates={fetchedTemplates}
-          setFetchedTemplates={setFetchedTemplates}
-          isLoadingTemplates={isLoadingTemplates}
-          setIsLoadingTemplates={setIsLoadingTemplates}
-          fetchError={fetchError}
-          setFetchError={setFetchError}
-          setCurrSection={setCurrSection}
-          carabaoConfiguration={carabaoConfiguration}
-          setCarabaoConfiguration={setCarabaoConfiguration}
-          identifyCurrentCarabaoPhase={identifyCurrentCarabaoPhase}
-          />
-        ) :
-        currSection === 1 ? (
-          <CarabaoIdentify
+        <GroupIdentify
           formulations={formulations}
           ownerId={ownerId}
           ownerName={ownerName}
@@ -263,56 +212,7 @@ function CreateFormulationModal({
           setCarabaoConfiguration={setCarabaoConfiguration}
           identifyCurrentCarabaoPhase= {identifyCurrentCarabaoPhase}
         />
-
-        ) :
-        currSection == 2 && (
-          <>
-          <CarabaoIdentifyContinue
-          formulations={formulations}
-          ownerId={ownerId}
-          ownerName={ownerName}
-          isOpen={isOpen}
-          onClose={onClose}
-          onResult={onResult}
-          userType={userType}
-          formData={formData}
-          setFormData={setFormData}
-          isDisabled={isDisabled}
-          setIsDisabled={setIsDisabled}
-          templateQuery={templateQuery}
-          setTemplateQuery={setTemplateQuery}
-          selectedTemplate={selectedTemplate}
-          setSelectedTemplate={setSelectedTemplate}
-          fetchedTemplates={fetchedTemplates}
-          setFetchedTemplates={setFetchedTemplates}
-          isLoadingTemplates={isLoadingTemplates}
-          setIsLoadingTemplates={setIsLoadingTemplates}
-          fetchError={fetchError}
-          setFetchError={setFetchError}
-          bodyWeightError={bodyWeightError}
-          setBodyWeightError={setBodyWeightError}
-          averageDailyGainError={averageDailyGainError}
-          setAverageDailyGainError={setAverageDailyGainError}
-          milkYieldError={milkYieldError}
-          setMilkYieldError={setMilkYieldError}
-          fatProteinContentError={fatProteinContentError}
-          setFatProteinContentError={setFatProteinContentError}
-          milkPriceError={milkPriceError}
-          setMilkPriceError={setMilkPriceError}
-          setCurrSection={setCurrSection}
-          monthsPregnantError={monthsPregnantError}
-          setMonthsPregnantError={setMonthsPregnantError}
-          setNameError={setNameError}
-          setCodeError={setCodeError}
-          carabaoConfiguration={carabaoConfiguration}
-          setCarabaoConfiguration={setCarabaoConfiguration}
-          identifyCurrentCarabaoPhase= {identifyCurrentCarabaoPhase}
-        />
-          </>
-        )
-        }
         
-        {/* Second Part */}
 
         
       </div>
@@ -325,4 +225,4 @@ function CreateFormulationModal({
   )
 }
 
-export default CreateFormulationModal
+export default GroupFormulationModal

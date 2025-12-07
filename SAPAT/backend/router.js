@@ -17,7 +17,8 @@ import {
   updateCollaborator,
   removeCollaborator,
   getAllTemplateFormulations,
-  cloneTemplateToFormulation
+  cloneTemplateToFormulation,
+  getCowFormulation
 } from './controller/formulation-controller.js';
 import {
   createIngredient, getAllIngredients, getIngredient, getIngredientsByFilters, updateIngredient, deleteIngredient, importIngredient
@@ -86,6 +87,7 @@ const handleRoutes = (app) => {
 
   app.post('/formulation', createFormulation);
   app.get('/formulation/filtered/:collaboratorId', getAllFormulations);
+  app.get('/formulation/cow', getCowFormulation);
   app.get('/formulation/special/:animalgroup', getAllSpecialFormulations);
   app.get('/formulation/filtered/search/:userId', getFormulationByFilters);
   app.put('/formulation/:id', updateFormulation);

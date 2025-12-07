@@ -41,43 +41,11 @@ function CarabaoIdentifyContinue({
   monthsPregnantError,
   setMonthsPregnantError,
   setNameError,
-  setCodeError
-
-
+  setCodeError,
+  carabaoConfiguration,
+  setCarabaoConfiguration,
+  identifyCurrentCarabaoPhase,
 }) {
-
-  // Dummy template options by animal group
-  /*
-  const animalGroupTemplates = {
-    'Swine': [
-      { id: 0, name: 'None' },
-      { id: 1, name: 'Swine Sample Template 1' },
-      { id: 2, name: 'Swine Sample Template 2' },
-      { id: 3, name: 'Swine Sample Template 3' },
-      { id: 4, name: 'Swine Sample Template 4' },
-      { id: 5, name: 'Swine Sample Template 5' },
-      { id: 6, name: 'Swine Sample Template 6' },
-    ],
-    'Poultry': [
-      { id: 0, name: 'None' },
-      { id: 7, name: 'Poultry Sample Template 1' },
-      { id: 8, name: 'Poultry Sample Template 2' },
-      { id: 9, name: 'Poultry Sample Template 3' },
-      { id: 10, name: 'Poultry Sample Template 4' },
-      { id: 11, name: 'Poultry Sample Template 5' },
-      { id: 12, name: 'Poultry Sample Template 6' },
-    ],
-    'Water Buffalo': [
-      { id: 0, name: 'None' },
-      { id: 13, name: 'Water Buffalo Sample Template 1' },
-      { id: 14, name: 'Water Buffalo Sample Template 2' },
-      { id: 15, name: 'Water Buffalo Sample Template 3' },
-      { id: 16, name: 'Water Buffalo Sample Template 4' },
-      { id: 17, name: 'Water Buffalo Sample Template 5' },
-      { id: 18, name: 'Water Buffalo Sample Template 6' },
-    ],
-  }
-  */
 
   // Fetch templates from backend when modal opens or animal group changes
   useEffect(() => {
@@ -105,6 +73,9 @@ function CarabaoIdentifyContinue({
     setTemplateQuery('')
   }, [formData.animal_group])
 
+
+
+
   // Filter fetched templates by selected animal group
   const templateOptions = [
     { id: 0, name: 'None' },
@@ -128,18 +99,22 @@ function CarabaoIdentifyContinue({
     e.preventDefault()
     setIsDisabled(true)
 
+    
+    
     // client-side validation
-    if (
-      formulations.some(
-        (formulation) =>
-          formulation.code.toLowerCase() === formData.code.toLowerCase()
-      )
-    ) {
-      setCodeError('Code already exists ')
-      setNameError('')
-      setIsDisabled(false)
-      return
-    } else if (
+    // if (
+    //   formulations.some(
+    //     (formulation) =>
+    //       formulation.code.toLowerCase() === formData.code.toLowerCase()
+    //   )
+    // ) {
+    //   setCodeError('Code already exists ')
+    //   setNameError('')
+    //   setIsDisabled(false)
+    //   return
+    // } else 
+      
+      if (
       formulations.some(
         (formulation) =>
           formulation.name.toLowerCase() === formData.name.toLowerCase()
@@ -152,37 +127,143 @@ function CarabaoIdentifyContinue({
     } else {
       setNameError('')
     }
-    const body = { ...formData, ownerId, ownerName, userType };
+    
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/formulation`,
-        body
-      )
-      let newFormulation = res.data.formulations
-      newFormulation.access = 'owner'
-      // If a template is selected, clone its dependencies
-      if (selectedTemplate && selectedTemplate.id && selectedTemplate.id !== 0) {
-        try {
-          setIsDisabled(true)
-          const cloneRes = await axios.post(
-            `${import.meta.env.VITE_API_URL}/formulation/${newFormulation._id}/clone-template`,
-            {
-              templateId: selectedTemplate.id,
-              userId: ownerId
-            }
-          )
-          if (cloneRes.data && cloneRes.data.formulations) {
-            newFormulation = cloneRes.data.formulations
-          }
-        } catch (cloneErr) {
-          console.error(cloneErr)
-          onResult(null, 'error', 'Failed to clone template dependencies.')
-          setIsDisabled(false)
-          return
+      let bodynutrient_constraints = []
+      let nutrients = []
+
+
+        function nutrientsToConstraintFormat(bodynutrient_constraints, formData) {
+            const nutrients = bodynutrient_constraints.map(nc => {
+              const constraint_percent = 0.20;
+              
+              let minimumvalue = 0;
+              let maximumvalue = 10000;
+
+              // Default minimum value and maximum values
+              minimumvalue = nc.constraintvalue - (nc.constraintvalue * constraint_percent);
+              maximumvalue = nc.constraintvalue + (nc.constraintvalue * constraint_percent);
+
+              if (formData.animal_group === 'Cow | Inahing kalabaw') {
+                if (formData.months_pregnant && formData.months_pregnant >= 7) {
+                  // 3rd Trimester
+                  minimumvalue = minimumvalue * 1.30;
+                  maximumvalue = maximumvalue * 1.30;
+                }
+                if (nc.name === 'Total Digestible Nutrients' && formData.is_pregnant === true){
+                  minimumvalue = minimumvalue * 1.25;
+                  maximumvalue = maximumvalue * 1.25;
+                }
+                if (nc.name === 'Crude Protein' && formData.is_pregnant === true){
+                  minimumvalue = minimumvalue * 1.50;
+                  maximumvalue = maximumvalue * 1.50;
+                }
+                if (nc.is_lactating === 'Early Lactation (1-100 Days)'){
+                  minimumvalue = minimumvalue * 1.25;
+                  maximumvalue = maximumvalue * 1.25;
+                }
+              } 
+              return {
+                nutrient_id: nc.nutrientid,
+                _id: nc._id,
+                name: nc.name,
+                // minimum: nc.constraintvalue - nc.constraintvalue * constraint_percent,
+                // maximum: nc.constraintvalue + nc.constraintvalue * constraint_percent,
+                minimum:minimumvalue,
+                maximum:maximumvalue,
+                // minimum: 0,
+                // maximum:10000,
+                value: nc.value
+              }
+            });
+          return nutrients;
         }
+      
+      function cowWeight(weight) {
+        const weights = [350, 400, 450, 500, 550, 600, 650, 700, 750, 800];
+        if (weight < 350) return 350;
+        if (weight > 800) return 800;
+        return weights.reduce((prev, curr) => Math.abs(curr - weight) < Math.abs(prev - weight) ? curr : prev);
       }
-      onResult(newFormulation, 'success', 'Successfully created formulation.')
+
+      
+      // Fetch body nutrient constraints if animal group is Cow and body weight is provided
+      if (formData.animal_group === 'Cow | Inahing kalabaw' && formData.body_weight) {
+
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/cow`, {
+          params: { weight: cowWeight(formData.body_weight) },
+
+        });
+
+        bodynutrient_constraints = res.data.formulation.nutrientrequirement;
+        // console.log("BNC:", bodynutrient_constraints)
+        nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData);
+        
+      }
+
+      
+      
+      if (carabaoConfiguration.multipleCarabaos=== true && carabaoConfiguration.temporaryNameArray!==null && carabaoConfiguration.temporaryNameArray.length !==0 && identifyCurrentCarabaoPhase()!==null && carabaoConfiguration.sameConfigTypeArray.includes(identifyCurrentCarabaoPhase()[1])){
+        await Promise.all(
+          carabaoConfiguration.temporaryNameArray.map(async (element) => {
+            const updatedFormData= {
+              ...formData,
+              name: element,
+            };
+            const body = { ...updatedFormData, ownerId, ownerName, userType, bodynutrient_constraints, nutrients };
+            console.log("Data before posting", formData)
+            const res = await axios.post(`${import.meta.env.VITE_API_URL}/formulation`, body);
+            let newFormulation = res.data.formulations;
+            newFormulation.access = 'owner';
+            onResult(newFormulation, 'success', 'Successfully created formulation.', carabaoConfiguration, setCarabaoConfiguration)
+          })
+        );
+        carabaoConfiguration.currentCarabaoCreation += carabaoConfiguration.carabaoPhases[identifyCurrentCarabaoPhase()[1]]
+      } else {
+        
+        
+        const body = { ...formData, ownerId, ownerName, userType, bodynutrient_constraints, nutrients};
+        const res = await axios.post(`${import.meta.env.VITE_API_URL}/formulation`, body);
+        let newFormulation = res.data.formulations
+        newFormulation.access = 'owner'
+        onResult(newFormulation, 'success', 'Successfully created formulation.', carabaoConfiguration, setCarabaoConfiguration)
+      }
+      
+
+      // If a template is selected, clone its dependencies
+      // if (selectedTemplate && selectedTemplate.id && selectedTemplate.id !== 0) {
+      //   try {
+      //     setIsDisabled(true)
+      //     const cloneRes = await axios.post(
+      //       `${import.meta.env.VITE_API_URL}/formulation/${newFormulation._id}/clone-template`,
+      //       {
+      //         templateId: selectedTemplate.id,
+      //         userId: ownerId
+      //       }
+      //     )
+      //     if (cloneRes.data && cloneRes.data.formulations) {
+      //       newFormulation = cloneRes.data.formulations
+      //     }
+      //   } catch (cloneErr) {
+      //     console.error(cloneErr)
+      //     onResult(null, 'error', 'Failed to clone template dependencies.')
+      //     setIsDisabled(false)
+      //     return
+      //   }
+      // }
+
+      
+      
+      
       // Reset form
+
+    } catch (err) {
+      console.log(err)
+      onResult(null, 'error', 'Failed to create formulation.', carabaoConfiguration, setCarabaoConfiguration)
+    } finally {
+      setIsDisabled(false)
+      setCodeError('')
+      setNameError('')
       setFormData({
         code: '',
         name: '',
@@ -196,13 +277,21 @@ function CarabaoIdentifyContinue({
         milk_yield: '',
         fat_protein_content: '',
       })
-    } catch (err) {
-      console.log(err)
-      onResult(null, 'error', 'Failed to create formulation.')
-    } finally {
-      setIsDisabled(false)
-      setCodeError('')
-      setNameError('')
+      if (identifyCurrentCarabaoPhase()!==null && carabaoConfiguration.currentCarabaoCreation != carabaoConfiguration.numberofCarabaos && carabaoConfiguration.multipleCarabaos===true){
+        const carabaoType = identifyCurrentCarabaoPhase()[1]
+        setFormData((prev)=>({
+          ...prev,
+          animal_group: carabaoType
+        }))
+        setCurrSection(1)
+        console.log("Creating next formulation")
+      }
+      else if (carabaoConfiguration.currentCarabaoCreation !== carabaoConfiguration.numberofCarabaos && carabaoConfiguration.multipleCarabaos===true){
+        
+        setCurrSection(1)
+      } else {
+        setCurrSection(0)
+      }
     }
   }
 
@@ -230,9 +319,22 @@ function CarabaoIdentifyContinue({
     <>
         {/* Close button */}
         <div className=' pb-2  whitespace-normal font-bold flex flex-col text-gray-600'>
+          {identifyCurrentCarabaoPhase()!=null && Object.keys(carabaoConfiguration.carabaoPhases).includes(identifyCurrentCarabaoPhase()[1]) ? 
+          <>
+            <span className='label-text'>Group Formulation for Carabaos used by [{carabaoConfiguration.temporaryNameArray}] </span>
+            <span className='label-text'>Phase: {formData.animal_group} Weight: {formData.body_weight}</span>
+          </>
+          
+           : (
+          <>
           <span className='label-text'>Formulation for Carabao {formData.name} used by {formData.code} </span>
           <span className='label-text'>Phase: {formData.animal_group} weigh: {formData.body_weight}</span>
-       
+          </>
+          )
+          
+          }
+          
+
         </div>
 
         <form onSubmit={handleSubmit}>

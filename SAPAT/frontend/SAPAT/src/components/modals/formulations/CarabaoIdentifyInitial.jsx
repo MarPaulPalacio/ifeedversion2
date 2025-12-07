@@ -33,7 +33,9 @@ function CarabaoIdentifyInitial({
   setIsLoadingTemplates,
   fetchError,
   setFetchError,
-  setCurrSection
+  setCurrSection,
+  carabaoConfiguration,
+  setCarabaoConfiguration,
 }) {
 
   // Dummy template options by animal group
@@ -166,13 +168,15 @@ function CarabaoIdentifyInitial({
 
 
   const handleClose = () => {
-    onClose()
+    console.log('closing modal...')
+    setCurrSection(0)
     setFormData({
       code: '',
       name: '',
       description: '',
       animal_group: '',
     })
+    
   }
 
   return (
@@ -259,7 +263,7 @@ function CarabaoIdentifyInitial({
             {/* Body Weight */}
             <div className='form-control w-full'>
               <label className="label">
-                <span className="label-text">Body Weight</span>
+                <span className="label-text">Body Weights</span>
               </label>
               <input
                 type="number"

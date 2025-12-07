@@ -31,7 +31,8 @@ const getAllIngredients = async (req, res) => {
       const data = ingredient._doc || ingredient;
       return {
         ...data,
-        price: Number(data.price).toFixed(2)
+        price: Number(data.price).toFixed(2),
+        group: data.group || 'Uncategorized',
       };
     })
 

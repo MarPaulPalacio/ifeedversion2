@@ -265,13 +265,13 @@ const simplex = async (req, res) => {
 
     console.log(`optimal is ${glpk.GLP_OPT}; but it's ${output.result.status}`)
     // Check if the result has an optimal solution
-    if (output.result.status == glpk.GLP_OPT) {
+    // if (output.result.status == glpk.GLP_OPT) {
+    if (output.result.status){
       console.log("optimal found!")
-
       console.log("=======================================DEBUG HERE=======================================")
       console.log("optimize-controller.js")
       console.log(output)
-
+      
       // determine the optimized nutrients
       const optimizedNutrients = determineOptimizedNutrients(output.result.vars, constraints);
       // reformat ingredients to be used in the response (make it an array of objects)

@@ -246,11 +246,14 @@ function EditIngredientModal({
                   onChange={handleChange}
                   className="select select-bordered w-full rounded-2xl"
                 >
-                  <option value="Cereal grains">Cereal grains</option>
-                  <option value="Protein">Protein</option>
-                  <option value="Fats and oils">Fats and oils</option>
-                  <option value="Minerals and vitamins">
-                    Minerals and vitamins
+                  <option value="Grass">Grass</option>
+                  <option value="Legume">Legume</option>
+                  <option value="Agricultural by-products">Agricultural by-products</option>
+                  <option value="Industrial by-products">
+                    Industrial by-products
+                  </option>
+                  <option value="Vitamin-Mineral">
+                    Vitamin-Mineral
                   </option>
                 </select>
               </div>

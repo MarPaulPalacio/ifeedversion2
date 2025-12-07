@@ -9,12 +9,20 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
   // Update filtered ingredients whenever search term or ingredients list changes
   
   const ingredientFilterMachine = () => {
-
-    const filtered = ingredients.filter(
+    console.log("INGREDIENTSsasd:", ingredients)
+    let filtered = []
+    if (groupFilter.length === 0) {
+      filtered = ingredients
+      console.log("NO FILTER")
+    } else {
+      filtered = ingredients.filter(
         (ingredient) =>
           
           groupFilter.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
-    )
+      )
+    }
+
+    
     
 
     if (!searchTerm.trim()) {
@@ -42,6 +50,8 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
       setGroupFilter(["Agricultural by-products", "Industrial by-products"])
     } else if (ingredientsFilter === "vitamins") {
       setGroupFilter(["Vitamin-Mineral"])
+    } else {
+      setGroupFilter([])
     }
     
 

@@ -108,6 +108,12 @@ function ViewFormulation({
   }, [formulation])
 
   useEffect(() => {
+    if (formulation) {
+      showNutrientsMissingBasedonIngredientsPresent ();
+    }
+  }, [formulation, selectedIngredients])
+
+  useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
@@ -168,7 +174,6 @@ function ViewFormulation({
           formulation.ingredients.map((item) => item.ingredient_id)
           : specialformulations.find((sf) => sf.name === phase)?.ingredients.map((item) => item.ingredient_id)
       )
-      console.log("FFFRETCH")
 
       // don't include already added ingredients to the ingredients menu
       const unusedIngredients = fetchedData.filter(
@@ -193,6 +198,7 @@ function ViewFormulation({
   }
 
   const organizeNutrients = (fetchedData, phase) => {
+
     // nutrients already in the formulation
       const arr2Ids = new Set(
         phase === 'Custom' ?
@@ -226,7 +232,6 @@ function ViewFormulation({
         `${import.meta.env.VITE_API_URL}/ingredient/filtered/${owner?.userId}?limit=10000`
       )
       const fetchedData = res.data.ingredients
-      console.log("SDFSDFDS ", fetchedData)
       organizeIngredients(fetchedData, 'Custom')
       
     } catch (err) {
@@ -330,15 +335,20 @@ function ViewFormulation({
       const optimizedNutrients = res.data.optimizedNutrients
       const shadowPricesResult = res.data.shadowPrices
 
+      console.log("OPTIMIZATION RESULT:", optimizedIngredients, optimizedNutrients)
+
+      
       // Update shadow prices in real-time storage
       updateShadowPrices(shadowPricesResult || []);
 
       updateCost(optimizedCost)
-      optimizedIngredients.map((ing, index) => {
-        updateIngredientProperty(index, 'value', Number(ing.value))
+      optimizedIngredients.map((ing, index) => {  
+        const ingredientId = ingredients.find(i => i.name === ing.name)?.ingredient_id;
+        updateIngredientProperty(ingredientId, 'value', Number(ing.value))
       })
       optimizedNutrients.map((nut, index) => {
-        updateNutrientProperty(index, 'value', Number(nut.value))
+        const nutrientId = nutrients.find(n => n.name === nut.name)?.nutrient_id;
+        updateNutrientProperty(nutrientId, 'value', Number(nut.value))
       })
       setIsDirty(false)
     } catch (err) {
@@ -348,10 +358,12 @@ function ViewFormulation({
         setMessage(`No feasible formula found. Please adjust your constraints.`)
         setToastAction('error')
         ingredients.map((ing, index) => {
-          updateIngredientProperty(index, 'value', 0)
+          const ingredientId = ingredients.find(i => i.name === ing.name)?.ingredient_id;
+          updateIngredientProperty(ingredientId, 'value', 0)
         })
         nutrients.map((ing, index) => {
-          updateNutrientProperty(index, 'value', 0)
+          const nutrientId = nutrients.find(n => n.name === ing.name)?.nutrient_id;
+          updateNutrientProperty(nutrientId, 'value', 0)
         })
       }
     }
@@ -411,19 +423,38 @@ function ViewFormulation({
 
   const handleAddIngredients = async (ingredientsToAdd) => {
     try {
+       const ingredientsWithGroup = ingredientsToAdd.map((ingredient) => {
+        const matched = ingredientsMenu.find(
+          (item) =>
+            item._id === ingredient.ingredient_id ||
+            item.ingredient_id === ingredient.ingredient_id
+        );
+        return {
+          ...ingredient,
+          group: matched?.group || "", // add group if found
+        };
+      });
+
       const res = await axios.put(
         `${VITE_API_URL}/formulation/ingredients/${id}`,
-        { ingredients: ingredientsToAdd }
-      )
+        { ingredients: ingredientsWithGroup } // send ingredients with group
+      );
+      
       const newIngredients = res.data.addedIngredients
-      console.log(ingredientsToAdd, "SDFSDF")
+      
       const formattedIngredients = newIngredients.map((ingredient) => {
         // at initial add, all values are zero
+        const menuIngredient = ingredientsMenu.find(
+          (item) => item.ingredient_id === ingredient.ingredient_id || item._id === ingredient.ingredient_id
+        );
+        
+        
         return {
           ...ingredient,
           minimum: 0,
           maximum: 0,
           value: 0,
+          group: menuIngredient?.group || ''
         }
       })
 
@@ -604,9 +635,9 @@ function ViewFormulation({
   const renderIngredientsTableRows = (group) => {
         // Ingredients Filtering Roughage, or vitamins, or concentrate
 
-      const groupFilter1 = ["Grass", "Legumes"]
-      const groupFilter2 = ["Agricultural by-products", "Industrial by-products"]
-      const groupFilter3 = ["Vitamin-Mineral"]
+      const groupFilter1 = ["grass", "legumes"]
+      const groupFilter2 = ["agricultural by-products", "industrial by-products"]
+      const groupFilter3 = ["vitamin-mineral"]
 
       
       const filtered = ingredients.filter(
@@ -617,14 +648,17 @@ function ViewFormulation({
             return groupFilter2.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
           } else if (group === 'vitamins') {
             return groupFilter3.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
+          } else {
+            return ingredient
           }
+          console.log("ALL")
         }
+        
       )
-      console.log("Group: "+ group, ingredients)
-    if (ingredients) {
-      
-      
-      return ingredients.map((ingredient, index) => (
+      console.log("FILTERED INGREDIENTS:", filtered, group)
+    if (filtered.length > 0) {
+
+      return filtered.map((ingredient, index) => (
         <tr key={index} className="hover:bg-base-300">
           <td>{ingredient.name}</td>
           <td>
@@ -645,7 +679,7 @@ function ViewFormulation({
                   const processedValue = /^N\/A\d*/.test(inputValue)
                     ? inputValue.replace('N/A', '')
                     : inputValue
-                  handleIngredientMinimumChange(index, processedValue)
+                  handleIngredientMinimumChange(ingredient.ingredient_id, processedValue)
                   setIsDirty(false)
                 }
               }}
@@ -679,7 +713,7 @@ function ViewFormulation({
                   if (!isNaN(numericValue) && numericValue > weight) {
                     processedValue = weight
                   }
-                  handleIngredientMaximumChange(index, processedValue)
+                  handleIngredientMaximumChange(ingredient.ingredient_id, processedValue)
                   setIsDirty(false)
                 }
               }}
@@ -705,7 +739,9 @@ function ViewFormulation({
     }
   }
 
+
   // Render function for Nutrients table rows
+  
   const renderNutrientsTableRows = () => {
     if (nutrients) {
       return nutrients.map((nutrient, index) => (
@@ -728,7 +764,7 @@ function ViewFormulation({
                   const processedValue = /^N\/A\d*/.test(inputValue)
                     ? inputValue.replace('N/A', '')
                     : inputValue
-                  handleNutrientMinimumChange(index, processedValue)
+                  handleNutrientMinimumChange(nutrient.nutrient_id, processedValue)
                   setIsDirty(false)
                 }
               }}
@@ -756,7 +792,7 @@ function ViewFormulation({
                   const processedValue = /^N\/A\d*/.test(inputValue)
                     ? inputValue.replace('N/A', '')
                     : inputValue
-                  handleNutrientMaximumChange(index, processedValue)
+                  handleNutrientMaximumChange(nutrient.nutrient_id, processedValue)
                   setIsDirty(false)
                 }
               }}
@@ -767,7 +803,7 @@ function ViewFormulation({
             />
             <Selections id={`nutrient-${index}-maximum`} others={others} />
           </td>
-          <td>{nutrient && nutrient.value.toFixed(3)}</td>
+          <td>{nutrient.value.toFixed(3)}</td>
           <td>
             <button
               disabled={isDisabled}
@@ -879,6 +915,8 @@ function ViewFormulation({
   const [nutrientRatioModifyType, setNutrientRatioModifyType] = useState('add');
   const [editingNutrientRatioIndex, setEditingNutrientRatioIndex] = useState(null); // NEW: track which ratio is being edited
   const [nutrientRatioToEdit, setNutrientRatioToEdit] = useState(null); // NEW: store the ratio being edited
+  const [missingNutrientsValue, setMissingNutrientsValue] = useState([]);
+  const [advancedPressed, setAdvancedPressed] = useState(false);
 
   // Handler to open modal for editing a nutrient ratio
   const handleEditNutrientRatio = (index) => {
@@ -910,6 +948,70 @@ function ViewFormulation({
   // loading due to liveblocks storage
   if (!formulationRealTime) {
     return <Loading />
+  }
+
+
+  function showNutrientsMissingBasedonIngredientsPresent (){
+    // This function checks for nutrients that are missing (not met) based on the selected ingredients.
+    // Make an axios call to /ingredient/filtered/:userId to fetch the latest ingredients for the owner
+    // Returns a promise that resolves to the list of ingredients
+    if (selectedIngredients.length === 0) {
+      setMissingNutrientsValue((formulation.nutrients || []).map(n => n.name));
+      return;
+    }
+    axios.get(`${import.meta.env.VITE_API_URL}/ingredient/filtered/${owner.userId}`)
+    
+    .then(res => res.data.ingredients)
+      .then(res => {
+        const ingredientswithnutri = res.filter(ingredient =>
+          selectedIngredients.some(sample => sample.name === ingredient.name)
+        );
+        // You can now use ingredientswithnutri as needed
+        console.log("IngredientswithNutri", ingredientswithnutri);
+        console.log("Formulation Nutrients to Check Against:", formulation.nutrients);
+        console.log("Selected Ingredients:", selectedIngredients);
+        if (!ingredients || ingredients.length === 0) {
+            return [<li key="no-nutrients">No nutrients to check.</li>];
+        }
+        // Get all unique nutrient names from ingredientswithnutri
+
+        const allNutrientInFormulationId = (formulation.nutrients || []).reduce((acc, nutrient) => {
+          acc[nutrient.nutrient_id] = 0;
+          return acc;
+        }, {});
+        
+        (formulation.nutrients || []).forEach(formulationnutrient => {
+        
+          (ingredientswithnutri || []).forEach(ingredient => {
+            (ingredient.nutrients || []).forEach(nutrient => {
+              
+              if (nutrient.nutrient === formulationnutrient.nutrient_id) {
+                allNutrientInFormulationId[nutrient.nutrient] += (nutrient.value || 0);
+                console.log(`Adding ${nutrient.value} to nutrient ID ${nutrient.nutrient}`);
+                console.log("Name of nutrient:", nutrient)
+                console.log("NName of nutrient2:", ingredient)
+              }
+            });
+          });
+        });
+
+        const missingNutrients = Object.entries(allNutrientInFormulationId)
+          .filter(([_, value]) => value === 0)
+          .map(([nutrientId]) => {
+            // Find the nutrient object in formulation.nutrients by nutrient_id
+            const nutrientObj = (formulation.nutrients || []).find(n => n.nutrient_id === nutrientId);
+            return nutrientObj ? nutrientObj.name : `Nutrient ID: ${nutrientId}`;
+          });
+        console.log("Missing Nutrients:", missingNutrients);
+        console.log("All Nutrients:", allNutrientInFormulationId);
+        
+        setMissingNutrientsValue(missingNutrients);
+      })
+    .catch(err => {
+      console.error("Error fetching ingredients:", err);
+      
+    });
+    
   }
 
   const {
@@ -960,7 +1062,11 @@ function ViewFormulation({
                     <li>
                       <button
                         className="hover:bg-primary hover:text-primary-content flex items-center rounded-lg py-2 transition-colors duration-200"
+                        
                         onClick={() => {
+                          
+                          const nutrients = formulation.nutrients || [];
+                          console.log("Nutrients being sent to optimization:", formulationRealTime);
                           handleOptimize(
                             // listOfIngredients || [],
                             ingredients || [],
@@ -977,6 +1083,7 @@ function ViewFormulation({
                       <button
                         className="hover:bg-primary hover:text-primary-content flex items-center rounded-lg py-2 transition-colors duration-200"
                         onClick={() => {
+
                           handleOptimize(
                             // listOfIngredients || [],
                             ingredients || [],
@@ -1015,6 +1122,17 @@ function ViewFormulation({
                 // formulation={formulationRealTime}
                 data={shadowPrices}
               />
+              </div>
+
+              <div className='flex items-center justify-end gap-1 pr-2'>
+              
+              <button
+                className={`btn border border-gray-400 btn-sm gap-2 rounded-lg text-xs ${advancedPressed ? 'bg-green-button text-white' : 'bg-white text-black'}`}
+                onClick={() => setAdvancedPressed(!advancedPressed)}
+                disabled={isDisabled}
+              >
+                {advancedPressed===false ? 'Show Basic' : 'Show Advanced'}
+              </button>
               </div>
             </div>
             {/*<div className="flex flex-wrap gap-2">*/}
@@ -1143,35 +1261,7 @@ function ViewFormulation({
               </select>
               <Selections id="input-animal_group" others={others} />
             </div>
-            {/* {animal_group === 'Water Buffalo' && (
-          <div className={``}>
-            <div className="">
-                <label className="label text-sm font-medium text-black">{animal_group} Phase</label>
-                <div>
-                  <select
-                    className="select select-bordered w-full rounded-xl bg-white"
-                    value={phase}
-                    onChange={(e) => ChangeFormulationByPhase(e.target.value)}
-                    // disabled={isDisabled}
-                    >
-                    {specialformulations && specialformulations.length > 0 ? (
-                      <>
-                      {specialformulations.map((sf, idx) => (
-                      <option key={idx} value={sf.name}>
-                        {sf.name}
-                      </option>
-                      ))}
-                      <option value="Custom">Custom</option>
-                      </>
-                      
-                    ) : (
-                      <option value="Custom">Custom</option>
-                    )}
-                    </select>
-                  </div>
-                </div>
-                </div>
-                )} */}
+
 
             
           </div>
@@ -1181,6 +1271,23 @@ function ViewFormulation({
           
                 
                 {/* Tables - Grid on desktop, Stack on mobile */}
+          {/* Box showing missing nutrients after optimization */}
+          {missingNutrientsValue.length > 0  && (
+            <div className="my-4">
+              <div className="rounded-lg border border-yellow-400 bg-yellow-50 p-3 shadow-sm">
+                <div className="font-semibold text-yellow-700 mb-2 flex items-center gap-2">
+                  <Warning /> Nutrients Still Missing
+                </div>
+                <ul className="list-disc pl-5 text-sm text-yellow-800">
+                    {missingNutrientsValue.map((n, i) => (
+                      <li key={i}>{n}</li>
+                    ))}
+                </ul>
+              </div>
+            </div>
+          )
+          }
+          { advancedPressed ? (<>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Roughage Table */}
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -1283,6 +1390,191 @@ function ViewFormulation({
                 </button>
               </div>
             </div>
+
+            </>) : (<>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+
+            
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <div className="p-4">
+                <h3 className="mb-2 text-sm font-semibold">All Ingredients</h3>
+                <p className="flex text-xs text-gray-500">
+                  <Info /> Shows all ingredients in the formulation.
+                </p>
+              </div>
+              <div className="max-h-64 overflow-x-auto overflow-y-auto">
+                <table className="table-sm table-pin-rows table w-full">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Min</th>
+                      <th>Max</th>
+                      <th>Value</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ingredients &&
+                      ingredients.map((ingredient, index) => (
+                        <tr key={index} className="hover:bg-base-300">
+                          <td>{ingredient.name}</td>
+                          <td>
+                            <input
+                              id={`ingredient-${index}-minimum`}
+                              type="text"
+                              className="input input-bordered input-xs w-15"
+                              disabled={isDisabled}
+                              value={ingredient.minimum !== 0 ? ingredient.minimum : 'N/A'}
+                              onChange={(e) => {
+                                const inputValue = e.target.value
+                                if (
+                                  /^N\/A(\d+|\.)/.test(inputValue) ||
+                                  /^\d*\.?\d{0,2}$/.test(inputValue)
+                                ) {
+                                  const processedValue = /^N\/A\d*/.test(inputValue)
+                                    ? inputValue.replace('N/A', '')
+                                    : inputValue
+                                  handleIngredientMinimumChange(ingredient.ingredient_id, processedValue)
+                                  setIsDirty(false)
+                                }
+                              }}
+                              onFocus={() => {
+                                updateMyPresence({ focusedId: `ingredient-${index}-minimum` })
+                              }}
+                              onBlur={() => updateMyPresence({ focusedId: null })}
+                            />
+                            <Selections id={`ingredient-${index}-minimum`} others={others} />
+                          </td>
+                          <td>
+                            <input
+                              id={`ingredient-${index}-maximum`}
+                              type="text"
+                              className="input input-bordered input-xs w-15"
+                              disabled={isDisabled}
+                              value={ingredient.maximum !== 0 ? ingredient.maximum : 'N/A'}
+                              onChange={(e) => {
+                                const inputValue = e.target.value
+                                if (
+                                  /^N\/A(\d+|\.)/.test(inputValue) ||
+                                  /^\d*\.?\d{0,2}$/.test(inputValue)
+                                ) {
+                                  let processedValue = /^N\/A\d*/.test(inputValue)
+                                    ? inputValue.replace('N/A', '')
+                                    : inputValue
+                                  const numericValue = parseFloat(processedValue)
+                                  if (!isNaN(numericValue) && numericValue > weight) {
+                                    processedValue = weight
+                                  }
+                                  handleIngredientMaximumChange(ingredient.ingredient_id, processedValue)
+                                  setIsDirty(false)
+                                }
+                              }}
+                              onFocus={() =>
+                                updateMyPresence({ focusedId: `ingredient-${index}-maximum` })
+                              }
+                              onBlur={() => updateMyPresence({ focusedId: null })}
+                            />
+                            <Selections id={`ingredient-${index}-maximum`} others={others} />
+                          </td>
+                          <td>
+                            {ingredient && weight && (ingredient.value * weight).toFixed(3)}
+                          </td>
+                          <td>
+                            <button
+                              disabled={isDisabled}
+                              className={`${isDisabled ? 'hidden' : ''} btn btn-ghost btn-xs text-red-500 hover:bg-red-200`}
+                              onClick={() => handleRemoveIngredient(ingredient)}
+                            >
+                              <RiDeleteBinLine />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-4">
+                <button
+                  disabled={isDisabled}
+                  onClick={() => { setIsChooseIngredientsModalOpen(true); setFilterIngredientCode('') }}
+                  className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  <RiAddLine /> Add ingredient
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white sm:mt-0 mt-4 ">
+              <div className="p-4">
+                <h3 className="mb-2 text-sm font-semibold">Nutrients</h3>
+                <p className="flex text-xs text-gray-500">
+                  <Info /> Shows all nutrients in the formulation.
+                </p>
+              </div>
+              <div className="max-h-64 overflow-x-auto overflow-y-auto">
+                <table className="table-sm table-pin-rows table w-full">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Min</th>
+                      <th>Max</th>
+                      <th>Value</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>{renderNutrientsTableRows()}</tbody>
+                </table>
+              </div>
+              <div className="p-4">
+                <button
+                  disabled={isDisabled}
+                  onClick={() => setIsChooseNutrientsModalOpen(true)}
+                  className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  <RiAddLine /> Add nutrient
+                </button>
+              </div>
+            </div>
+            </div>
+
+            {/* Nutrient Ratio Constraints Table */}
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white mt-4">
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold">Nutrient Ratio Constraints</h3>
+                  <p className="flex text-xs text-gray-500">
+                    <Info /> Set constraints between two nutrients (e.g., Protein : Fat ≥ 2:1).
+                  </p>
+                </div>
+                <button
+                  disabled={isDisabled}
+                  onClick={() => {
+                    setNutrientRatioModifyType('add');
+                    setIsChooseNutrientRatiosModalOpen(true);
+                  }}
+                  className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  <RiAddLine /> Add ratio
+                </button>
+              </div>
+              <div className="max-h-64 overflow-x-auto overflow-y-auto">
+                <table className="table-sm table-pin-rows table w-full">
+                  <thead>
+                    <tr>
+                      <th>First Nutrient</th>
+                      <th>Second Nutrient</th>
+                      <th>Operator</th>
+                      <th>Ratio</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>{renderNutrientRatiosTableRows()}</tbody>
+                </table>
+              </div>
+            </div>
+            
+            </>
+            )}
           
           <div className="flex flex-wrap justify-end gap-2 px-4 pb-5">
             {/* Target Amount */}

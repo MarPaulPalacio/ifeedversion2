@@ -67,14 +67,14 @@ function ViewFormulationEntry({ id }) {
 
   // Update a specific ingredient's property
   const updateIngredientProperty = useMutation(
-    ({ storage }, ingredientIndex, propertyName, propertyValue) => {
+    ({ storage }, ingredientId, propertyName, propertyValue) => {
       const ingredients = storage.get('formulation').get('ingredients')
       // Create a new array with the updated ingredient
-      const updatedIngredients = ingredients.map((ingredient, index) =>
-        index === ingredientIndex
-          ? { ...ingredient, [propertyName]: propertyValue }
-          : ingredient
-      )
+      const updatedIngredients = ingredients.map((ingredient) =>
+      ingredient.ingredient_id === ingredientId || ingredient._id === ingredientId
+        ? { ...ingredient, [propertyName]: propertyValue }
+        : ingredient
+      );
       // Update the entire ingredients array
       storage.get('formulation').set('ingredients', updatedIngredients)
     },
@@ -83,11 +83,11 @@ function ViewFormulationEntry({ id }) {
 
   // Update a specific nutrient's property
   const updateNutrientProperty = useMutation(
-    ({ storage }, nutrientIndex, propertyName, propertyValue) => {
+    ({ storage }, nutrientId, propertyName, propertyValue) => {
       const nutrients = storage.get('formulation').get('nutrients')
       // Create a new array with the updated nutrient
-      const updatedNutrients = nutrients.map((nutrient, index) =>
-        index === nutrientIndex
+      const updatedNutrients = nutrients.map((nutrient) =>
+        nutrient.nutrient_id === nutrientId || nutrient._id === nutrientId
           ? { ...nutrient, [propertyName]: propertyValue }
           : nutrient
       )
