@@ -106,7 +106,7 @@ function Table({
                     </p>
                   </div>
                   
-                  {actions && user?.userType === 'admin' && page !== "groupformulations" && (
+                  {(actions && user?.userType === 'admin' && page !== "groupformulations" || page==="formulations")  && (
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       <button 
                         disabled={row?.access && row?.access !== 'owner'}
