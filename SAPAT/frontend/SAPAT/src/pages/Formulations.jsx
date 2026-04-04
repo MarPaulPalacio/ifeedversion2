@@ -1,4 +1,4 @@
-import { RiAddLine } from 'react-icons/ri'
+import { RiAddLine, RiArrowRightSLine } from 'react-icons/ri'
 import { useState, useEffect } from 'react'
 import CreateFormulationModal from '../components/modals/formulations/CreateFormulationModal'
 import EditFormulationModal from '../components/modals/formulations/EditFormulationModal'
@@ -14,8 +14,11 @@ import Pagination from '../components/Pagination.jsx'
 import SortBy from '../components/SortBy.jsx'
 import FilterBy from '../components/FilterBy.jsx'
 import GroupFormulationModal from '../components/modals/groupformulation/GroupFormulation.jsx'
+import { useTranslation } from 'react-i18next'
 
 function Formulations() {
+
+  const { t, i18n } = useTranslation();
   const { user, loading } = useAuth()
 
   const [formulations, setFormulations] = useState([])
@@ -24,6 +27,9 @@ function Formulations() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedFormulation, setSelectedFormulation] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  const [isGroupFormulationPressed, setIsGroupFormulationPressed] = useState(false)
+
   // toast visibility
   const [showToast, setShowToast] = useState(false)
   const [message, setMessage] = useState('')
@@ -38,20 +44,21 @@ function Formulations() {
     pageSize: 5,
     page: 1,
   })
-  // filters
+
   const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState('')
   const [sortBy, setSortBy] = useState('')
   const [sortOrder, setSortOrder] = useState('')
-
+  const [groupFormulations, setGroupFormulations] = useState ([])
   // Determines whether formulation to be edited will be by group or single
   const [groupFormulation, setGroupFormulation] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchData()
+      
     }
-  }, [user, searchQuery, sortBy, sortOrder, filters, page])
+  }, [user, searchQuery, sortBy, sortOrder, filters, page, groupFormulation])
 
   const fetchData = async () => {
     try {
@@ -61,6 +68,12 @@ function Formulations() {
       const fetchedData = res.data
       setFormulations(fetchedData.fetched)
       setPaginationInfo(fetchedData.pagination)
+
+      const groupRes = await axios.get(
+      `${import.meta.env.VITE_API_URL}/groupformulations/all`
+    );
+      const groupData = groupRes.data;
+      setGroupFormulations(groupData.groupFormulations || []);
       setIsLoading(false)
     } catch (err) {
       console.log(err)
@@ -211,6 +224,10 @@ function Formulations() {
     navigateURL(`/formulations/${formulation._id}`)
   }
 
+  const handleGroupRowClick = (groupFormulation) => {
+    navigateURL(`/groupFormulations/${groupFormulation._id}`)
+  }
+
   const hideToast = () => {
     setShowToast(false)
     setMessage('')
@@ -221,7 +238,15 @@ function Formulations() {
     setPage(page)
   }
 
-  const headers = ['Code', 'Name', 'Description', 'Animal Group', 'Permission']
+  const headers = ['Farmer Name', 'Name', 'Description', 'Animal Group', 'Permission']
+
+  const groupheaders=[
+    'Name',
+    'Description',
+    'No. of Carabaos',
+
+  ]
+  
   const filterOptions = [
     { value: 'Heifer | Dumalaga', label: 'Heifer | Dumalaga' },
     { value: 'Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)', label: 'Calf | Bulo' },
@@ -254,8 +279,40 @@ function Formulations() {
       {/* Fixed Header Section */}
       <div className="sticky top-0 z-20 space-y-6 bg-gray-50 p-2 md:p-4">
         <h1 className="text-deepbrown mb-3 text-xl font-bold md:text-2xl">
-          Formulations
+          Feed Formulation
         </h1>
+
+        <div className="flex flex-row items-center space-x-2 md:space-x-4 mb-4 overflow-x-auto no-scrollbar">
+        {/* STEP 1 */}
+        
+
+        {/* STEP 2 - ACTIVE */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-col items-center">
+            <h1 className="text-deepbrown text-xs font-bold md:text-sm uppercase tracking-wider">
+              Select/Create
+            </h1>
+            {/* Visual underline signifier for active state */}
+            <div className="h-1 w-full bg-deepbrown rounded-full mt-0.5 animate-pulse" />
+          </div>
+          <RiArrowRightSLine className="text-gray-300 h-5 w-5" />
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <h1 className="text-gray-300 text-xs font-bold md:text-sm uppercase tracking-wider">
+            Formulate
+          </h1>
+          <RiArrowRightSLine className="text-gray-300 h-5 w-5" />
+        </div>
+
+        {/* STEP 3 */}
+        <div className="flex items-center gap-2 shrink-0">
+          <h1 className="text-gray-300 text-xs font-bold md:text-sm uppercase tracking-wider">
+            Generate
+          </h1>
+        </div>
+      </div>
+        
 
         {/* Action buttons and search */}
         <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
@@ -265,7 +322,7 @@ function Formulations() {
               className="bg-green-button flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 md:gap-2 md:px-3 md:py-1.5 md:text-base"
             >
               <RiAddLine className="h-4 w-4 md:h-5 md:w-5" />
-              <span>Add New</span>
+              <span>{t('Add New')}</span>
             </button>
           </div>
           <div className="flex flex-col flex-wrap gap-2 md:flex-row">
@@ -284,38 +341,73 @@ function Formulations() {
             </div>
           </div>
         </div>
+        <div className='flex items-center justify-start pr-2 space-x-2'>
+          <button
+            className={`btn border border-gray-300 btn-sm gap-2 rounded-lg text-xs hover:border-green-button h-9 ${isGroupFormulationPressed ? 'bg-white text-gray-800': 'bg-green-button text-white'}`}
+            onClick={() => setIsGroupFormulationPressed(false)}
+            // disabled={isDisabled}
+          >
+            {t('Single Formulations')}
+          </button>
+          <div>|</div>
+          <button
+            className={`btn border border-gray-300 btn-sm gap-2 rounded-lg text-xs hover:border-green-button h-9 ${!isGroupFormulationPressed ? 'bg-white text-gray-800': 'bg-green-button text-white'}`}
+            onClick={() => setIsGroupFormulationPressed(true)}
+            // disabled={isDisabled}
+          >
+            {t('Group Formulations')}
+          </button>
+        </div>
+        
       </div>
 
       {/* Table Section */}
-      <div className="flex-grow overflow-auto p-2 md:px-4">
-        
-        <div className='flex items-center justify-start gap-1 pr-2 pb-5'>
-          <button
-            className={`btn border border-gray-300 btn-sm gap-2 rounded-lg text-xs bg-white text-gray-800 hover:border-green-button h-9`}
-            onClick={() => setGroupFormulation(!groupFormulation)}
-            // disabled={isDisabled}
-          >
-            {/* {groupFormulation===false ? 'Modify Formulation by Group' : 'Currently Modifying'} */}
-            Modify Formulation by Group
-          </button>
+
+      {isGroupFormulationPressed ? 
+
+        <div className="flex-grow overflow-auto p-2 md:px-4">
+
+          {/* Group Formulation */}
+          <Table
+            headers={groupheaders}
+            data={groupFormulations}
+            page="groupformulations"
+            onEdit={handleEditClick}
+            onDelete={handleDeleteClick}
+            onRowClick={handleGroupRowClick}
+          />
+        </div>
+    
+    : <>
+    <div className="flex-grow overflow-auto p-2 md:px-4">
+
+          
+          {/* Single Formulation */}
+          <Table
+            headers={headers}
+            data={formulations}
+            page="formulations"
+            onEdit={handleEditClick}
+            onDelete={handleDeleteClick}
+            onRowClick={handleRowClick}
+          />
         </div>
 
-        <Table
-          headers={headers}
-          data={formulations}
-          page="formulations"
-          onEdit={handleEditClick}
-          onDelete={handleDeleteClick}
-          onRowClick={handleRowClick}
-        />
-      </div>
+        {formulations && formulations.length > 0 && (
+            <Pagination
+              paginationInfo={paginationInfo}
+              onPageChange={handlePageChange}
+            />
+          )}
+    </>
+        
+        
+    }
+      
 
-      {formulations && formulations.length > 0 && (
-        <Pagination
-          paginationInfo={paginationInfo}
-          onPageChange={handlePageChange}
-        />
-      )}
+      
+
+      
 
       {/* Modals */}
       <CreateFormulationModal
@@ -328,7 +420,7 @@ function Formulations() {
         userType={user.userType} 
       />
 
-      {/* For Editing */}
+      
       <GroupFormulationModal
         formulations={formulations}
         ownerId={user._id}
@@ -339,7 +431,7 @@ function Formulations() {
         userType={user.userType}
       />
 
-      
+      {/* For Editing */}
       <EditFormulationModal
         formulations={formulations}
         isOpen={isEditModalOpen}

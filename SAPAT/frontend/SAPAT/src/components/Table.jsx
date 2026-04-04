@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { RiPencilLine, RiDeleteBinLine, RiTableLine } from 'react-icons/ri'
 import { FaEye } from 'react-icons/fa'
-import Toast from '../components/Toast'
+import useAuth from '../hook/useAuth'
+import { useTranslation } from 'react-i18next'
+import { motion, AnimatePresence } from 'framer-motion' // Added Framer Motion
 
 function Table({
   headers,
@@ -12,178 +14,257 @@ function Table({
   onRowClick,
   actions = true,
 }) {
-  // toast visibility
-  const [showToast, setShowToast] = useState(false)
-  const [message, setMessage] = useState('')
-  const [toastAction, setToastAction] = useState('')
+  const { t } = useTranslation();
+  const { user } = useAuth();
 
-  const hideToast = () => {
-    setShowToast(false)
-    setMessage('')
-    setToastAction('')
+  // Animation Variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
   }
 
-  // Function to filter data to be shown
+  const rowVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 },
+    exit: { opacity: 0, x: -10, transition: { duration: 0.2 } }
+  }
+
+  const checkNeedsUpdate = (lastUpdated, row) => {
+    if (!lastUpdated) return false
+    const updated = new Date(lastUpdated)
+    const today = new Date()
+    const daysPassed = Math.floor((today - updated) / (1000 * 60 * 60 * 24))
+
+    const groupsRequiringMonthly = [
+      "Senior Bull | Bulugan (> 3 taon)",
+      "Junior Bull | Lumalaking bulugan (2 - 3 taon)",
+      "Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)"
+    ];
+
+    if (groupsRequiringMonthly.includes(row.animal_group)) {
+      return daysPassed >= 31
+    }
+    return daysPassed >= 2
+  }
+
   const getRowData = (row) => {
     if (!row) return []
     if (page === 'formulations') {
-      // Get the keys of the row excluding _id
-      const orderedFields = [
-        'code',
-        'name',
-        'description',
-        'animal_group',
-        'access',
-      ]
-      const rowData = orderedFields.map((field) => row[field] || 'N/A')
-      return rowData
+      return ['code', 'name', 'description', 'animal_group', 'access'].map(f => row[f] || 'N/A')
     } else if (page === 'ingredients') {
-      const orderedFields = ['name', 'price', 'available', 'group', 'description']
-      const rowData = orderedFields.map((field) => row[field] || 'N/A')
-      rowData[2] = Number(rowData[2]) === 1 ? 'Yes' : 'No' // for 'available' field
+      const rowData = ['name', 'price', 'available', 'group', 'description'].map(f => row[f] || 'N/A')
+      rowData[2] = Number(rowData[2]) === 1 ? 'Yes' : 'No'
       return rowData
     } else if (page === 'nutrients') {
-      const orderedFields = [
-        'abbreviation',
-        'name',
-        'unit',
-        'description',
-        'group',
-      ]
-      const rowData = orderedFields.map((field) => row[field] || 'N/A')
-      return rowData
+      return ['abbreviation', 'name', 'unit', 'description', 'group'].map(f => row[f] || 'N/A')
+    } else if (page === 'groupformulations') {
+      return [row.name || 'N/A', row.description || 'N/A', row.formulations?.length || 0]
     }
-    // for tables that shows all fields
     return Object.values(row)
   }
 
+  const handleRowClick = (row) => {
+    if (!onRowClick) return;
+    if (page === "ingredients" && row?.image?.url) {
+      onRowClick(row.image.url, row.description, row.name);
+    } else if (page !== "ingredients") {
+      onRowClick(row);
+    }
+  };
+
   return (
-    <div className="max-h-9/10 overflow-auto rounded-lg bg-white shadow-sm">
-      <table className="table-pin-rows table w-full">
-        <thead className="bg-white shadow-sm">
-          <tr>
-            {headers.map((header, index) => (
-              <th key={index} className="text-deepbrown bg-white">
-                {header}
-              </th>
-            ))}
-            {actions && (
-              <th className="text-deepbrown bg-white text-right">Actions</th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
+    <div className="w-full">
+      {/* --- MOBILE CARD VIEW --- */}
+      <motion.div 
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+        className="grid grid-cols-1 gap-4 md:hidden"
+      >
+        <AnimatePresence mode='popLayout'>
           {data && data.length > 0 ? (
             data.map((row, rowIndex) => (
-              <tr key={rowIndex} className="hover:bg-base-200">
-                {getRowData(row).map((cell, cellIndex) => (
-                  <td key={cellIndex}>
-                    {/* only the name column (index 1) is clickable to go to ViewFormulation */}
-                    {onRowClick && cellIndex === 1 ? (
-                      <div className="tooltip" data-tip="View">
+              <motion.div 
+                layout
+                key={row._id || rowIndex} 
+                variants={rowVariants}
+                whileTap={{ scale: 0.98 }}
+                className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm active:bg-gray-50 transition-colors cursor-pointer"
+                onClick={() => handleRowClick(row)}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="font-bold text-deepbrown text-base flex items-center gap-2">
+                      {row.name || row.abbreviation || 'N/A'}
+                      {page === "ingredients" && row?.image?.url && <FaEye className="text-gray-400 h-3 w-3" />}
+                    </h3>
+                    <p className="text-[10px] text-gray-500 uppercase font-semibold">
+                      {row.animal_group || row.group || (page === 'groupformulations' ? 'Group' : '')}
+                    </p>
+                  </div>
+                  
+                  {actions && user?.userType === 'admin' && page !== "groupformulations" && (
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button 
+                        disabled={row?.access && row?.access !== 'owner'}
+                        className="btn btn-ghost btn-xs text-deepbrown"
+                        onClick={() => onEdit(row)}
+                      >
+                        <RiPencilLine size={16} />
+                      </button>
+                      <button 
+                        disabled={row?.access && row?.access !== 'owner'}
+                        className="btn btn-ghost btn-xs text-red-500"
+                        onClick={() => onDelete(row)}
+                      >
+                        <RiDeleteBinLine size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-xs text-gray-600 line-clamp-2 mb-3 italic">
+                  {row.description || 'No description provided.'}
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                  <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-medium">
+                    {row.code || (page === 'groupformulations' ? `${row.formulations?.length} items` : '')}
+                    {page === 'ingredients' && row.price ? `₱${row.price}` : ''}
+                  </span>
+                  {checkNeedsUpdate(row.lastUpdated, row) && (
+                    <span className="text-[10px] text-yellow-600 font-bold flex items-center gap-1">
+                      <span className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                      Needs Update
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            <motion.div variants={rowVariants} className="text-center py-10 bg-white rounded-lg border">
+              <RiTableLine className="mx-auto h-10 w-10 opacity-20" />
+              <p className="text-gray-400 mt-2">No results found.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* --- DESKTOP TABLE VIEW --- */}
+      {/* --- DESKTOP TABLE VIEW --- */}
+<div className="hidden md:block rounded-lg bg-white shadow-sm border border-gray-100 overflow-x-auto overflow-y-visible">
+  <table className="table table-md table-pin-rows w-full border-separate border-spacing-0">
+    <thead className="bg-gray-50">
+      <tr>
+        {headers.map((header, index) => (
+          <th key={index} className="text-deepbrown py-4 text-sm font-bold uppercase tracking-wider">
+            {t(header)}
+          </th>
+        ))}
+        {actions && user?.userType === "admin" && page !== "groupformulations" && (
+          <th className="text-deepbrown text-right py-4 pr-6">{t('Actions')}</th>
+        )}
+      </tr>
+    </thead>
+    <motion.tbody 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+    >
+      <AnimatePresence mode='popLayout'>
+        {data && data.length > 0 ? (
+          data.map((row, rowIndex) => (
+            <motion.tr 
+              layout
+              variants={rowVariants}
+              key={row._id || rowIndex} 
+              /* FIX: hover:relative and hover:z-50 forces the current row 
+                to the front of the stacking context so tooltips show on top.
+              */
+              className="hover:bg-base-200 transition-colors hover:relative hover:z-50 group/row"
+            >
+              {getRowData(row)
+                .map((cell, cellIndex) => ({ cell, cellIndex }))
+                .filter(item => !(page === "ingredients" && item.cellIndex === 2))
+                .map(({ cell, cellIndex }) => (
+                  <td key={cellIndex} className="py-3 max-w-[150px] md:max-w-none">
+                    {((onRowClick && cellIndex === 1 && page === "formulations") || 
+                     (onRowClick && cellIndex === 0 && page === "groupformulations")) ? (
+                      <div className="tooltip tooltip-right" data-tip="View">
                         <span
-                          onClick={() => onRowClick && onRowClick(row)}
-                          className="group text-deepbrown hover:bg-green-button inline-flex cursor-pointer items-center gap-2 rounded px-2 py-1 font-medium hover:text-white/80 hover:underline"
+                          onClick={() => onRowClick(row)}
+                          className="group text-deepbrown hover:bg-green-button inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-sm font-medium hover:text-white transition-all"
                         >
                           {cell}
-                          <FaEye className="h-4 w-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                          <FaEye className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100" />
+                        </span>
+                      </div>
+                    ) : 
+                    (cellIndex === 0 && page === "ingredients" && row?.image?.url) ? (
+                      <div className="tooltip tooltip-right" data-tip="View">
+                        <span
+                          onClick={() => onRowClick(row.image.url, row.description, row.name)}
+                          className="group text-deepbrown hover:bg-green-button inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-sm font-medium hover:text-white transition-all"
+                        >
+                          {cell}
+                          <FaEye className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100" />
                         </span>
                       </div>
                     ) : (
-                      cell
+                      <div className="flex items-center gap-1">
+                        <span className={`text-sm ${cellIndex === 0 && row?.lastUpdated && checkNeedsUpdate(row?.lastUpdated, row) ? 'border-yellow-500 p-0.5 rounded-sm border' : ''}`}>
+                          {cell}
+                        </span>
+                        {cellIndex === 0 && checkNeedsUpdate(row?.lastUpdated, row) && (
+                          /* FIX: Added tooltip-top/right and ensured z-index on the tooltip itself */
+                          <div className="tooltip tooltip-top z-[60]" data-tip="Needs update">
+                            <svg className="h-3 w-3 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </td>
                 ))}
-                {actions && (
-                  <td className="flex justify-end gap-2">
-                    <div
-                      className={`${row?.access && row.access !== 'owner' && 'tooltip tooltip-left'}`}
-                      data-tip={`${row?.access && row.access !== 'owner' && 'Only the owner can edit this formulation.'}`}
+
+              {actions && user?.userType === 'admin' && page !== "groupformulations" && (
+                <td className="py-3 pr-4 text-right">
+                  <div className="flex justify-end gap-1">
+                    <button
+                      disabled={row?.access && row?.access !== 'owner'}
+                      className="btn btn-ghost btn-sm text-deepbrown"
+                      onClick={(e) => { e.stopPropagation(); onEdit(row); }}
                     >
-                      <button
-                        disabled={row?.access && row?.access !== 'owner'}
-                        className={`btn btn-ghost btn-sm ${
-                          row?.access && row.access !== 'owner'
-                            ? 'cursor-not-allowed text-gray-500'
-                            : 'text-deepbrown hover:bg-deepbrown/10'
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          console.log('row.access: ', row.access)
-                          // non-owners should not be able to edit the basic data
-                          if (row?.access && row.access !== 'owner') {
-                            // toast instructions
-                            setShowToast(true)
-                            setMessage(
-                              'Only the owner can edit the basic data.'
-                            )
-                            setToastAction('error')
-                          } else {
-                            onEdit(row)
-                          }
-                        }}
-                      >
-                        <RiPencilLine className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div
-                      className={`${row?.access && row.access !== 'owner' && 'tooltip tooltip-left'}`}
-                      data-tip={`${row?.access && row.access !== 'owner' && 'Only the owner can delete this formulation.'}`}
+                      <RiPencilLine size={18} />
+                    </button>
+                    <button
+                      disabled={row?.access && row?.access !== 'owner'}
+                      className="btn btn-ghost btn-sm text-red-600"
+                      onClick={(e) => { e.stopPropagation(); onDelete(row); }}
                     >
-                      <button
-                        disabled={row?.access && row?.access !== 'owner'}
-                        className={`btn btn-ghost btn-sm ${
-                          row?.access && row.access !== 'owner'
-                            ? 'cursor-not-allowed text-gray-500'
-                            : 'hover:bg-deepbrown/10 text-red-600'
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          // non-owners should not be able to edit the basic data
-                          if (row?.access && row.access !== 'owner') {
-                            // toast instructions
-                            setShowToast(true)
-                            setMessage(
-                              'Only the owner can delete this formulation.'
-                            )
-                            setToastAction('error')
-                          } else {
-                            onDelete(row)
-                          }
-                        }}
-                      >
-                        <RiDeleteBinLine className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td
-                colSpan={
-                  actions ? getRowData({}).length + 1 : getRowData({}).length
-                }
-                className="py-8 text-center text-gray-500"
-              >
-                <RiTableLine className="mx-auto mb-2 h-12 w-12 opacity-60" />
-                <p>
-                  No results found. Adjust filters or add new data.
-                </p>
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-      {/*  Toasts */}
-      <Toast
-        className="transition delay-150 ease-in-out"
-        show={showToast}
-        action={toastAction}
-        message={message}
-        onHide={hideToast}
-      />
+                      <RiDeleteBinLine size={18} />
+                    </button>
+                  </div>
+                </td>
+              )}
+            </motion.tr>
+          ))
+        ) : (
+          <motion.tr variants={rowVariants}>
+            <td colSpan={10} className="py-10 text-center text-gray-500">
+              <RiTableLine className="mx-auto mb-2 h-10 w-10 opacity-40" />
+              <p className="text-sm">No results found.</p>
+            </td>
+          </motion.tr>
+        )}
+      </AnimatePresence>
+    </motion.tbody>
+  </table>
+</div>
     </div>
   )
 }

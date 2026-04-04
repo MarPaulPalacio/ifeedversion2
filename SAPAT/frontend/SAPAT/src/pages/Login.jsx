@@ -38,14 +38,14 @@ function Login() {
           <img
             src="/assets/logo_word.png"
             alt="logo"
-            className="h-1/2 w-1/2 md:h-full md:w-full"
+            className="h-1/4 w-1/4 md:h-1/4 md:w-1/4 md:max-w-[600px]"
           />
         </div>
 
         {/* Login modal */}
         <div className="mx-auto flex h-auto w-7/8 flex-col items-center justify-center rounded-lg bg-white p-8 shadow-lg md:mx-0 md:w-96">
           <h1 className="text-charcoal-header mb-6 text-2xl font-bold md:text-3xl">
-            Welcome to SAPAT
+            Welcome to iFeed V2.0
           </h1>
 
           <p className="mb-8 text-center text-gray-600">

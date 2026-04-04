@@ -23,7 +23,10 @@ const getAllNutrients = async (req, res) => {
 
   try {
     // user-created nutrients
-    const userNutrients = await Nutrient.find({'user': userId});
+    // const userNutrients = await Nutrient.find({'user': userId});
+
+    const userNutrients = await Nutrient.find({});
+    console.log('User Nutrients:', userNutrients); // Debugging line
     // global nutrients and overrides
     const globalNutrients = await handleGetNutrientGlobalAndOverride(userId);
     const nutrients = [...globalNutrients, ...userNutrients];
@@ -77,7 +80,10 @@ const getNutrientsByFilters = async (req, res) => {
   const { userId } = req.params;
   try {
     // user-created nutrients
-    const userNutrients  = await Nutrient.find({'user': userId});
+    // const userNutrients  = await Nutrient.find({'user': userId});
+
+    // Temporary Global Nutrients - to be replaced by actual global nutrients and overrides
+    const userNutrients = await Nutrient.find({});
     //  global nutrients (and overrides)
     const globalNutrients  = await handleGetNutrientGlobalAndOverride(userId);
     let nutrients = [...globalNutrients , ...userNutrients  ];
@@ -138,6 +144,7 @@ const getNutrientsByFilters = async (req, res) => {
 const updateNutrient = async (req, res) => {
   const { id, userId } = req.params;
   const { abbreviation, name, unit, description, group } = req.body;
+  
   try {
     const nutrient = await Nutrient.findById(id);
     if (!nutrient) {
@@ -154,6 +161,7 @@ const updateNutrient = async (req, res) => {
       const updatedNutrient = await nutrient.save();
       res.status(200).json({ message: 'success', nutrients  : updatedNutrient });
     }
+
     // global-created nutrient
     else {
       // revisions on the userNutrientOverride

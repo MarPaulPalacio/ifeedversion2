@@ -190,20 +190,24 @@ function CarabaoIdentifySetup({
   const handleMultiSelectionChange = (e) => {
     const { name, value } = e.target;
 
-    console.log("Selected Phase: ", carabaoConfiguration.carabaoPhases)
-    console.log("Carabao PPhases before setting: ", carabaoConfiguration.carabaoPhases)
+    setCarabaoConfiguration((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+    setCarabaoConfiguration((prev)=>({
+        ...prev,
+        sameConfigTypeArray: [value]
+      }))
+
+      console.log(carabaoConfiguration)
     setCarabaoConfiguration((prev) => ({
       ...prev,
       carabaoPhases: {
-        // keep previous keys inside the dictionary
-        ...prev.carabaoPhases,
-        [value]: 0, // add new key with value 0
+        [value]: parseInt(carabaoConfiguration.numberofCarabaos), // add new key with value 0
       },
+      
     }));
-    setCarabaoConfiguration((prev) => ({
-      ...prev,
-      [name]: "Add a Phase",
-    }))
+    
   };
 
   const handleCheckBoxChange = (e) =>{
@@ -311,7 +315,7 @@ function CarabaoIdentifySetup({
                     className='checkbox mb-2 mr-3'
                   />
                   <label className={`label whitespace-normal pb-5`}>
-                    <span className="label-text">Multiple Carabao Configuration? (Optional)</span>
+                    <span className="label-text">Multiple Carabao Configuration? (Multiple Carabaos with Same Configuration)</span>
                   </label>
 
                   
@@ -328,26 +332,7 @@ function CarabaoIdentifySetup({
                           className={`input input-bordered w-full rounded-xl ${codeError ? 'border-red-500' : ''}`}
                       />
                     </div>
-
-                    <label className="flex items-center cursor-pointer space-x-2 pt-5">
-                      <input
-                        name= "moreOpened"
-                        type="checkbox"
-                        checked={carabaoConfiguration.moreOpened}
-                        onChange={handleCheckBoxChange}
-                        className="hidden"
-                      />
-                      {carabaoConfiguration.moreOpened ? (
-                        <ChevronUp className="w-5 h-5 text-deepbrown" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-deepbrown" />
-                      )}
-                      <span>{carabaoConfiguration.moreOpened ? "See Less" : "See Advanced Settings"}</span>
-                    </label>
                     
-                    
-                    {carabaoConfiguration.moreOpened && (<>
-                      {/* Select Phase */}
                     <div className='form-control w-full space-x-5 md:pt-0 mt-5'>
                       <label className="label whitespace-normal">
                         <span className="label-text">Choose Phase:</span>
@@ -359,7 +344,6 @@ function CarabaoIdentifySetup({
                         onChange={handleMultiSelectionChange}
                         className="select select-bordered w-full rounded-xl"
                       >
-                        <option value="Add a Phase">Add a Phase</option>
                         <option value="Heifer | Dumalaga">Heifer | Dumalaga</option>
                         <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)</option>
                         <option value="Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)">Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)</option>
@@ -368,53 +352,6 @@ function CarabaoIdentifySetup({
                         <option value="Senior Bull | Bulugan (> 3 taon)">Senior Bull | Bulugan ({'>'} 3 taon)</option>
                       </select>
                     </div>
-                    <div className="form-control w-full pt-4">
-                    
-                    
-                    
-                    {Object.keys(carabaoConfiguration.carabaoPhases).length > 0 && (<>
-                      <div>
-                        <div className="form-control label-text pb-2">Enter Amount of Carabaos for each Phase:</div>
-                      </div>
-                      {
-                        Object.keys(carabaoConfiguration.carabaoPhases).map((phase, index) => (
-                          <div key={index} className="form-control w-full">
-                            <label className="label whitespace-normal">
-                              <span className="label-text">{`${phase.split(/[|()]/)[0].trim()}`}</span>
-                            </label>
-                            <div>
-                              <input
-                                  name="carabaoPhases"
-                                  value={carabaoConfiguration.carabaoPhases[phase]}
-                                  required
-                                  disabled={isDisabled}
-                                  onChange={(e) => handlePhaseChange(phase, Number(e.target.value))}
-                                  placeholder="Enter Number of Carabaos"
-                                  className={`input input-bordered w-[40%] rounded-xl ${codeError ? 'border-red-500' : ''}`}
-                              />
-
-                              <input 
-                                type="checkbox"
-                                name={phase}
-                                checked={checkSameConfigArray(phase)}
-                                disabled={isDisabled}
-                                onChange={handleSameConfigChange}
-                                className='checkbox mb-2 mx-3'
-                              />
-                              <label className={`label whitespace-normal pb-5`}>
-                                <span className="label-text">Same Configuration for All Phase?</span>
-                              </label>
-                            </div>
-                          </div>
-                        ))
-                      }
-                    
-                    </>)
-                    }
-                    </div>
-                    
-                    </>)}
-                    
                     </>
                   )}
               {codeError && (

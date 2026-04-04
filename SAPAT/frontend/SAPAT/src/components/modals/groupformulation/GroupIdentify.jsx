@@ -1,7 +1,12 @@
 import { RiCloseLine } from 'react-icons/ri'
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-
+import Info from '../../icons/Info.jsx'
+import Selection from '../../Selection.jsx'
+import { RiAddLine, RiDeleteBinLine } from 'react-icons/ri'
+import { useTranslation } from 'react-i18next'
+import ChooseIngredientsModal from '../viewformulation/ChooseIngredientsModal'
+import Toast from '../../Toast.jsx'
 function GroupIdentify({
   formulations,
   ownerId,
@@ -33,7 +38,8 @@ function GroupIdentify({
   setCurrSection,
   carabaoConfiguration,
   setCarabaoConfiguration,
-  identifyCurrentCarabaoPhase
+  identifyCurrentCarabaoPhase,
+  updateDatabase
 }) {
 
   // Dummy template options by animal group
@@ -68,10 +74,13 @@ function GroupIdentify({
     ],
   }
   */
-
+  const [showIngredientsTable, setShowIngredientsTable] = useState(false)
+  const [showNutrientsTable, setShowNutrientsTable] = useState(false)
+  const [submitType, setSubmitType] = useState('modify')
   useEffect(() => {
     // update formData (get name and unit for each nutrient)
     fetchNutrientData()
+    fetchIngredients()
   }, [])
 
   const fetchNutrientData = async () => {
@@ -85,7 +94,8 @@ function GroupIdentify({
           nutrient: nutrient._id,
           name: nutrient.name,
           unit: nutrient.unit,
-          value: 0,
+          min_value: 0,
+          max_value: 0,
         }
       })
       setFormData((prevFormData) => {
@@ -94,11 +104,33 @@ function GroupIdentify({
           nutrients: formattedNutrients,
         }
       })
+
+      
       setLocalNutrients(formattedNutrients)
     } catch (err) {
       console.log(err)
     }
   }
+
+  const fetchIngredients = async () => {
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL}/ingredient/filtered/${ownerId?.userId}?limit=10000`
+      );
+      const fetchedData = res.data.ingredients;
+      
+      // Set the master list first
+      setListOfIngredients(fetchedData);
+      
+      // Then organize the menu
+      console.log(fetchedData, "FETRCHED DAATA")
+      // organizeIngredients(fetchedData); 
+      setIngredientsMenu(fetchedData);
+    } catch (err) {
+      console.log("Error fetching:", err);
+    }
+  }
+
   // Fetch templates from backend when modal opens or animal group changes
   useEffect(() => {
     if (!isOpen) return;
@@ -116,7 +148,9 @@ function GroupIdentify({
         setFetchError('Failed to fetch templates');
         setFetchedTemplates([]);
       })
-      .finally(() => setIsLoadingTemplates(false));
+      .finally(() => setIsLoadingTemplates(false), console.log("FETCED TEMPLATES" , formulations)
+
+    );
   }, [isOpen]);
 
   // Reset template selection when animal group changes
@@ -124,6 +158,23 @@ function GroupIdentify({
     setSelectedTemplate({ id: 0, name: 'None' })
     setTemplateQuery('')
   }, [formData.animal_group])
+
+
+
+  const [ingredients, setIngredients] = useState([])
+  const [listOfIngredients, setListOfIngredients] = useState([])
+  const [ingredientsMenu, setIngredientsMenu] = useState([])
+  const [filterIngredientCode, setFilterIngredientCode] = useState('')
+  const [selectedIngredients, setSelectedIngredients] = useState([])
+  const [showToast, setShowToast] = useState(false)
+  const [message, setMessage] = useState('')
+  const [toastAction, setToastAction] = useState('')
+  const hideToast = () => {
+    setShowToast(false)
+    setMessage('')
+    setToastAction('')
+  }
+
 
   // Filter fetched templates by selected animal group
   const templateOptions = [
@@ -145,35 +196,84 @@ function GroupIdentify({
         )
 
   const handleSubmit = async (e) => {
+
+
     e.preventDefault()
-    setIsDisabled(true)
+    console.log(formulations)
+    const matchingFormulations = formulations.filter((f) => {
+      if (f.animal_group !== formData.animal_group) return false
+      
+      const [min, max] = formData.body_weight.split('-').map(Number)
+      const formWeight = Number(f.weight)
+      
+      return formWeight >= min && formWeight <= max
+    })
 
-    // client-side validation
-    if (
-      formulations.some(
-        (formulation) =>
-          formulation.name.toLowerCase() === formData.name.toLowerCase()
+    console.log(matchingFormulations)
+    console.log("FormData", formData)
+
+    if (matchingFormulations.length > 0) {
+      console.log("Matching formulations found:", matchingFormulations)
+      console.log("Formulation nutrients before mapping constraints:", showNutrientsTable)
+      const updatedFormulations = matchingFormulations.map((formulation) => ({
+      ...formulation,
+      nutrients: showNutrientsTable === true ? (formulation.nutrients.map((currnutrient) => {
+        const formDataNutrient = formData.nutrients?.find(
+        (n) => n.nutrient === currnutrient.nutrient_id,
+        )
+        console.log("Current nutrient: SHOWSN")
+
+        return formDataNutrient
+        ? {
+          ...currnutrient,
+          minimum: formDataNutrient.min_value,
+          maximum: formDataNutrient.max_value,
+          }
+        : currnutrient
+      })) : formulation.nutrients,
+
+      ingredients: showIngredientsTable === true ?  [
+        
+        ...formulation.ingredients.map((currIngredient) => {
+        const formDataIngredient = (formData.ingredients || []).find(
+          (i) => i.ingredient_id === currIngredient.ingredient_id,
+        )
+
+        return formDataIngredient
+          ? {
+              ...currIngredient,
+              minimum: formDataIngredient.minimum,
+              maximum: formDataIngredient.maximum,
+            }
+          : currIngredient
+      }),
+      ...(formData.ingredients || []).filter(
+        (newIng) => !formulation.ingredients.some(
+          (curr) => curr.ingredient_id === newIng.ingredient_id
+        )
       )
-    ) {
-      setNameError('Name already exists')
-      setCodeError('')
-      setIsDisabled(false)
-      return
-    } else {
-      setNameError('')
-    }
+      ] : formulation.ingredients
+      }
+      
+    ))
 
-    const body = { ...formData, ownerId, ownerName, userType };
-    try {
-      setCurrSection(2)
-    } catch (err) {
-      console.log(err)
-      onResult(null, 'error', 'Failed to create formulation.')
-    } finally {
-      setIsDisabled(false)
-      setCodeError('')
-      setNameError('')
+      console.log("Updated Formulations:", updatedFormulations)
+      const combinedData = [
+        ...(showNutrientsTable ? formData.nutrients || [] : []),
+        ...(showIngredientsTable ? formData.ingredients || [] : [])
+      ];
+      console.log(combinedData, "COMBINED DATA")
+
+      if (combinedData.length > 0) {
+        for (const formulation of updatedFormulations) {
+          await updateDatabase(formulation, combinedData, submitType)
+        }
+      }
     }
+    
+    setIsDisabled(false)
+    handleClose()
+    
   }
 
   const handleChange = (e) => {
@@ -212,9 +312,57 @@ const handleArrayChange = (e) => {
     setFormData((prev) => ({ ...prev, nutrients: updatedNutrients }))
   }
 
+  const handleIngredientChange = (index, event) => {
+    const { name, value } = event.target
+    const updatedIngredients = formData.ingredients.map((ingredient, i) =>
+      i === index ? { ...ingredient, [name]: value } : ingredient
+    )
+    setFormData((prev) => ({ ...prev, ingredients: updatedIngredients }))
+  }
 
+  const handleIngredientMinimumChange = (index, value) => {
+    const ingredient = formData.ingredients.find(
+      (ing) => ing.ingredient_id === index
+    );
+    if (ingredient) {
+      const updatedIngredients = formData.ingredients.map((ing) =>
+        ing.ingredient_id === index
+          ? {
+              ...ing,
+              minimum:
+                value === 'N/A' || value === '' ? 0 : value,
+            }
+          : ing
+      );
+      setFormData((prev) => ({
+        ...prev,
+        ingredients: updatedIngredients,
+      }));
+    }
+  }
+
+  const handleIngredientMaximumChange = (index, value) => {
+    const ingredient = formData.ingredients.find(
+      (ing) => ing.ingredient_id === index
+    );
+    if (ingredient) {
+      const updatedIngredients = formData.ingredients.map((ing) =>
+      ing.ingredient_id === index
+        ? {
+          ...ing,
+          maximum:
+          value === 'N/A' || value === '' ? 0 : value,
+        }
+        : ing
+      );
+      setFormData((prev) => ({
+      ...prev,
+      ingredients: updatedIngredients,
+      }));
+    }
+  }
   const handleClose = () => {
-    setCurrSection(0)
+
     onClose()
   }
 
@@ -225,6 +373,69 @@ const handleArrayChange = (e) => {
       return formData.animal_group
     }
     
+  }
+  const [isChooseIngredientsModalOpen, setIsChooseIngredientsModalOpen] =
+    useState(false)
+
+
+  
+
+  const handleAddIngredients = async (ingredientsToAdd) => {
+    try {
+
+        const formattedNew = ingredientsToAdd.map((ing) => ({
+          ingredient_id: ing._id || ing.ingredient_id,
+          name: ing.name,
+          minimum: 0,
+          maximum: 0,
+          group: ing.group || ''
+        }));
+        setFormData(prev => ({
+          ...prev,
+          ingredients: [...(prev.ingredients || []), ...formattedNew]
+        }));
+
+      setIngredientsMenu(prev => prev.filter(item => !ingredientsToAdd.some(ing => ing._id === item._id || ing.ingredient_id === item._id)));
+      setIsChooseIngredientsModalOpen(false);
+      setShowToast(true);
+      setMessage('Ingredients added successfully');
+      setToastAction('success');
+    } catch (err) {
+      console.log(err)
+      // toast instructions
+      setShowToast(true)
+      setMessage('Error adding ingredients')
+      setToastAction('error')
+    }
+  }
+
+    const handleRemoveIngredient = async (ingredientToRemove) => {
+    try {
+    
+      setFormData(prev => ({
+        ...prev,
+        ingredients: prev.ingredients.filter(
+          (item) => item.ingredient_id !== ingredientToRemove.ingredient_id
+        )
+      }));
+
+      const ingredientToRemoveComplete = listOfIngredients.find(
+        (item) => item._id === ingredientToRemove.ingredient_id
+      );
+      if (ingredientToRemoveComplete) {
+        setIngredientsMenu(prev => [...prev, ingredientToRemoveComplete]);
+      }
+      // toast instructions
+      setShowToast(true)
+      setMessage('Ingredient removed successfully')
+      setToastAction('success')
+    } catch (err) {
+      console.log(err)
+      // toast instructions
+      setShowToast(true)
+      setMessage('Error removing ingredients')
+      setToastAction('error')
+    }
   }
 
   return (
@@ -307,14 +518,169 @@ const handleArrayChange = (e) => {
                   
             </div>
 
+  
+
+            {/* Ingredients table */}
+            
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white col-span-2">
+              <div className="p-4">
+
+                <h3 className="mb-2 text-sm font-semibold">
+                  <div className="mb-2 flex flex-row space-x-2">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={showIngredientsTable ?? false}
+                        onChange={() => setShowIngredientsTable(prev => !prev)}
+                        className="checkbox"
+                        disabled={isDisabled}
+                      />
+                      All Ingredients
+                    </label>
+                  </div>
+                </h3>
+                <p className="flex text-xs text-gray-500">
+                  
+                  <Info /> Shows all ingredients in the formulation.
+                </p>
+              </div>
+              {showIngredientsTable && (
+                <>
+                <div className="max-h-64 overflow-x-auto overflow-y-auto">
+                <table className="table-sm table-pin-rows table w-full">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Min</th>
+                      <th>Max</th>
+                      {/* <th>Value</th> */}
+                      <th>Delete</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    { formData.ingredients &&
+                      formData.ingredients.map((ingredient, index) => (
+                        <tr key={index} className="hover:bg-base-300">
+                          <td>{ingredient.name}</td>
+                          <td>
+                            <input
+                              id={`ingredient-${index}-minimum`}
+                              type="text"
+                              className="input input-bordered input-xs w-15"
+                              disabled={isDisabled}
+                              value={ingredient.minimum !== 0 ? ingredient.minimum : 'N/A'}
+                              onChange={(e) => {
+                                const inputValue = e.target.value
+                                if (
+                                  /^N\/A(\d+|\.)/.test(inputValue) ||
+                                  /^\d*\.?\d{0,2}$/.test(inputValue)
+                                ) {
+                                  const processedValue = /^N\/A\d*/.test(inputValue)
+                                    ? inputValue.replace('N/A', '')
+                                    : inputValue
+                                  handleIngredientMinimumChange(ingredient.ingredient_id, processedValue)
+                                  
+                                }
+                              }}
+                              
+                            />
+                          </td>
+                          <td>
+                            <input
+                              id={`ingredient-${index}-maximum`}
+                              type="text"
+                              className="input input-bordered input-xs w-15"
+                              disabled={isDisabled}
+                              value={ingredient.maximum !== 0 ? ingredient.maximum : 'N/A'}
+                              onChange={(e) => {
+                                const inputValue = e.target.value
+                                if (
+                                  /^N\/A(\d+|\.)/.test(inputValue) ||
+                                  /^\d*\.?\d{0,2}$/.test(inputValue)
+                                ) {
+                                  let processedValue = /^N\/A\d*/.test(inputValue)
+                                    ? inputValue.replace('N/A', '')
+                                    : inputValue
+                                  const numericValue = parseFloat(processedValue)
+                                  // if (!isNaN(numericValue) && numericValue > weight) {
+                                  //   processedValue = weight
+                                  // }
+                                  handleIngredientMaximumChange(ingredient.ingredient_id, processedValue)
+                                
+                                }
+                              }}
+                              
+                            />
+                          </td>
+
+                          {/* Calculated Value */}
+                          {/* <td>
+                            {ingredient && weight && (ingredient.value).toFixed(3)}
+                          </td> */}
+                          <td>
+                            <button
+                              type ="button"
+                              disabled={isDisabled}
+                              className={`${isDisabled ? 'hidden' : ''} btn btn-ghost btn-xs text-red-500 hover:bg-red-200`}
+                              onClick={() => handleRemoveIngredient(ingredient)}
+                            >
+                              <RiDeleteBinLine />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-4">
+                <button
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => { setIsChooseIngredientsModalOpen(true); setFilterIngredientCode('') }}
+                  className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  <RiAddLine /> Add ingredient
+                </button>
+              </div>
+                
+              </>
+              
+              )}
+              
+              
+            </div>
+            
             {/* Nutrients table */}
+
             <div className="max-h-64 overflow-y-auto rounded-2xl border border-gray-200 col-span-2">
-              <table className="table-zebra table-pin-rows table">
+              <div className="p-4">
+                <h3 className="mb-2 text-sm font-semibold">
+                  <div className="mb-2 flex flex-row space-x-2">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={showNutrientsTable ?? false}
+                        onChange={() => setShowNutrientsTable(prev => !prev)}
+                        className="checkbox"
+                        disabled={isDisabled}
+                      />
+                      All Nutrients
+                    </label>
+                  </div>
+                </h3>
+                <p className="flex text-xs text-gray-500">
+                  <Info /> Shows all nutrients in the formulation.
+                </p>
+              </div>
+              {showNutrientsTable && (
+                <>
+                <table className="table-zebra table-pin-rows table">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="font-semibold">Name</th>
                     <th className="font-semibold">Unit</th>
-                    <th className="font-semibold">Value</th>
+                    <th className="font-semibold">Min Value</th>
+                    <th className="font-semibold">Max Value</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -325,10 +691,22 @@ const handleArrayChange = (e) => {
                       <td>
                         <input
                           type="number"
-                          name="value"
-                          placeholder="Value"
+                          name="min_value"
+                          placeholder="Min Value"
                           className="input input-bordered input-sm w-full max-w-xs rounded-xl"
-                          value={nutrient.value}
+                          value={nutrient.min_value}
+                          pattern="[0-9]*"
+                          disabled={isDisabled}
+                          onChange={(e) => handleNutrientChange(index, e)}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          name="max_value"
+                          placeholder="Max Value"
+                          className="input input-bordered input-sm w-full max-w-xs rounded-xl"
+                          value={nutrient.max_value}
                           pattern="[0-9]*"
                           disabled={isDisabled}
                           onChange={(e) => handleNutrientChange(index, e)}
@@ -338,6 +716,10 @@ const handleArrayChange = (e) => {
                   ))}
                 </tbody>
               </table>
+                </>
+                
+              )}
+              
             </div>
             
           </div>
@@ -353,13 +735,38 @@ const handleArrayChange = (e) => {
             </button>
             <button
               type="submit"
+              onClick = {() => {setIsDisabled(true), setSubmitType('modify')}}
               className={`btn bg-green-button ${isDisabled ? 'disabled bg-red-100' : 'hover:bg-green-600'} rounded-xl px-8 text-white`}
             >
-              {`${isDisabled ? 'Creating...' : 'Continue'}`}
+
+              {`${isDisabled ? 'Creating...' : 'Modify'}`}
             </button>
+
+            {/* <button
+              type="submit"
+              onClick = {() => {setIsDisabled(true), setSubmitType('formulate')}}
+              className={`btn btn-primary ${isDisabled ? 'disabled bg-red-100' : 'hover:bg-primary'} rounded-xl px-8 text-white`}
+            >
+
+              {`${isDisabled ? 'Creating...' : 'Formulate'}`}
+            </button> */}
           </div>
         </form>
       </>
+      <ChooseIngredientsModal
+        isOpen={isChooseIngredientsModalOpen}
+        onClose={() => setIsChooseIngredientsModalOpen(false)}
+        ingredients={ingredientsMenu}
+        onResult={handleAddIngredients}
+        ingredientsFilter={filterIngredientCode}
+      />
+      <Toast
+        className="transition delay-150 ease-in-out"
+        show={showToast}
+        action={toastAction}
+        message={message}
+        onHide={hideToast}
+      />
     </>
   )
 }

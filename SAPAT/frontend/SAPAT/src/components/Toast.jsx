@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { FaCheck, FaTimes } from 'react-icons/fa'
+import { RiCheckLine, RiCloseLine } from 'react-icons/ri'
 
 function Toast({ show, action, message, onHide }) {
   useEffect(() => {
@@ -10,23 +10,47 @@ function Toast({ show, action, message, onHide }) {
       return () => clearTimeout(timer)
     }
   }, [show, onHide])
+
+  if (!show) return null
+
   return (
-    <>
-      {show && (
-        <div className="toast toast-end toast-bottom rounded-lg p-4" id="toast">
-          <div
-            className={`alert flex flex-nowrap text-sm text-white ${action === 'success' ? 'alert-success' : 'alert-error'}`}
-          >
-            {action === 'success' ? (
-              <FaCheck className="text-sm text-white" />
-            ) : (
-              <FaTimes className="text-sm text-white" />
-            )}
-            <span>{message}</span>
-          </div>
+    <div 
+      className={`
+        toast toast-top md:toast-bottom toast-center md:toast-end 
+        z-[10000] p-4 
+        /* Mobile: shift down 10 units and keep original bottom margin */
+        mt-15 mb-20 md:mb-0 md:mt-0
+        transition-all duration-300 ease-in-out opacity-90
+      `}
+    >
+      <div
+        className={`
+          alert flex flex-nowrap items-center gap-3 px-6 py-4 shadow-xl border-none
+          rounded-2xl md:rounded-3xl text-white sm:text-sm text-xs
+          /* Transparency: 90% opacity for a glass-like feel */
+          bg-opacity-90 backdrop-blur-[2px]
+          ${action === 'success' ? 'alert-success' : 'alert-error'}
+        `}
+      >
+        <div className="shrink-0">
+          {action === 'success' ? (
+            <RiCheckLine size={20} className="text-white" />
+          ) : (
+            <RiCloseLine size={20} className="text-white" />
+          )}
         </div>
-      )}
-    </>
+        
+        <span className="font-medium tracking-wide">{message}</span>
+
+        <button 
+          onClick={onHide}
+          className="ml-2 hover:opacity-100 opacity-50 transition-opacity"
+          aria-label="Close notification"
+        >
+          <RiCloseLine size={18} className="text-white" />
+        </button>
+      </div>
+    </div>
   )
 }
 

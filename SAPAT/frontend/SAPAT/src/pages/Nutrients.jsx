@@ -13,8 +13,9 @@ import Search from '../components/Search.jsx'
 import Pagination from '../components/Pagination.jsx'
 import SortBy from '../components/SortBy.jsx'
 import FilterBy from '../components/FilterBy.jsx'
-
+import { useTranslation } from 'react-i18next'
 function Nutrients() {
+  const { t, i18n } = useTranslation();
   const { user, loading } = useAuth()
   const [nutrients, setNutrients] = useState([])
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -196,13 +197,18 @@ function Nutrients() {
         {/* Action buttons and search */}
         <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
           <div className="flex w-full flex-wrap gap-2 md:w-auto">
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-green-button flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 md:gap-2 md:px-3 md:py-1.5 md:text-base"
-            >
-              <RiAddLine className="h-4 w-4 md:h-5 md:w-5" />
-              <span>Add New</span>
-            </button>
+            
+              
+              {user?.userType === 'admin' && (
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="bg-green-button flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 md:gap-2 md:px-3 md:py-1.5 md:text-base"
+                >
+                  <RiAddLine className="h-4 w-4 md:h-5 md:w-5" />
+                  <span>{t('Add New')}</span>
+                </button>
+              )}
+
           </div>
           <div className="flex flex-col flex-wrap gap-2 md:flex-row">
             <div className="flex gap-2">
@@ -223,6 +229,7 @@ function Nutrients() {
       </div>
 
       {/* Table Section */}
+      
       <div className="flex-grow overflow-auto p-2 md:px-4">
         <Table
           headers={headers}

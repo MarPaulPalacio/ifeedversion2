@@ -18,16 +18,20 @@ import {
   removeCollaborator,
   getAllTemplateFormulations,
   cloneTemplateToFormulation,
-  getCowFormulation
+  getCowFormulation,
+  getCarabaoFormulation,
+  getAllGroupFormulations,
+  getGroupFormulationById,
+  getGroupFormulationFormulations 
 } from './controller/formulation-controller.js';
 import {
-  createIngredient, getAllIngredients, getIngredient, getIngredientsByFilters, updateIngredient, deleteIngredient, importIngredient
+  createIngredient, getAllIngredients, getIngredient, getIngredientsByFilters, updateIngredient, deleteIngredient, importIngredient, getIngredientsByIds
 } from './controller/ingredient-controller.js'
 import {
   createNutrient, getAllNutrients, getNutrient, getNutrientsByFilters, updateNutrient, deleteNutrient
 } from './controller/nutrient-controller.js'
 import { simplex, pso } from './controller/optimize-controller.js'
-import handleLiveblocksAuth from './config/liveblocks-auth.js';
+import {handleLiveblocksAuth, handleSyncMasterToChildren} from './config/liveblocks-auth.js';
 
 const handleRoutes = (app) => {
   // Check if user is authenticated middleware
@@ -80,6 +84,10 @@ const handleRoutes = (app) => {
     return handleLiveblocksAuth(req, res, next);
   });
 
+  app.post('/api/liveblocks/sync-formulations', (req, res, next) => {
+    return handleSyncMasterToChildren(req, res, next);
+  });
+
 
   // CONTROLLER API CALLS
   app.get('/user-check/id/:id', getUserById);
@@ -88,6 +96,9 @@ const handleRoutes = (app) => {
   app.post('/formulation', createFormulation);
   app.get('/formulation/filtered/:collaboratorId', getAllFormulations);
   app.get('/formulation/cow', getCowFormulation);
+  app.get('/formulation/carabao', getCarabaoFormulation);
+
+  
   app.get('/formulation/special/:animalgroup', getAllSpecialFormulations);
   app.get('/formulation/filtered/search/:userId', getFormulationByFilters);
   app.put('/formulation/:id', updateFormulation);
@@ -103,6 +114,11 @@ const handleRoutes = (app) => {
   app.get('/formulation/templates', getAllTemplateFormulations);
   app.get('/formulation/:id', getFormulation);
   app.post('/formulation/:id/clone-template', cloneTemplateToFormulation);
+  
+
+  app.get('/groupformulations/all', getAllGroupFormulations);
+  app.get('/groupformulations/:id', getGroupFormulationById);
+  app.get('/groupformulations/:groupFormulationId/user/:userId/formulations', getGroupFormulationFormulations);
 
   app.post('/ingredient', createIngredient);
   app.get('/ingredient/filtered/:userId', getAllIngredients);
@@ -111,6 +127,7 @@ const handleRoutes = (app) => {
   app.put('/ingredient/:id/:userId', updateIngredient);
   app.delete('/ingredient/:id/:userId', deleteIngredient);
   app.post('/ingredient/import/:userId', importIngredient);
+  app.post('/ingredient/idarray', getIngredientsByIds)
 
   app.post('/nutrient', createNutrient);
   app.get('/nutrient/filtered/:userId', getAllNutrients);
@@ -118,6 +135,7 @@ const handleRoutes = (app) => {
   app.get('/nutrient/filtered/search/:userId', getNutrientsByFilters);
   app.put('/nutrient/:id/:userId', updateNutrient);
   app.delete('/nutrient/:id/:userId', deleteNutrient);
+
 
   app.post('/optimize/simplex', simplex);
   app.post('/optimize/pso', pso);

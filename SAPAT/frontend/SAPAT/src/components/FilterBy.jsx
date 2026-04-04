@@ -12,7 +12,7 @@ export default function FilterBy({ handleFilterQuery, options = [] }) {
     }, 300),
     []
   )
-
+  
   const toggleFilter = (value) => {
     setSelectedFilters((prevFilters) => {
       let newFilters = [...prevFilters]
@@ -26,7 +26,6 @@ export default function FilterBy({ handleFilterQuery, options = [] }) {
       return newFilters
     })
   }
-
   // Apply filters whenever selectedFilters changes
   useEffect(() => {
     applyFilters(selectedFilters)

@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react'
 import { debounce } from 'lodash'
 import { RiSearchLine } from 'react-icons/ri'
-
+import { useTranslation } from 'react-i18next'
 export default function Search({ handleFilterQuery }) {
+  const { t, i18n } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('')
 
   const handleSearch = useCallback(
@@ -25,7 +26,7 @@ export default function Search({ handleFilterQuery }) {
       </div>
       <input
         type="text"
-        placeholder="Search"
+        placeholder={t('Search')}
         value={searchQuery}
         onChange={handleChange}
         className="rounded-lg border border-gray-300 py-1 pl-8 text-sm transition-colors focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none md:py-2 md:text-base"

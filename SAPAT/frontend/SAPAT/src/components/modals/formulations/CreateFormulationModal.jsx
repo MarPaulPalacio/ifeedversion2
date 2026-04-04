@@ -11,7 +11,7 @@ import CarabaoIdentifySetup from './CarabaoIdentifySetup.jsx'
 
 function CreateFormulationModal({
   formulations,
-  ownerId,
+  ownerId,  
   ownerName,
   isOpen,
   onClose,
@@ -30,6 +30,7 @@ function CreateFormulationModal({
     milk_price: '',
     milk_yield: '',
     fat_protein_content: '',
+    months_pregnant: 0
   })
   
   const [carabaoConfiguration, setCarabaoConfiguration] = useState({
@@ -150,17 +151,19 @@ function CreateFormulationModal({
 
   const identifyCurrentCarabaoPhase = () => {
   const { carabaoPhases, currentCarabaoCreation } = carabaoConfiguration;
+
+
     let cumulative = 0;
     
     for (const [phase, count] of Object.entries(carabaoPhases)) {
       
       cumulative += count;
       if (currentCarabaoCreation <= cumulative) {
-        
+        console.log("REACHED HERE BRO",[phase.split(/[|()]/)[0].trim(), phase] )
         return [phase.split(/[|()]/)[0].trim(), phase]; // found the current phase
       }
     }
-
+    
     return null; // in case it doesn't match any
   };
   
