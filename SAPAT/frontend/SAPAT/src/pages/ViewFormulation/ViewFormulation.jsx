@@ -1475,7 +1475,13 @@ const toggleTab = (tab) => {
                 <li><button className="text-xs" onClick={() => setShadowPricingTabOpen(true)}><RiLineChartLine /> Shadow Prices</button></li>
                 <li><button className="text-xs" onClick={() => setAdvancedPressed(!advancedPressed)}><RiSettings4Line /> {advancedPressed ? 'Show Basic' : 'Show Advanced'}</button></li>
                 <li><button className="text-xs" onClick={() => setProgressPressed(!progressPressed)}><RiBarChartLine /> Show Progress</button></li>
-
+                {optimizationResults && (
+                  <li>
+                    <button className="text-xs" onClick={() => setIsResultsModalOpen(true)}>
+                      <RiHistoryLine /> Latest Results
+                    </button>
+                  </li>
+                )}
               </ul>
             </div>
 
@@ -1995,7 +2001,6 @@ const toggleTab = (tab) => {
         formulation={formulationRealTime}
       />
          ) }
-        
             {/* NUtrients section */}
           {constraintMode !== 'percent' &&(
             

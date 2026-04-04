@@ -6,7 +6,7 @@ import {
   RiSave2Line,
   RiPencilLine,
   RiListSettingsLine,
-  RiArrowDownSLine, RiErrorWarningLine, RiLineChartLine, RiDashboardLine, RiStackLine, RiArrowRightSLine
+  RiArrowDownSLine, RiErrorWarningLine, RiLineChartLine, RiDashboardLine, RiStackLine, RiArrowRightSLine, RiBookLine, RiHistoryLine
 } from 'react-icons/ri'
 import OptimizeFAB from '../../components/buttons/OptimizeFAB.jsx'
 import Info from '../../components/icons/Info.jsx'
@@ -26,6 +26,9 @@ import GenerateReport from '../../components/buttons/GenerateReport.jsx'
 import ShadowPricingTab from '../../components/modals/viewformulation/ShadowPricingTab.jsx'
 import Progress from '../../components/modals/formulations/Progress.jsx'
 import ViewFormulationsModal from '../../components/modals/groupformulation/ViewFormulationsModal.jsx'
+import OptimizationResultsModal from '../../components/modals/OptimizationResultsModal.jsx'
+import ManualFormulation from '../../components/modals/ManualFormulation.jsx';
+
 const COLORS = ['#DC2626', '#D97706', '#059669', '#7C3AED', '#DB2777']
 
 function ViewGroupFormulation({
@@ -129,6 +132,16 @@ function ViewGroupFormulation({
   // useEffect(() => {
   //   updateWeight(formulation.dmintake || 0)
   // }, [])
+
+
+  // for optimize function results:
+
+  const [optimizationResults, setOptimizationResults] = useState(null);
+  const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false)
+  const [isPCCModalOpen, setIsPCCModalOpen] = useState(false)
+  const [constraintMode, setConstraintMode] =useState('none')
+
 
   useEffect(() => {
     if (formulation) {
@@ -333,6 +346,147 @@ function ViewGroupFormulation({
     }
   }
 
+
+const [detailedIngredients, setDetailedIngredients] = useState('')
+  const [isManualFormulationOpen, setIsManualFormulationOpen] = useState(false)
+
+
+  const handleManualOptimize = async () => {
+
+    // Get Necessary Formulations
+    const nutrients = formulationRealTime?.nutrients || [];
+    const ingredients = formulationRealTime?.ingredients || [];
+    const dmIntake = formulationRealTime?.dmintake || 0; // The target DM intake
+
+    setIsLoading(true);
+    
+    try {
+      const ids = ingredients.map((ing) => ing.ingredient_id || ing._id);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/ingredient/idarray`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+
+     
+
+      const data = await response.json();
+      if (data.message === "success") {
+        const detailed = data.ingredients;
+        setDetailedIngredients(detailed);
+        // --- START OF MANUAL CALCULATION LOGIC ---
+
+        // 1. Map ingredients to their DM values and calculate initial As-Fed
+        // Formula: (ratio / DM_value) * 100
+        const dmNutrientId = nutrients[nutrients.length - 1]?.nutrient_id || nutrients[nutrients.length - 1]?.id;
+        
+
+        
+        const preparedData = ingredients.map((ing) => {
+          const detail = detailed.find((d) => d._id === (ing.ingredient_id || ing._id));
+          const dmValue = detail?.nutrients?.find((n) => n.nutrient === dmNutrientId)?.value || 0;
+          const ratio = Number(ing.minimum || 0);
+          
+          const asFed = dmValue > 0 ? (ratio / dmValue) * 100 : 0;
+          return { ...ing, detail, dmValue, asFed };
+        });
+
+        
+
+        
+
+        
+
+        const totalAsFed = preparedData.reduce((sum, item) => sum + item.asFed, 0);
+
+        
+        // 2. Calculate AsFed100kg and TMR DM
+        // Formula: asFed100kg = (asFed / totalAsFed) * 100
+        // Formula: TMR_DM = (asFed100kg * dmValue) / 100
+        const processedData = preparedData.map((item) => {
+          const asFed100kg = totalAsFed > 0 ? (item.asFed / totalAsFed) * 100 : 0;
+          const tmrDM = (asFed100kg * item.dmValue) / 100;
+          return { ...item, asFed100kg, tmrDM };
+        });
+
+        
+
+        
+
+        const totalAsFed100kg = processedData.reduce((sum, item) => sum + item.asFed100kg, 0);
+        const totalTMRDM = processedData.reduce((sum, item) => sum + item.tmrDM, 0);
+
+        
+        
+        
+        // 3. Calculate Final totalWeight
+        // Formula: ((dmIntake / 100) / totalTMRDM) * 100
+        const calculatedTotalWeight = ((formulation.dmintake / 100) / totalTMRDM) * 100;
+        
+        
+
+        // 4. Calculate Final Ingredient values and Costs
+        // Formula: (asFed100kg / totalAsFed100kg) * totalWeight
+        let calculatedTotalCost = 0;
+        const optimizedIngredients = processedData.map((item) => {
+          const finalValueKg = totalAsFed100kg > 0 
+            ? (item.asFed100kg / totalAsFed100kg) * calculatedTotalWeight 
+            : 0;
+          
+          const ingredientPrice = Number(item.detail?.price || 0);
+          calculatedTotalCost += ingredientPrice * finalValueKg;
+
+          return {
+            name: item.name,
+            ingredient_id: item.ingredient_id || item._id,
+            value: finalValueKg, // Storing as grams for the Modal's display logic
+          };
+        });
+
+        
+        
+
+        // 5. Calculate Final Nutrients (Total Achieved)
+        // This maps the actual nutrient contribution based on the final weights
+        const optimizedNutrients = nutrients.map((nut) => {
+          const nutId = nut.nutrient_id || nut._id;
+          const totalNutrientAchieved = processedData.reduce((sum, item, idx) => {
+            const ingredientValueGrams = optimizedIngredients[idx].value;
+            const nutEntry = item.detail?.nutrients?.find(n => n.nutrient === nutId);
+            const nutValue = Number(nutEntry?.value || 0) / 100;
+            
+            // Contribution: (WeightKG * DM%) * Nutrient%
+            const dryMatterKg = (ingredientValueGrams / 1000) * (item.dmValue / 100);
+            return sum + (dryMatterKg * nutValue * 1000);
+          }, 0);
+
+          return {
+            name: nut.name,
+            value: totalNutrientAchieved
+          };
+        });
+
+        
+        console.log("CALCULATED TOTAL WEIGHT", optimizationResults, optimizedNutrients)
+        // --- FINAL STATE UPDATE ---
+        setOptimizationResults({
+          ingredients: optimizedIngredients,
+          nutrients: optimizedNutrients,
+          totalWeight: calculatedTotalWeight,
+          totalCost: calculatedTotalCost, 
+        });
+
+
+
+        console.log("FORMULATION INFO", optimizedIngredients, optimizedNutrients, calculatedTotalWeight, calculatedTotalCost)
+      }
+    } catch (error) {
+      console.error("Error calculating manual formulation:", error);
+    } finally {
+      setIsLoading(false);
+      setIsManualFormulationOpen(true);
+    }
+  };
   const handleOptimize = async (
     // ingredients,
     // nutrients,
@@ -417,8 +571,15 @@ function ViewGroupFormulation({
         }
       })
       updateWeight(amountFed)
-      
+      setOptimizationResults({
+        ingredients: optimizedIngredients,
+        nutrients: optimizedNutrients,
+        totalWeight: amountFed,
+        totalCost: optimizedCost / 1000,
+        
+      });
       setIsDirty(false)
+      setIsResultsModalOpen(true);
       
     } catch (err) {
       if (err.response?.data?.status === 'No optimal solution') {
@@ -1147,6 +1308,17 @@ function ViewGroupFormulation({
                 shadowPrices={shadowPrices}
               /> */}
 
+              {optimizationResults && (
+                  <div className="flex lg:flex items-center gap-2">
+                    <button 
+                      className="btn border-green-200 bg-green-50 hover:bg-green-100 btn-sm gap-2 rounded-xl text-xs px-3 font-bold text-green-700 transition-all" 
+                      onClick={() => setIsResultsModalOpen(true)}
+                    >
+                      <RiHistoryLine className="animate-pulse" /> Latest Results
+                    </button>
+                  </div>
+                )}
+
               {/* Shadow Prices Button */}
               <button
                 className="btn border border-gray-400 btn-sm gap-2 rounded-lg text-xs"
@@ -1469,17 +1641,196 @@ function ViewGroupFormulation({
             </div>
 
 
-            </>) : (<>
+            </>) :  (<>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
             
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <div className={`overflow-hidden rounded-xl border border-gray-200 bg-white ${constraintMode === 'percent' ? 'md:col-span-1' : 'md:col-span-1'} `}>
+  <div className="p-4">
+    <div className="mb-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+      <h3 className="text-sm font-semibold">All Ingredients (kg)</h3>
+      
+      {/* Dynamic Constraint Mode Dropdown */}
+      <div className="flex items-center gap-2">
+        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Constraints:</label>
+        <select 
+          className="select select-bordered select-xs rounded-lg font-medium text-deepbrown"
+          value={constraintMode} // 'none', 'kg', or 'percent'
+          onChange={(e) => setConstraintMode(e.target.value)}
+        >
+          <option value="none">No Limits</option>
+          <option value="kg">Fixed (kg)</option>
+          <option value="percent">Manual Percentage (%)</option>
+        </select>
+      </div>
+    </div>
+
+    <p className="flex items-center gap-1 text-xs text-gray-500">
+      <Info size={14} /> 
+      <span>
+        {constraintMode === 'percent' 
+          ? 'Enter constraints as % of total formulation weight.' 
+          : 'Shows all ingredients in the formulation in kilograms.'}
+      </span>
+    </p>
+  </div>
+
+  <div className="max-h-64 overflow-x-auto overflow-y-auto no-scrollbar">
+    <table className="table-sm table-pin-rows table w-full">
+      <thead>
+        <tr>
+          <th className="text-deepbrown">Name</th>
+          {/* Conditional Headers based on mode */}
+          {constraintMode !== 'none' && (
+            <>
+              <th className="text-deepbrown text-center">
+                 {constraintMode === 'percent' ? '(%)' : 'Min (kg)'}
+              </th>
+              {constraintMode !== 'percent' && <th className="text-deepbrown text-center">
+                Max {constraintMode === 'percent' ? '(%)' : '(kg)'}
+              </th> }
+              
+            </>
+          )}
+          <th className="text-deepbrown">Classification</th>
+
+          {constraintMode !== 'percent' && (
+            <th className="text-deepbrown">Amount</th>
+          )}
+          
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {ingredients?.map((ingredient, index) => (
+          <tr key={index} className="hover:bg-base-200/50 transition-colors">
+            <td className="max-w-[120px] truncate md:max-w-none font-medium">
+              {ingredient.name}
+            </td>
+
+            {/* Dynamic Inputs */}
+            {constraintMode !== 'none' && (
+              <>
+                {/* Min Input */}
+                <td>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      className="input input-bordered input-xs w-20 pr-6"
+                      placeholder="N/A"
+                      value={ingredient.minimum || ''}
+                      onChange={(e) => handleIngredientMinimumChange(ingredient.ingredient_id, e.target.value)}
+                    />
+                    {constraintMode === 'percent' && (
+                      <span className="absolute right-2 text-[10px] text-gray-400">%</span>
+                    )}
+                  </div>
+                </td>
+                {/* Max Input */}
+
+                {constraintMode !== 'percent' &&
+                <td>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      className="input input-bordered input-xs w-20 pr-6"
+                      placeholder="N/A"
+                      value={ingredient.maximum || ''}
+                      onChange={(e) => handleIngredientMaximumChange(ingredient.ingredient_id, e.target.value)}
+                    />
+                    {constraintMode === 'percent' && (
+                      <span className="absolute right-2 text-[10px] text-gray-400">%</span>
+                    )}
+                  </div>
+                </td>
+                
+                }
+                
+              </>
+            )}
+
+            <td className="text-gray-500 text-xs uppercase">{ingredient.group}</td>
+
+            {constraintMode !== 'percent' && (
+            <td className="font-mono font-bold text-deepbrown">
+              {ingredient.value.toFixed(3)}
+            </td>
+          )}
+            
+
+            <td className="text-right">
+              <button
+                disabled={isDisabled}
+                className="btn btn-ghost btn-xs text-red-400 hover:text-red-600 hover:bg-red-50"
+                onClick={() => handleRemoveIngredient(ingredient)}
+              >
+                <RiDeleteBinLine size={14} />
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <div className="p-4 border-t border-gray-50 bg-gray-50/50 flex flex-row space-x-5">
+    <button
+      disabled={isDisabled}
+      onClick={() => setIsChooseIngredientsModalOpen(true)}
+      className="bg-green-button flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-white shadow-sm hover:bg-green-600 active:transform active:scale-95 transition-all disabled:bg-gray-300"
+    >
+      <RiAddLine /> Add ingredient
+    </button>
+    
+    {constraintMode === 'percent' && (
+
+      <button
+      disabled={isDisabled}
+      onClick={() => handleManualOptimize()}
+      className="bg-yellow-400 flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-deepbrown shadow-sm hover:bg-green-600 active:transform active:scale-95 transition-all disabled:bg-gray-300"
+    >
+      <RiCalculatorLine /> Optimize
+    </button>
+    )}
+    
+  </div>
+</div>
+
+        {constraintMode === 'percent' && (
+          <ManualFormulation
+        isOpen ={isManualFormulationOpen}
+        onClose={()=>setIsManualFormulationOpen(false)}
+        results={optimizationResults}
+        onGenerateReport={() => {
+          setIsResultsModalOpen(false);
+          setIsCustomizationModalOpen(true);
+        }}
+        formulation={formulationRealTime}
+      />
+         ) }
+            {/* NUtrients section */}
+          {constraintMode !== 'percent' &&(
+            
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white sm:mt-0 mt-4 ">
               <div className="p-4">
-                <h3 className="mb-2 text-sm font-semibold">All Ingredients</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold">Nutrients (g)</h3>
+                    {/* Reference Button */}
+                    <button 
+                      onClick={() => setIsPCCModalOpen(true)}
+                      className="btn btn-ghost btn-xs text-blue-600 hover:bg-blue-50 flex items-center gap-1"
+                    >
+                      <RiBookLine /> Reference: PCC Book
+                    </button>
+                  </div>
+                </div>
+                
                 <p className="flex text-xs text-gray-500">
-                  <Info /> Shows all ingredients in the formulation.
+                  <Info className="mr-1" /> Shows all nutrients in the formulation in grams.
                 </p>
               </div>
+
               <div className="max-h-64 overflow-x-auto overflow-y-auto">
                 <table className="table-sm table-pin-rows table w-full">
                   <thead>
@@ -1487,202 +1838,123 @@ function ViewGroupFormulation({
                       <th>Name</th>
                       <th>Min</th>
                       <th>Max</th>
-                      <th>Value</th>
+                      <th>Amount</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {ingredients &&
-                      ingredients.map((ingredient, index) => (
-                        <tr key={index} className="hover:bg-base-300">
-                          <td>{ingredient.name}</td>
-                          <td>
+                    {nutrients && nutrients.map((nutrient, index) => (
+                      <tr key={nutrient.nutrient_id || index} className="hover:bg-base-300">
+                        <td className="font-medium">{nutrient.name}</td>
+                        {/* Minimum Input */}
+                        <td>
+                          <div className="relative">
                             <input
-                              id={`ingredient-${index}-minimum`}
+                              id={`nutrient-${index}-minimum`}
                               type="text"
-                              className="input input-bordered input-xs w-15"
+                              className="input input-bordered input-xs w-20"
                               disabled={isDisabled}
-                              value={ingredient.minimum !== 0 ? ingredient.minimum : 'N/A'}
+                              value={nutrient.minimum !== 0 ? nutrient.minimum : 'N/A'}
                               onChange={(e) => {
                                 const inputValue = e.target.value
+                                // in consideration for 'N/A' values which means 0
                                 if (
                                   /^N\/A(\d+|\.)/.test(inputValue) ||
                                   /^\d*\.?\d{0,2}$/.test(inputValue)
                                 ) {
+                                  // to allow rewriting of input if user types a number after clicking on input with 'N/A'
                                   const processedValue = /^N\/A\d*/.test(inputValue)
                                     ? inputValue.replace('N/A', '')
                                     : inputValue
-                                  handleIngredientMinimumChange(ingredient.ingredient_id, processedValue)
+                                  handleNutrientMinimumChange(nutrient.nutrient_id, processedValue)
                                   setIsDirty(false)
                                 }
                               }}
-                              onFocus={() => {
-                                updateMyPresence({ focusedId: `ingredient-${index}-minimum` })
-                              }}
+                              onFocus={() => updateMyPresence({ focusedId: `nutrient-${index}-minimum` })}
                               onBlur={() => updateMyPresence({ focusedId: null })}
                             />
-                            <Selections id={`ingredient-${index}-minimum`} others={others} />
-                          </td>
-                          <td>
+                            <Selections id={`nutrient-${index}-minimum`} others={others} />
+                          </div>
+                        </td>
+                        {/* Maximum Input */}
+                        <td>
+                          <div className="relative">
                             <input
-                              id={`ingredient-${index}-maximum`}
+                              id={`nutrient-${index}-maximum`}
                               type="text"
-                              className="input input-bordered input-xs w-15"
+                              className="input input-bordered input-xs w-20"
                               disabled={isDisabled}
-                              value={ingredient.maximum !== 0 ? ingredient.maximum : 'N/A'}
+                              value={nutrient.maximum !== 0 ? nutrient.maximum : 'N/A'}
                               onChange={(e) => {
-                                const inputValue = e.target.value
-                                if (
-                                  /^N\/A(\d+|\.)/.test(inputValue) ||
-                                  /^\d*\.?\d{0,2}$/.test(inputValue)
-                                ) {
-                                  let processedValue = /^N\/A\d*/.test(inputValue)
-                                    ? inputValue.replace('N/A', '')
-                                    : inputValue
-                                  // const numericValue = parseFloat(processedValue)
-                                  // if (!isNaN(numericValue) && numericValue > weight) {
-                                  //   processedValue = weight
-                                  // }
-                                  handleIngredientMaximumChange(ingredient.ingredient_id, processedValue)
-                                  setIsDirty(false)
-                                }
-                              }}
-                              onFocus={() =>
-                                updateMyPresence({ focusedId: `ingredient-${index}-maximum` })
-                              }
+                const inputValue = e.target.value
+                
+                // in consideration for 'N/A' values which means 0
+                if (
+                  /^N\/A(\d+|\.)/.test(inputValue) ||
+                  /^\d*\.?\d{0,2}$/.test(inputValue)
+                ) {
+                  // to allow rewriting of input if user types a number after clicking on input with 'N/A'
+                  const processedValue = /^N\/A\d*/.test(inputValue)
+                    ? inputValue.replace('N/A', '')
+                    : inputValue
+                  handleNutrientMaximumChange(nutrient.nutrient_id, processedValue)
+                  setIsDirty(false)
+                }
+              }}
+                              onFocus={() => updateMyPresence({ focusedId: `nutrient-${index}-maximum` })}
                               onBlur={() => updateMyPresence({ focusedId: null })}
                             />
-                            <Selections id={`ingredient-${index}-maximum`} others={others} />
-                          </td>
-
-                          {/* Calculated Value */}
-                          <td>
-                            {ingredient && weight && (ingredient.value).toFixed(3)}
-                          </td>
-                          <td>
+                            <Selections id={`nutrient-${index}-maximum`} others={others} />
+                          </div>
+                        </td>
+                        <td className="text-gray-600">{nutrient.value.toFixed(3)}</td>
+                        <td>
+                          {!isDisabled && (
                             <button
-                              disabled={isDisabled}
-                              className={`${isDisabled ? 'hidden' : ''} btn btn-ghost btn-xs text-red-500 hover:bg-red-200`}
-                              onClick={() => handleRemoveIngredient(ingredient)}
+                              className="btn btn-ghost btn-xs text-red-500 hover:bg-red-200"
+                              onClick={() => handleRemoveNutrient(nutrient)}
                             >
                               <RiDeleteBinLine />
                             </button>
-                          </td>
-                        </tr>
-                      ))}
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    
                   </tbody>
+                  
                 </table>
+                
               </div>
-              <div className="p-4">
-                <button
-                  disabled={isDisabled}
-                  onClick={() => { setIsChooseIngredientsModalOpen(true); setFilterIngredientCode('') }}
-                  className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-                >
-                  <RiAddLine /> Add ingredient
-                </button>
-              </div>
-            </div>
-            
 
-            {/* NUtrients section */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white sm:mt-0 mt-4 ">
-              <div className="p-4">
-                <h3 className="mb-2 text-sm font-semibold">Nutrients</h3>
-                <p className="flex text-xs text-gray-500">
-                  <Info /> Shows all nutrients in the formulation.
-                </p>
-              </div>
-              <div className="max-h-64 overflow-x-auto overflow-y-auto">
-                <table className="table-sm table-pin-rows table w-full">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Min</th>
-                      <th>Max</th>
-                      <th>Value</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>{(nutrients)  && 
-                  nutrients.map((nutrient, index) => (
-                    <tr key={index} className="hover:bg-base-300">
-                      <td>{nutrient.name}</td>
-                      <td>
-                        <input
-                          id={`nutrient-${index}-minimum`}
-                          type="text"
-                          className="input input-bordered input-xs w-15"
-                          disabled={isDisabled}
-                          value={nutrient.minimum !== 0 ? nutrient.minimum : 'N/A'}
-                          onChange={(e) => {
-                            const inputValue = e.target.value
-                            // in consideration for 'N/A' values which means 0
-                            if (
-                              /^N\/A(\d+|\.)/.test(inputValue) ||
-                              /^\d*\.?\d{0,2}$/.test(inputValue)
-                            ) {
-                              // to allow rewriting of input if user types a number after clicking on input with 'N/A'
-                              const processedValue = /^N\/A\d*/.test(inputValue)
-                                ? inputValue.replace('N/A', '')
-                                : inputValue
-                              handleNutrientMinimumChange(nutrient.nutrient_id, processedValue)
-                              setIsDirty(false)
-                            }
-                          }}
-                          onFocus={() =>
-                            updateMyPresence({ focusedId: `nutrient-${index}-minimum` })
-                          }
-                          onBlur={() => updateMyPresence({ focusedId: null })}
-                        />
-                        <Selections id={`nutrient-${index}-minimum`} others={others} />
-                      </td>
-                      <td>
-                        <input
-                          id={`nutrient-${index}-maximum`}
-                          type="text"
-                          className="input input-bordered input-xs w-15"
-                          disabled={isDisabled}
-                          value={nutrient.maximum !== 0 ? nutrient.maximum : 'N/A'}
-                          onChange={(e) => {
-                            const inputValue = e.target.value
-                            // in consideration for 'N/A' values which means 0
-                            if (
-                              /^N\/A(\d+|\.)/.test(inputValue) ||
-                              /^\d*\.?\d{0,2}$/.test(inputValue)
-                            ) {
-                              // to allow rewriting of input if user types a number after clicking on input with 'N/A'
-                              const processedValue = /^N\/A\d*/.test(inputValue)
-                                ? inputValue.replace('N/A', '')
-                                : inputValue
-                              handleNutrientMaximumChange(nutrient.nutrient_id, processedValue)
-                              console.log("NutrientID ", nutrient)
-                              setIsDirty(false)
-                            }
-                          }}
-                          onFocus={() =>
-                            updateMyPresence({ focusedId: `nutrient-${index}-maximum` })
-                          }
-                          onBlur={() => updateMyPresence({ focusedId: null })}
-                        />
-                        <Selections id={`nutrient-${index}-maximum`} others={others} />
-                      </td>
-                      <td>{nutrient.value.toFixed(3)}</td>
-                      <td>
-                        <button
-                          disabled={isDisabled}
-                          className={`${isDisabled ? 'hidden' : ''} btn btn-ghost btn-xs text-red-500 hover:bg-red-200`}
-                          onClick={() => handleRemoveNutrient(nutrient)}
-                        >
-                          <RiDeleteBinLine />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                }
-                </tbody>
-                </table>
-              </div>
+              {/* PCC Reference Modal / Section */}
+              {isPCCModalOpen && (
+                <div className="modal modal-open">
+                  <div className="modal-box max-w-md">
+                    <h3 className="font-bold text-lg mb-1">Formulation Information (PCC Book)</h3>
+                    <h3 className="font-medium text-sm mb-4">Other changes may be due to carabao's special phases (ie. Mid-Lactation, Late Pregnancy)</h3>
+                    <h3 className="font-medium text-xs mb-4">Minimum is 20% lower than actual value and maximum is 20% higher</h3>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 border-b pb-2 text-xs font-bold uppercase text-gray-500">
+                        <span>Nutrient</span>
+                        <span className="text-right">Reference Avg (min+max/2)</span>
+                      </div>
+                      {formulation.origNutrientTargets.map((n) => {
+                        const avg = (Number(n.minimum || 0) + Number(n.maximum || 0)) / 2;
+                        return (
+                          <div key={n.nutrient_id} className="grid grid-cols-2 py-1 text-sm border-b border-gray-50">
+                            <span>{n.name}</span>
+                            <span className="text-right font-mono">{avg.toFixed(2)}g</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="modal-action">
+                      <button className="btn btn-sm" onClick={() => setIsPCCModalOpen(false)}>Close</button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="p-4">
                 <button
                   disabled={isDisabled}
@@ -1692,10 +1964,14 @@ function ViewGroupFormulation({
                   <RiAddLine /> Add nutrient
                 </button>
               </div>
-            </div>
+            </div>)}
             </div>
 
             {/* Nutrient Ratio Constraints Table */}
+
+            {constraintMode!== 'percent' && (
+
+            
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white mt-4">
               <div className="p-4 flex items-center justify-between">
                 <div>
@@ -1730,6 +2006,7 @@ function ViewGroupFormulation({
                 </table>
               </div>
             </div>
+            )}
             
             </>
             )}
@@ -1860,6 +2137,17 @@ function ViewGroupFormulation({
         message={message}
         onHide={hideToast}
       />
+
+            <OptimizationResultsModal 
+              isOpen={isResultsModalOpen}
+              results={optimizationResults}
+              onClose={() => setIsResultsModalOpen(false)}
+              onGenerateReport={() => {
+                setIsResultsModalOpen(false);
+                setIsCustomizationModalOpen(true);
+              }}
+              formulation={formulationRealTime}
+            />
 
       <OptimizeFAB
        handleOptimize={handleOptimize}
