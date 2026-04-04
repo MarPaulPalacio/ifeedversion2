@@ -1992,7 +1992,7 @@ const toggleTab = (tab) => {
           setIsResultsModalOpen(false);
           setIsCustomizationModalOpen(true);
         }}
-        formulation={formulation}
+        formulation={formulationRealTime}
       />
          ) }
         
@@ -2353,7 +2353,7 @@ const toggleTab = (tab) => {
           setIsResultsModalOpen(false);
           setIsCustomizationModalOpen(true);
         }}
-        formulation={formulation}
+        formulation={formulationRealTime}
       />
       <UserCustomizationModal
         isOpen={isCustomizationModalOpen}
