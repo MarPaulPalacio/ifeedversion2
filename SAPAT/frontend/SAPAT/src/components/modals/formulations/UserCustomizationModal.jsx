@@ -1,8 +1,9 @@
 import { RiCloseLine } from 'react-icons/ri'
 import { useState } from 'react'
 import Info from '../../icons/Info.jsx'
+import {RiArrowRightSLine} from 'react-icons/ri'
 
-function ReportGenerationModal({ isOpen, onClose, onGenerate }) {
+function ReportGenerationModal({ isOpen, onClose, onGenerate, userAccess, formulation, owner, weight, shadowPrices, isCustomizationModalOpen, setIsCustomizationModalOpen }) {
   const [formData, setFormData] = useState({
     showEmptyValues: false,
     additionalCosts: [],
@@ -20,7 +21,8 @@ function ReportGenerationModal({ isOpen, onClose, onGenerate }) {
     setIsGenerating(true)
 
     try {
-      await onGenerate(formData)
+      console.log("FoRMAS DFS", formData)
+      await onGenerate(formData, formulation, owner, shadowPrices)
       setError('')
       onClose() // Close the modal after successful generation
     } catch (err) {
@@ -82,177 +84,168 @@ function ReportGenerationModal({ isOpen, onClose, onGenerate }) {
     onClose()
   }
 
-  return (
+return (
     <dialog
       id="report_generation_modal"
-      className={`modal ${isOpen ? 'modal-open' : ''}`}
+      className={`modal ${isOpen ? 'modal-open' : ''} z-[9999]`}
     >
-      <div className="modal-box relative mt-[64px] w-11/12 max-w-2xl rounded-3xl bg-white md:mt-0">
+      <div className="modal-box relative w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-4 md:p-8 no-scrollbar ">
         {/* Close button */}
         <button
-          className="btn btn-sm btn-circle absolute top-4 right-4"
+          className="btn btn-sm btn-circle absolute top-4 right-2 md:right-4 z-10"
           onClick={handleClose}
         >
           <RiCloseLine className="h-5 w-5" />
         </button>
 
-        <h3 className="text-deepbrown mb-1 text-lg font-bold">
-          Generate PDF Report
+        <h3 className="text-deepbrown mb-1 text-base md:text-lg font-bold">
+          Feed Formulation
         </h3>
-        <p className="mb-8 flex text-sm text-gray-500">
-          <Info />
-          Customize how your formulation data appears in the generated PDF report.
+
+        {/* COMPACT STEP PROGRESS */}
+        <div className="flex flex-row items-center gap-2 mb-4 overflow-x-auto no-scrollbar border-b border-gray-100 pb-2">
+          <div className="flex items-center gap-1 opacity-50 shrink-0">
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-tighter">Select</span>
+            <RiArrowRightSLine className="h-3 w-3" />
+          </div>
+          <div className="flex items-center gap-1 opacity-50 shrink-0">
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-tighter">Formulate</span>
+            <RiArrowRightSLine className="h-3 w-3" />
+          </div>
+          <div className="flex flex-col items-start shrink-0">
+            <span className="text-deepbrown text-[10px] md:text-xs font-bold uppercase tracking-tighter">Generate</span>
+            <div className="h-1 w-full bg-deepbrown rounded-full mt-0.5 animate-pulse" />
+          </div>
+        </div>
+
+        <p className="mb-4 flex gap-2 text-[11px] md:text-sm text-gray-500 italic">
+          <Info className="w-4 h-4 shrink-0" />
+          Customize PDF report appearance.
         </p>
 
-        <form onSubmit={handleSubmit}>
-          {/* Display Settings */}
-          <div className="mb-6">
-            <h4 className="font-medium mb-2">Display Settings</h4>
-            <div className="form-control">
-              <label className="cursor-pointer label justify-start gap-3">
-                <input
-                  type="checkbox"
-                  name="showEmptyValues"
-                  checked={formData.showEmptyValues}
-                  onChange={handleChange}
-                  className="checkbox"
-                  disabled={isGenerating}
-                />
-                <span className="label-text">Show nutrients and ingredients with no value</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Sorting and Rounding */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mb-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Settings Grid - 2 cols even on mobile to save height */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Ingredient Sorting</span>
+              <label className="label py-1">
+                <span className="label-text text-[10px] font-bold uppercase text-gray-400">Sorting</span>
               </label>
               <select
                 name="ingredientSorting"
                 value={formData.ingredientSorting}
                 onChange={handleChange}
-                className="select select-bordered w-full rounded-xl"
+                className="select select-bordered select-sm w-full rounded-xl text-xs"
                 disabled={isGenerating}
               >
-                <option value="alphabetical">Alphabetical</option>
-                <option value="valueHighToLow">Value (High to Low)</option>
-                <option value="valueLowToHigh">Value (Low to High)</option>
+                <option value="alphabetical">A-Z</option>
+                <option value="valueHighToLow">High-Low</option>
+                <option value="valueLowToHigh">Low-High</option>
               </select>
             </div>
 
             <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Rounding Precision</span>
+              <label className="label py-1">
+                <span className="label-text text-[10px] font-bold uppercase text-gray-400">Rounding</span>
               </label>
               <select
                 name="roundingPrecision"
                 value={formData.roundingPrecision}
                 onChange={handleChange}
-                className="select select-bordered w-full rounded-xl"
+                className="select select-bordered select-sm w-full rounded-xl text-xs"
                 disabled={isGenerating}
               >
-                <option value="0">Whole numbers</option>
-                <option value="1">1 decimal place</option>
-                <option value="2">2 decimal places</option>
-                <option value="3">3 decimal places</option>
-                <option value="4">4 decimal places</option>
+                <option value="0">0 dec</option>
+                <option value="1">1 dec</option>
+                <option value="2">2 dec</option>
               </select>
             </div>
           </div>
 
-          {/* Additional Costs */}
-          <div className="mb-6">
-            <h4 className="font-medium mb-2">Additional Costs</h4>
-            <div className="flex flex-col md:flex-row gap-3 mb-4">
-              <div className="form-control flex-1">
-                <input
-                  type="text"
-                  value={newCostName}
-                  onChange={(e) => setNewCostName(e.target.value)}
-                  placeholder="Cost name (e.g. Transportation)"
-                  className="input input-bordered w-full rounded-xl"
-                  disabled={isGenerating}
-                />
-              </div>
-              <div className="form-control md:w-1/3">
+          {/* Additional Costs - Compact Input Group */}
+          <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
+            <h4 className="text-[11px] font-bold uppercase text-gray-500 mb-2">Extra Costs</h4>
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                value={newCostName}
+                onChange={(e) => setNewCostName(e.target.value)}
+                placeholder="Name (e.g. Labor)"
+                className="input input-bordered input-sm w-full rounded-lg text-xs"
+                disabled={isGenerating}
+              />
+              <div className="flex gap-2">
                 <input
                   type="number"
                   value={newCostValue}
                   onChange={(e) => setNewCostValue(e.target.value)}
-                  placeholder="Value"
-                  step="0.01"
-                  className="input input-bordered w-full rounded-xl"
+                  placeholder="PHP"
+                  className="input input-bordered input-sm flex-1 rounded-lg text-xs"
                   disabled={isGenerating}
                 />
+                <button
+                  type="button"
+                  onClick={handleAddCost}
+                  className="btn btn-sm bg-green-button text-white rounded-lg px-4"
+                  disabled={isGenerating}
+                >
+                  Add
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleAddCost}
-                className="btn bg-green-button hover:bg-green-600 text-white rounded-xl"
-                disabled={isGenerating}
-              >
-                Add
-              </button>
             </div>
 
-            {error && (
-              <p className="text-sm text-red-500 mb-2" role="alert">
-                {error}
-              </p>
+            {/* Scrollable list for costs */}
+            {formData.additionalCosts.length > 0 && (
+              <ul className="mt-3 space-y-1 max-h-24 overflow-y-auto pt-2 border-t border-gray-200 no-scrollbar">
+                {formData.additionalCosts.map((cost, index) => (
+                  <li key={index} className="flex justify-between items-center text-[11px] bg-white p-2 rounded shadow-sm">
+                    <span className="truncate max-w-[120px] font-medium">{cost.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">₱{cost.value.toFixed(2)}</span>
+                      <button 
+                        onClick={() => handleRemoveCost(index)} 
+                        className="text-red-500 font-bold"
+                      >✕</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
-
-            {/* List of added costs */}
-            <div className="bg-gray-50 rounded-xl p-4">
-              {formData.additionalCosts.length === 0 ? (
-                <p className="text-gray-500 text-sm">No additional costs added</p>
-              ) : (
-                <ul className="space-y-2">
-                  {formData.additionalCosts.map((cost, index) => (
-                    <li key={index} className="flex justify-between items-center">
-                      <div>
-                        <span className="font-medium">{cost.name}</span>
-                        <span className="text-gray-600 ml-2">
-                          PHP {cost.value.toFixed(2)}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCost(index)}
-                        className="text-red-500 hover:text-red-700"
-                        disabled={isGenerating}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </div>
 
-          {/* Remarks */}
-          <div className="form-control w-full mb-6">
-            <label className="label">
-              <span className="label-text">Remarks</span>
-            </label>
+          {/* Remarks - Shorter textarea for mobile */}
+          <div className="form-control w-full">
             <textarea
               name="remarks"
               value={formData.remarks}
               onChange={handleChange}
-              placeholder="Add any additional notes or remarks to display on the PDF report"
-              className="textarea textarea-bordered w-full rounded-xl"
-              rows="4"
+              placeholder="Report remarks..."
+              className="textarea textarea-bordered w-full rounded-xl text-xs"
+              rows="2"
               disabled={isGenerating}
             ></textarea>
           </div>
 
-          {/* Modal actions */}
-          <div className="modal-action">
+          {/* Checkbox */}
+          <div className="form-control">
+            <label className="cursor-pointer label justify-start gap-2 p-0">
+              <input
+                type="checkbox"
+                name="showEmptyValues"
+                checked={formData.showEmptyValues}
+                onChange={handleChange}
+                className="checkbox checkbox-xs"
+              />
+              <span className="label-text text-[11px]">Include zero-value items</span>
+            </label>
+          </div>
+
+          {error && <p className="text-[10px] text-red-500">{error}</p>}
+
+          {/* Actions - Flex-row to keep buttons side-by-side */}
+          <div className="flex gap-2 pt-2">
             <button
               type="button"
-              className="btn rounded-xl px-8"
+              className="btn btn-sm flex-1 rounded-xl"
               onClick={handleClose}
               disabled={isGenerating}
             >
@@ -260,14 +253,15 @@ function ReportGenerationModal({ isOpen, onClose, onGenerate }) {
             </button>
             <button
               type="submit"
-              className={`btn bg-green-button ${isGenerating ? 'disabled bg-gray-300' : 'hover:bg-green-600'} rounded-xl px-8 text-white`}
+              className={`btn btn-sm flex-[2] bg-green-button text-white rounded-xl ${isGenerating ? 'loading' : ''}`}
+              disabled={isGenerating}
             >
-              {isGenerating ? 'Generating...' : 'Generate Report'}
+              {isGenerating ? '' : 'Generate PDF'}
             </button>
           </div>
         </form>
       </div>
-      <form method="dialog" className="modal-backdrop">
+      <form method="dialog" className="modal-backdrop bg-black/30 backdrop-blur-[2px]">
         <button onClick={handleClose}>close</button>
       </form>
     </dialog>

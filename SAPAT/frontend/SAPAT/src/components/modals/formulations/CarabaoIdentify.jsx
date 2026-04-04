@@ -4,7 +4,7 @@ import axios from 'axios'
 import Info from '../../icons/Info.jsx'
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/react'
 import { HiSelector, HiCheck } from 'react-icons/hi'
-
+import { useTranslation } from 'react-i18next'
 function CarabaoIdentify({
   formulations,
   ownerId,
@@ -38,6 +38,7 @@ function CarabaoIdentify({
   setCarabaoConfiguration,
   identifyCurrentCarabaoPhase
 }) {
+  const { t, i18n } = useTranslation();
 
   // Dummy template options by animal group
   /*
@@ -214,7 +215,7 @@ const handleArrayChange = (e) => {
             <div className="form-control w-full">
               
               <label className="label">
-                <span className="label-text">Farmer Name</span>
+                <span className="label-text">{t('Farmer Name')}</span>
               </label>
               <input
                 type="text"
@@ -235,10 +236,10 @@ const handleArrayChange = (e) => {
             
             {/* Carabao Name */}
 
-            {(identifyCurrentCarabaoPhase()!=null && carabaoConfiguration.sameConfigTypeArray.includes(identifyCurrentCarabaoPhase()[1])) ? "":(
+            {(identifyCurrentCarabaoPhase()!=null) ? "":(
               <div className="form-control w-full">
               <label className="label">
-                <span className="label-text">Carabao Name</span>
+                <span className="label-text">{t('Carabao Name')}</span>
               </label>
               <input
                 type="text"
@@ -263,7 +264,7 @@ const handleArrayChange = (e) => {
             {/* Animal Group Select */}
             <div className="form-control w-full">
               <label className="label">
-                <span className="label-text">Carabao Category</span>
+                <span className="label-text">{t('Carabao Category')}</span>
               </label>
               <select
                 name="animal_group"
@@ -275,12 +276,12 @@ const handleArrayChange = (e) => {
                 <option value="" disabled>
                   Choose Carabao Phase
                 </option>
-                <option value="Heifer | Dumalaga">Heifer | Dumalaga</option>
-                <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)</option>
-                <option value="Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)">Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)</option>
-                <option value="Junior Bull | Lumalaking bulugan (2 - 3 taon)">Junior Bull | Lumalaking bulugan (2 - 3 taon)</option>
-                <option value="Cow | Inahing kalabaw">Cow | Inahing kalabaw</option>
-                <option value="Senior Bull | Bulugan (> 3 taon)">Senior Bull | Bulugan ({'>'} 3 taon)</option>
+                <option value="Heifer | Dumalaga">{t('Heifer')}</option>
+                <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">{t('Calf (0-4 months) - lower than 100kg')}</option>
+                <option value="Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)"> {t('Growing Calves (5-12 months)')}</option>
+                <option value="Junior Bull | Lumalaking bulugan (2 - 3 taon)">{t('Junior Bull')}</option>
+                <option value="Cow | Inahing kalabaw">{t('Cow')}</option>
+                <option value="Senior Bull | Bulugan (> 3 taon)">{t('Senior Bull')}</option>
               </select>
             </div>
             

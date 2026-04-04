@@ -75,6 +75,7 @@ function ViewFormulationEntry({ id }) {
         ? { ...ingredient, [propertyName]: propertyValue }
         : ingredient
       );
+
       // Update the entire ingredients array
       storage.get('formulation').set('ingredients', updatedIngredients)
     },
@@ -85,6 +86,7 @@ function ViewFormulationEntry({ id }) {
   const updateNutrientProperty = useMutation(
     ({ storage }, nutrientId, propertyName, propertyValue) => {
       const nutrients = storage.get('formulation').get('nutrients')
+      console.log("Room Nutrients Here:", nutrients)
       // Create a new array with the updated nutrient
       const updatedNutrients = nutrients.map((nutrient) =>
         nutrient.nutrient_id === nutrientId || nutrient._id === nutrientId
@@ -93,6 +95,7 @@ function ViewFormulationEntry({ id }) {
       )
       // Update the entire nutrients array
       storage.get('formulation').set('nutrients', updatedNutrients)
+      console.log("After update:", storage.get('formulation').get('nutrients'))
     },
     []
   )
@@ -109,6 +112,9 @@ function ViewFormulationEntry({ id }) {
     animal_group: '',
     ingredients: [],
     nutrients: [],
+    weightProgress: [],
+    milkYieldProgress: [],
+    typeProgress: [],
   })
   const [ownerId, setOwnerId] = useState(null)
   const [shouldRedirect, setShouldRedirect] = useState(false)
@@ -182,6 +188,7 @@ function ViewFormulationEntry({ id }) {
         updateNutrientRatioConstraints(patchedNutrientRatioConstraints)
         fetchspecialformulations(formulationData.animal_group)
       }
+      
       // set owner id
       const owner = formulationData?.collaborators?.find((collaborator) => collaborator.access === "owner")
       setOwnerId(owner)
@@ -204,17 +211,20 @@ function ViewFormulationEntry({ id }) {
       console.log(err)
     }
   }
-
+  
   const updateDatabase = async (isDirty = false) => {
+
     if (isDirty) {
       setShowToast(true) // Show success toast
       setMessage('Changes not saved! Click "Optimize" before saving changes.')
       setToastAction('error')
       return
     }
+
     try {
       const currentFormulation = formulationRef.current
       const VITE_API_URL = import.meta.env.VITE_API_URL
+      console.log(currentFormulation, "Current Formulation")
       await axios.put(`${VITE_API_URL}/formulation/${id}`, {
         code: currentFormulation.code,
         name: currentFormulation.name,
@@ -240,9 +250,11 @@ function ViewFormulationEntry({ id }) {
   if (shouldRedirect) {
     return <Navigate to="/formulations" />
   }
+
   if (loading) {
     return <Loading />
   }
+
   if (!user) {
     return <Navigate to="/" />
   }

@@ -37,8 +37,13 @@ const fetchIngredientsData = async (userId, skip = 0, limit = 10000) => {
 
 const formatInput = async (data) => {
   // Accept nutrientRatioConstraints from the request body (default to empty array if not present)
-  const { userId, ingredients, nutrients, weight, nutrientRatioConstraints = [] } = data;
+  const { userId, ingredients, nutrients, weight, type, nutrientRatioConstraints = [] } = data;
   const ingredientsData = await fetchIngredientsData(userId);
+
+  console.log("Ingredients:", ingredients);
+
+  
+
 
   // === objective function (minimize cost) ===
   const objectives = ingredients.map(ingredient => {
@@ -50,29 +55,208 @@ const formatInput = async (data) => {
       coef: coef
     }
   });
-
+  // BIG CHAGNE HERE PLOT TWIST FIND ME THE CODE IS CHECKPOINT!!!!
+  //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   // === nutrient constraints === (e.g. 5x1 + 10x2 + 4x3 >= 15)
-  const constraints = nutrients.map(nutrient => {
-    const bndType = nutrient.maximum ? "GLP_DB" : "GLP_LO";
-    return {
-      name: nutrient.name,
-      unit: nutrient.unit,
-      vars: ingredients.map(ingredient => {
-        const nutrientData = ingredientsData.find(item => item.name === ingredient.name).nutrients;
-        const nutrientValue = nutrientData.find(n => n.nutrient?.toString() === nutrient.nutrient_id)?.value || 0;
-        return {
-          name: ingredient.name,
-          coef: nutrientValue
-        };
-      }),
-      bnds: {
-        type: bndType,
-        lb: nutrient.minimum ? nutrient.minimum : 0,
-        ub: nutrient.maximum
+  // === nutrient constraints ===
+// 1. Identify which nutrient is Dry Matter first to use as a multiplier
+const dmNutrientId = nutrients.find(n => 
+  n.name?.toLowerCase().includes("dry matter") || n.name?.toLowerCase() === "dm"
+)?.nutrient_id;
+
+console.log("DM Nutrient ID:", dmNutrientId);
+// Map Constraints
+const constraints = nutrients.map(nutrient => {
+  const bndType = nutrient.maximum ? "GLP_DB" : "GLP_LO";
+  const isDM = nutrient.nutrient_id === dmNutrientId || 
+               nutrient.name?.toLowerCase().includes("dry matter") || 
+               nutrient.name?.toLowerCase() === "dm";
+  console.log("NUtrient ID here:", dmNutrientId);
+  console.log("Nutrients here:", nutrients);
+  return {
+    name: nutrient.name,
+    unit: nutrient.unit,
+    vars: ingredients.map(ingredient => {
+      const ingData = ingredientsData.find(item => 
+        (item._id?.toString() === ingredient.ingredient_id) || 
+        (item.ingredient_id?.toString() === ingredient.ingredient_id)
+      );
+
+      // Find DM for this specific ingredient (e.g., 25 for Napier)
+      let dmDecimal = 1.0; // Default to 1.0 (100%) if DM info is missing
+      if (dmNutrientId) {
+        const dmEntry = ingData.nutrients.find(n => 
+          n.nutrient.toString() === dmNutrientId.toString()
+        );
+        console.log("DM ENTRY", dmEntry);
+      console.log("ingData", ingData);
+      const dmValue = dmEntry?.value || 100; // Default to 100% (1.0) if missing
+      dmDecimal = dmValue;
       }
+
+      
+      // Find the current nutrient's raw value (e.g., 7 for CP)
+      const nutrientEntry = ingData.nutrients.find(n => 
+        (n.nutrient?.toString() === nutrient.nutrient_id) || (n.name === nutrient.name)
+      );
+      const rawValue = nutrientEntry?.value || 0;
+
+      let finalCoef;
+      if (isDM) {
+        // If this row IS the DM constraint, use just the DM decimal
+        finalCoef = dmDecimal;
+      } else {
+        // Otherwise, use Excel math: (DM decimal * Nutrient decimal)
+        // This calculates kg of nutrient per 1kg of As-Fed weight
+        finalCoef = dmDecimal * (rawValue);
+        // Convert to grams if the requirement unit is 'g' (e.g., CP target is 480.5g)
+      }
+
+      return { name: ingredient.name, coef: finalCoef };
+    }),
+    bnds: {
+      type: bndType,
+      lb: nutrient.minimum || 0,
+      ub: nutrient.maximum
+    }
+  };
+});
+
+//Define Groups for easier access in the future (e.g. for different handling of forage vs concentrate)
+  const forageIngredients = ingredients.filter(ing => {
+    const data = ingredientsData.find(d => d._id.toString() === ing.ingredient_id.toString());
+    return data.group === 'Grass' || data.group === 'Legumes';
+  });
+
+  const legumeIngredients = ingredients.filter(ing => {
+    const data = ingredientsData.find(d => d._id.toString() === ing.ingredient_id.toString());
+    console.log("CHECKING LEGUME GROUP", data.name, data.group);
+    return data.group === 'Legumes';
+  });
+
+  const byproductIngredients = ingredients.filter(ing => {
+    const data = ingredientsData.find(d => d._id.toString() === ing.ingredient_id.toString());
+    return data.group === 'Agricultural by-products' || data.group === 'Industrial by-products';
+  });
+
+  const vitaminmineral = ingredients.filter(ing => {
+    const data = ingredientsData.find(d => d._id.toString() === ing.ingredient_id.toString());
+    return data.group === 'Vitamin-Mineral' || data.group === 'Vitamin-Mineral';
+  });
+
+  const dmTarget = nutrients.find(n => 
+    n.name?.toLowerCase().includes("dry matter") || n.name?.toLowerCase() === "dm"
+  )?.minimum || weight; // Fallback to weight if not found (though usually DM is smaller)
+  
+  console.log("Forage Ingredients:", forageIngredients);
+  console.log("Byproduct Ingredients:", byproductIngredients);
+  console.log("Vitamin-Mineral Ingredients:", vitaminmineral);
+
+
+  constraints.push({
+    name: "Group: Legumes (Max 5kg)",
+    vars: ingredients.map(ing => {
+      const isLegume = legumeIngredients.some(l => l.name === ing.name);
+      console.log("isLegume", isLegume, ing.name, ing.group);
+      // We use the 'As-Fed' weight (coef: 1) to limit the physical weight to 5kg
+      return {
+        name: ing.name,
+        coef: isLegume ? 1 : 0
+      };
+    }),
+    bnds: {
+      type: "GLP_UP", // Upper Bound Only
+      lb: 0,
+      ub: 5000 // The 5kg limit
     }
   });
 
+  // 1. ADD FORAGE GROUP CONSTRAINT (60-100%)
+  constraints.push({
+    name: "Group: Grasses & Legumes (60-100%)",
+    vars: ingredients.map(ing => {
+      const isForage = forageIngredients.some(f => f.name === ing.name);
+      
+      if (type === "simplex-dry-matter") {
+        const ingData = ingredientsData.find(d => d._id?.toString() === ing.ingredient_id?.toString());
+        const dmEntry = ingData?.nutrients.find(n => n.nutrient?.toString() === dmNutrientId?.toString());
+        const dmDecimal = dmEntry?.value || 1.0;
+        
+        return {
+          name: ing.name,
+          coef: isForage ? dmDecimal : 0
+        };
+      } else {
+        return {
+          name: ing.name,
+          coef: isForage ? 1 : 0
+        };
+      }
+    }),
+    bnds: {
+      type: "GLP_LO",
+      lb: type === "simplex-dry-matter" ? (dmTarget * 0.60) : (weight * 0.60),
+      ub: type === "simplex-dry-matter" ? dmTarget : weight
+    }
+  });
+
+  constraints.push({
+    name: "Group: Byproducts (0-30%)",
+    vars: ingredients.map(ing => {
+      const isByproduct = byproductIngredients.some(b => b.name === ing.name);
+      
+      
+      if (type === "simplex-dry-matter") {
+        const ingData = ingredientsData.find(d => d._id?.toString() === ing.ingredient_id?.toString());
+        const dmEntry = ingData?.nutrients.find(n => n.nutrient?.toString() === dmNutrientId?.toString());
+        const dmDecimal = dmEntry?.value || 1.0;
+        
+        return {
+          name: ing.name,
+          coef: isByproduct ? dmDecimal : 0
+        };
+      } else {
+        return {
+          name: ing.name,
+          coef: isByproduct ? 1 : 0
+        };
+      }
+    }),
+    bnds: {
+      type: "GLP_UP",
+      lb: 0,
+      ub: type === "simplex-dry-matter" ? (dmTarget * 0.40) : (weight * 0.40)
+    }
+  });
+
+  constraints.push({
+    name: "Group: Vitamin-Mineral (0-3%)",
+    vars: ingredients.map(ing => {
+      const isVM = vitaminmineral.some(v => v.name === ing.name);
+      
+      if (type === "simplex-dry-matter") {
+        const ingData = ingredientsData.find(d => d._id?.toString() === ing.ingredient_id?.toString());
+        const dmEntry = ingData?.nutrients.find(n => n.nutrient?.toString() === dmNutrientId?.toString());
+        const dmDecimal = dmEntry?.value || 1.0;
+        
+        return {
+          name: ing.name,
+          coef: isVM ? dmDecimal : 0
+        };
+      } else {
+        return {
+          name: ing.name,
+          coef: isVM ? 1 : 0
+        };
+      }
+    }),
+    bnds: {
+      type: "GLP_UP",
+      lb: 0,
+      ub: type === "simplex-dry-matter" ? (dmTarget * 0.03) : (weight * 0.03)
+    }
+  });
   // === nutrient ratio constraints ===
   for (const ratio of nutrientRatioConstraints) {
     // Accept both ID and name for each nutrient
@@ -83,26 +267,34 @@ const formatInput = async (data) => {
     const { operator, firstIngredientRatio, secondIngredientRatio } = ratio;
     if (!firstNutrientId || !secondNutrientId || !operator || !firstIngredientRatio || !secondIngredientRatio) continue;
     const ratioValue = firstIngredientRatio / secondIngredientRatio;
+// Inside the nutrientRatioConstraints loop:
     const vars = ingredients.map(ingredient => {
       const ingData = ingredientsData.find(item => item.name === ingredient.name);
       let n1 = 0, n2 = 0;
+
       if (ingData && Array.isArray(ingData.nutrients)) {
-        // Match nutrient ID and name
-        const n1Obj = ingData.nutrients.find(n =>
-          (n.nutrient?.toString() === firstNutrientId?.toString()) || (n.name === firstNutrientName)
-        );
-        const n2Obj = ingData.nutrients.find(n =>
-          (n.nutrient?.toString() === secondNutrientId?.toString()) || (n.name === secondNutrientName)
-        );
-        n1 = n1Obj?.value || 0;
-        n2 = n2Obj?.value || 0;
+        // Get the DM of the ingredient
+        const dmValue = ingData.nutrients.find(n => n.name === 'Dry Matter' || n.name === 'DM')?.value || 100;
+        const dmDecimal = dmValue / 100;
+
+        // If you are setting a ratio between Feed Materials (like Napier vs Concentrate)
+        // The Excel ratio applies to their DM contribution
+        const isFirst = (ingData._id?.toString() === firstNutrientId) || (ingData.name === firstNutrientName);
+        const isSecond = (ingData._id?.toString() === secondNutrientId) || (ingData.name === secondNutrientName);
+
+        n1 = isFirst ? dmDecimal : 0;
+        n2 = isSecond ? dmDecimal : 0;
       }
+
       return {
         name: ingredient.name,
-        coef: n1 - ratioValue * n2
+        coef: n1 - (ratioValue * n2)
       };
     });
     
+
+
+
     // DEBUG
     console.log(`[Nutrient Ratio Constraint] ${firstNutrientName || firstNutrientId} / ${secondNutrientName || secondNutrientId} ${operator} ${ratioValue}`);
     console.log(vars.map(v => `${v.name}: ${v.coef}`).join(', '));
@@ -136,27 +328,27 @@ const formatInput = async (data) => {
     return {
       name: ingredient.name,
       type: bndType,
-      lb: ingredient.minimum ? (ingredient.minimum) / weight : 0,
-      ub: ingredient.maximum ? (ingredient.maximum) / weight : 1
+      lb: ingredient.minimum ? (ingredient.minimum) : 0,
+      ub: ingredient.maximum ? (ingredient.maximum) : weight
     }
   });
 
-  // === total ratio constraint ===
-  const totalRatioConstraint = {
-    name: "Total Ratio",
-    vars: ingredients.map(ingredient => ({
-      name: ingredient.name,
-      coef: 1 // Coefficient of 1 for each ingredient to sum to 100%
-    })),
-    bnds: {
-      type: "GLP_FX", // Fixed bound (exactly equal)
-      lb: 1,  // Sum of proportions equals 1 (100%)
-      ub: 1
-    }
-  };
+  // // === total ratio constraint ===
+  // const totalRatioConstraint = {
+  //   name: "Total Ratio",
+  //   vars: ingredients.map(ingredient => ({
+  //     name: ingredient.name,
+  //     coef: 1 // Coefficient of 1 for each ingredient to sum to 100%
+  //   })),
+  //   bnds: {
+  //     type: "GLP_FX", // Fixed bound (exactly equal)
+  //     lb: weight,  // Sum of proportions equals 1 (100%)
+  //     ub: weight
+  //   }
+  // };
 
-  // Add the total ratio constraint to the existing constraints
-  constraints.push(totalRatioConstraint);
+  // // Add the total ratio constraint to the existing constraints
+  // constraints.push(totalRatioConstraint);
 
   // console.log("objectives", objectives);
   // console.log("constraints", constraints);
@@ -164,28 +356,44 @@ const formatInput = async (data) => {
   return { objectives, constraints, variableBounds, weight };
 }
 
+
 const determineOptimizedNutrients = (optimizedIngredients, constraints) => {
   // const total = Object.values(optimizedIngredients).reduce((sum, value) => sum + value, 0);
   // const ratios = {};
   // for (const [ingredient, value] of Object.entries(optimizedIngredients)) {
   //   ratios[ingredient] = total > 0 ? (value / total) : 0.00;
   // }
-  const finalNutrients = constraints.map(constraint => {
-    const nutrientName = constraint.name;
+  return constraints.map(constraint => {
     let optimizedNutrientValue = 0;
-    // get the percentage of each optimized ingredient
+    
     Object.entries(optimizedIngredients).forEach(([ingredient, value]) => {
       const involvedIngredient = constraint.vars.find(v => v.name === ingredient);
       if (!involvedIngredient) return;
-      const nutrientValue = involvedIngredient.coef * value;   // e.g. (8% protein * 60% part of mix) OR 3350 kcal/kg * 40% part of mix
-      optimizedNutrientValue += nutrientValue;
-    })
+
+      // If 'value' is 7 (kg) and 'coef' is 10 (mg/kg), this results in 70mg.
+      optimizedNutrientValue += involvedIngredient.coef * value; 
+    });
     return {
-      name: nutrientName,
+      name: constraint.name,
       value: optimizedNutrientValue
-    }
-  })
-  return finalNutrients;
+    };
+  });
+  // const finalNutrients = constraints.map(constraint => {
+  //   const nutrientName = constraint.name;
+  //   let optimizedNutrientValue = 0;
+  //   // get the percentage of each optimized ingredient
+  //   Object.entries(optimizedIngredients).forEach(([ingredient, value]) => {
+  //     const involvedIngredient = constraint.vars.find(v => v.name === ingredient);
+  //     if (!involvedIngredient) return;
+  //     const nutrientValue = involvedIngredient.coef * value;   // e.g. (8% protein * 60% part of mix) OR 3350 kcal/kg * 40% part of mix
+  //     optimizedNutrientValue += nutrientValue;
+  //   })
+  //   return {
+  //     name: nutrientName,
+  //     value: optimizedNutrientValue
+  //   }
+  // })
+  // return finalNutrients;
 }
 
 const computeCost = (optimizedIngredients, objectives, weight) => {
@@ -193,14 +401,15 @@ const computeCost = (optimizedIngredients, objectives, weight) => {
   // optimizedIngredients contain the ratio for the ingredients
   let cost = 0;
   for (let i = 0; i < objectives.length; i++) {
-    let ingWeight = (optimizedIngredients[i].value) * weight; // value% * weight (e.g. 30% of 1000kg)
+    let ingWeight = optimizedIngredients[i].value;
+    //let ingWeight = (optimizedIngredients[i].value) * weight; // value% * weight (e.g. 30% of 1000kg)
     cost += objectives[i].coef * ingWeight;
   }
   return cost;
 }
 
 const simplex = async (req, res) => {
-  const { objectives, constraints, variableBounds, weight } = await formatInput(req.body);
+  const { objectives, constraints, variableBounds, weight} = await formatInput(req.body);
   try {
     const glpk = GLPK();
     const options = {
@@ -276,15 +485,18 @@ const simplex = async (req, res) => {
       const optimizedNutrients = determineOptimizedNutrients(output.result.vars, constraints);
       // reformat ingredients to be used in the response (make it an array of objects)
       const optimizedIngredients = [];
+      let totalAsFedWeight = 0;
       Object.entries(output.result.vars).forEach(([key, value]) => {
         optimizedIngredients.push({
           name: key,
           value: value
         });
+        totalAsFedWeight += value;
       });
 
       const finalCost = computeCost(optimizedIngredients, objectives, weight);
 
+      
       // Retrieval of shadow prices (dual values from result/output)
       const shadowPrices = Object.entries(output.result.dual).map(([key, value]) => {
         return {
@@ -303,6 +515,7 @@ const simplex = async (req, res) => {
         optimizedIngredients: optimizedIngredients,
         optimizedNutrients: optimizedNutrients,
         shadowPrices: shadowPrices,
+        weight: totalAsFedWeight
       });
     } else {
       console.log("optimal not found!");
@@ -333,7 +546,7 @@ const simplex = async (req, res) => {
  * @param {Number} options.personal Personal (particle best) coefficient
  * @param {Number} options.tolerance Convergence tolerance
  */
-const psoOptimize = (objectives, constraints, variableBounds, weight, options = {}) => {
+const psoOptimizeOriginal = (objectives, constraints, variableBounds, weight, options = {}) => {
   const defaults = {
     iterations: 2000,
     particles: 50,
@@ -573,6 +786,11 @@ const psoOptimize = (objectives, constraints, variableBounds, weight, options = 
 };
 
 const pso = async (req, res) => {
+  const { objectives, constraints, variableBounds, weight } = await formatInput(req.body)
+
+  console.log(objectives, constraints, variableBounds, weight)
+};
+const psoOriginal = async (req, res) => {
   const { objectives, constraints, variableBounds, weight } = await formatInput(req.body);
 
   try {

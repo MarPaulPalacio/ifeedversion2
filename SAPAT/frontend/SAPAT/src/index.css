@@ -1,6 +1,12 @@
 @import 'tailwindcss';
+
 @plugin "daisyui" {
   themes: light --default;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
 }
 
 @theme {

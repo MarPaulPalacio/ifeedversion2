@@ -2,18 +2,43 @@ import Ingredient from '../models/ingredient-model.js';
 import UserIngredientOverride from '../models/user_ingredient_override-model.js';
 import Nutrient from '../models/nutrient-model.js';
 
+// const cloudinary = require('../config/cloudinary');
+
 const createIngredient = async (req, res) => {
   const {
-      name, price, available, group, description, source, nutrients, user,
+    name, 
+    price, 
+    available, 
+    group, 
+    description, 
+    source, 
+    nutrients, 
+    user,
+    image // 1. Extract image from request body
   } = req.body;
 
   try {
     const newIngredient = await Ingredient.create({
-      name, price, available, group, description, source, nutrients, user
+      name, 
+      price, 
+      available, 
+      group, 
+      description, 
+      source, 
+      nutrients, 
+      user,
+      // 2. Map the image object to the database record
+      // We use optional chaining or a default object to prevent errors if image is missing
+      image: {
+        url: image?.url || '',
+        public_id: image?.public_id || ''
+      }
     });
+
     res.status(200).json({ message: 'success', ingredients: newIngredient });
   } catch (err) {
-    res.status(500).json({ error: err.message, message: 'error' })
+    // If there's a validation error (like a missing required field), it lands here
+    res.status(500).json({ error: err.message, message: 'error' });
   }
 };
 
@@ -23,7 +48,8 @@ const getAllIngredients = async (req, res) => {
 
   try {
     // user-created ingredients
-    const userIngredients = await Ingredient.find({'user': userId});
+    // const userIngredients = await Ingredient.find({'user': userId});
+    const userIngredients = await Ingredient.find({});
     //  global ingredients (and overrides)
     const globalIngredients = await handleGetIngredientGlobalAndOverride(userId);
     const ingredients = [...globalIngredients, ...userIngredients];
@@ -59,6 +85,8 @@ const getIngredient = async (req, res) => {
   const { id, userId } = req.params;
   try {
     const ingredient = await Ingredient.findById(id);
+
+
     if (!ingredient) {
       return res.status(404).json({ message: 'Ingredient not found' });
     }
@@ -74,6 +102,44 @@ const getIngredient = async (req, res) => {
   }
 }
 
+// GET ingredients by a list of IDs
+const getIngredientsByIds = async (req, res) => {
+  try {
+    console.log("IDS HERE", req)
+    // Expect IDs as a JSON array in query (GET) or body (POST)
+    const { ids } = req.body; // e.g., [ "id1", "id2", "id3" ]
+    
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No ingredient IDs provided.' });
+    }
+    
+    console.log("IDS", ids)
+    // Find ingredients by _id in MongoDB
+    const ingredients = await Ingredient.find({ _id: { $in: ids } });
+
+    console.log(ingredients, "Ingredients are here: ")
+    // Include global ingredients and overrides if needed
+    // const userId = req.body.userId; // if you want to merge global
+    // const globalIngredients = await handleGetIngredientGlobalAndOverride(userId);
+    // const allIngredients = [...globalIngredients, ...ingredients];
+
+    const formattedIngredients = ingredients.map((ingredient) => {
+      const data = ingredient._doc || ingredient;
+      return {
+        ...data,
+        price: Number(data.price).toFixed(2),
+        group: data.group || 'Uncategorized',
+      };
+    });
+
+    res.status(200).json({
+      message: 'success',
+      ingredients: formattedIngredients,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'error', error: err.message });
+  }
+};
 
 const getIngredientsByFilters = async (req, res) => {
   const {
@@ -85,7 +151,8 @@ const getIngredientsByFilters = async (req, res) => {
   const { userId } = req.params;
   try {
     // user-created ingredients
-    const userIngredients = await Ingredient.find({'user': userId});
+    // const userIngredients = await Ingredient.find({'user': userId});
+    const userIngredients = await Ingredient.find({});
     //  global ingredients (and overrides)
     const globalIngredients = await handleGetIngredientGlobalAndOverride(userId);
     let ingredients = [...globalIngredients, ...userIngredients];
@@ -149,7 +216,9 @@ const getIngredientsByFilters = async (req, res) => {
 
 const updateIngredient = async (req, res) => {
   const { id, userId } = req.params;
-  const { name, price, available, group, description, nutrients } = req.body;
+  // 1. Add 'image' to the destructured body
+  const { name, price, available, group, description, nutrients, image } = req.body;
+  
   try {
     const ingredient = await Ingredient.findById(id);
     if (!ingredient) {
@@ -159,25 +228,44 @@ const updateIngredient = async (req, res) => {
     // user-created ingredient
     if (ingredient.source === 'user') {
       if (name) ingredient.name = name;
-      if (price) ingredient.price = price;
-      if (available) ingredient.available = available;
+      if (price !== undefined) ingredient.price = price;
+      if (available !== undefined) ingredient.available = available;
       if (group) ingredient.group = group;
-      if (description) ingredient.description = description;
+      if (description !== undefined) ingredient.description = description;
       if (nutrients) ingredient.nutrients = nutrients;
+
+      // 2. Handle the image update
+      if (image) {
+        ingredient.image = {
+          url: image.url || '',
+          public_id: image.public_id || ''
+        };
+      }
+
       const updatedIngredient = await ingredient.save();
       res.status(200).json({ message: 'success', ingredients: updatedIngredient });
     }
     // global-created ingredient
     else {
-      // revisions on the userIngredientOverride
-      const updatedIngredient = await handleUpdateIngredientOverride(ingredient, name, price, available, group, description, nutrients, id, userId);
+      // 3. Ensure image is passed into your override handler
+      const updatedIngredient = await handleUpdateIngredientOverride(
+        ingredient, 
+        name, 
+        price, 
+        available, 
+        group, 
+        description, 
+        nutrients, 
+        id, 
+        userId,
+        image // Pass image here
+      );
       res.status(200).json({ message: 'success', ingredients: updatedIngredient });
     }
   } catch (err) {
     res.status(500).json({ error: err.message, message: 'error' })
   }
 };
-
 const deleteIngredient = async (req, res) => {
   const { id, userId } = req.params;
   try {
@@ -223,140 +311,127 @@ const deleteIngredient = async (req, res) => {
 
 const importIngredient = async (req, res) => {
   const { userId } = req.params;
-  const ingredientsData = req.body;
+  const { ingredientsData, type } = req.body;
 
   try {
-    // Validate that the incoming data is an array
     if (!ingredientsData || !Array.isArray(ingredientsData)) {
-      return res.status(400).json({ message: "Invalid data format, expected an array of ingredients." });
+      return res.status(400).json({ message: "Invalid data format." });
     }
 
-    // Validate that required fields are there
-    if (ingredientsData.some(item => !item.name || !item.price || !item.nutrients)) {
-      return res.status(400).json({ message: "Each ingredient must have a name, price, and nutrients." });
-    }
+    const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Escape special regex characters
-    const escapeRegex = (string) => {
-      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    };
+    // --- STEP 1: PRE-PROCESS DEDUPLICATION (INCOMING DATA) ---
+    // If the Excel itself has "Mung Bean" twice, we only take the first one.
+    const uniqueIncomingData = [];
+    const seenNamesInImport = new Set();
 
-    // First, collect all unique nutrient names across all ingredients
-    const allNutrientNames = new Set();
-    ingredientsData.forEach(ingredient => {
-      ingredient.nutrients.forEach(nutrient => {
-        allNutrientNames.add(nutrient.nutrient.trim());
+    ingredientsData.forEach(item => {
+      const nameKey = item.name.trim().toLowerCase();
+      if (!seenNamesInImport.has(nameKey)) {
+        seenNamesInImport.add(nameKey);
+        uniqueIncomingData.push(item);
+      }
+    });
+
+    // --- STEP 2: PROCESS NUTRIENTS ---
+    const nutrientInfoMap = new Map(); 
+    uniqueIncomingData.forEach(ingredient => {
+      ingredient.nutrients.forEach(nut => {
+        const nutrientName = nut.nutrient || ""; 
+        const nameKey = nutrientName.trim().toLowerCase();
+        if (nameKey && !nutrientInfoMap.has(nameKey)) {
+          nutrientInfoMap.set(nameKey, { 
+            id: nut.nutrient_id, 
+            name: nutrientName.trim() 
+          });
+        }
       });
     });
 
-    // Create a nutrient lookup cache to avoid duplicate lookups/creations
     const nutrientLookupCache = {};
-
-    // Process all nutrient names first to ensure they exist
-    for (const nutrientName of allNutrientNames) {
-      const existingNutrient = await Nutrient.findOne({
-        $or: [
-          { user: userId },
-          { source: 'global' }
-        ],
-        name: { $regex: new RegExp('^' + escapeRegex(nutrientName) + '$', 'i') }
-      });
-
-      console.log(`${nutrientName} existing? ${existingNutrient ? 'yes' : 'no'}`);
+    for (const [nameKey, info] of nutrientInfoMap) {
+      let existingNutrient = null;
+      if (info.id) existingNutrient = await Nutrient.findById(info.id);
+      
+      if (!existingNutrient) {
+        existingNutrient = await Nutrient.findOne({
+          $or: [{ user: userId }, { source: 'global' }],
+          name: { $regex: new RegExp('^' + escapeRegex(info.name) + '$', 'i') }
+        });
+      }
 
       if (existingNutrient) {
-        nutrientLookupCache[nutrientName.toLowerCase()] = existingNutrient._id;
+        nutrientLookupCache[nameKey] = existingNutrient._id;
       } else {
-        // Create a new nutrient
-        const newNutrient = await Nutrient.create({
-          name: nutrientName,
-          abbreviation: nutrientName.substring(0, 3).toUpperCase(),
-          unit: '',
-          group: '',
-          description: '',
+        const nutrientData = {
+          name: info.name,
+          abbreviation: info.name.substring(0, 3).toUpperCase(),
+          unit: '%',
           source: 'user',
-          user: userId
-        });
-
-        // when nutrient is created, update all user ingredients
+          user: userId,
+          ...(info.id && { _id: info.id })
+        };
+        const newNutrient = await Nutrient.create(nutrientData);
         await handleIngredientChanges(newNutrient, userId);
-        nutrientLookupCache[nutrientName.toLowerCase()] = newNutrient._id;
+        nutrientLookupCache[nameKey] = newNutrient._id;
       }
     }
 
-    // Get ALL existing nutrients for this user to ensure complete nutrient lists
     const allNutrients = await Nutrient.find({
-      $or: [
-        { user: userId },
-        { source: 'global' }
-      ]
+      $or: [{ user: userId }, { source: 'global' }]
     });
 
-    // Add all existing nutrients to the cache
-    allNutrients.forEach(nutrient => {
-      if (!nutrientLookupCache[nutrient.name.toLowerCase()]) {
-        nutrientLookupCache[nutrient.name.toLowerCase()] = nutrient._id;
-      }
-    });
-
-    // Check for existing ingredients
-    const newIngredientsData = await Promise.all(
-      ingredientsData.map(async (ingredient) => {
-        const existingIngredient = await Ingredient.findOne({
-          $or: [
-            { user: userId },
-            { source: 'global' }
-          ],
+    // --- STEP 3: FILTER AGAINST EXISTING DATABASE ENTRIES ---
+    const finalNewIngredients = await Promise.all(
+      uniqueIncomingData.map(async (ingredient) => {
+        const existing = await Ingredient.findOne({
+          $or: [{ user: userId }, { source: 'global' }],
           name: { $regex: new RegExp('^' + escapeRegex(ingredient.name) + '$', 'i') }
         });
-
-        return existingIngredient ? null : ingredient;
+        return existing ? null : ingredient;
       })
-    ).then(results => results.filter(result => result !== null));
+    ).then(results => results.filter(res => res !== null));
 
-    // Process all new ingredients using the cache
-    const processedIngredients = newIngredientsData.map(ingredient => {
-      // Create a map of provided nutrient values by name (lowercase for case-insensitivity)
-      const providedNutrients = {};
-      ingredient.nutrients.forEach(nutrientData => {
-        providedNutrients[nutrientData.nutrient.trim().toLowerCase()] = nutrientData.value;
+    // --- STEP 4: BUILD FINAL OBJECTS INCLUDING IMAGES ---
+    const processedIngredients = finalNewIngredients.map(ingredient => {
+      const providedValues = {};
+      ingredient.nutrients.forEach(nut => {
+        const nameKey = (nut.nutrient || "").trim().toLowerCase(); 
+        providedValues[nameKey] = nut.value;
       });
 
-      // Process each nutrient, including all existing ones
-      const processedNutrients = allNutrients.map(nutrient => {
-        const nutrientNameLower = nutrient.name.toLowerCase();
-        return {
-          nutrient: nutrient._id,
-          // Use provided value if it exists, otherwise default to 0
-          value: providedNutrients[nutrientNameLower] !== undefined
-            ? providedNutrients[nutrientNameLower]
-            : 0
-        };
-      });
+      const processedNutrients = allNutrients.map(nut => ({
+        nutrient: nut._id,
+        value: providedValues[nut.name.toLowerCase()] ?? 0
+      }));
 
-      // Create the ingredient with ALL nutrients
       return {
         name: ingredient.name,
-        price: ingredient.price,
-        available: ingredient.available || 1,
-        group: '',
-        source: ingredient.source || 'user',
+        price: ingredient.price || 10,
+        available: 1,
+        group: type || ingredient.category || '',
+        description: ingredient.description || '', // Added description support
         user: userId,
-        nutrients: processedNutrients
+        source: 'user',
+        nutrients: processedNutrients,
+        // --- IMAGE STORAGE ADDED HERE ---
+        image: {
+          url: ingredient.image?.url || '',
+          public_id: ingredient.image?.public_id || ''
+        }
       };
     });
 
-    // Insert all processed new ingredients
     const newIngredients = await Ingredient.insertMany(processedIngredients);
 
     res.status(200).json({
       message: 'success',
       ingredients: newIngredients,
-      skippedIngredients: ingredientsData.length - newIngredients.length
+      skipped: ingredientsData.length - newIngredients.length
     });
   } catch (err) {
-    console.log("err heree: ", err)
-    res.status(500).json({ error: err.message, message: 'error' });
+    console.error("Import Error: ", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
@@ -488,4 +563,5 @@ export {
   updateIngredient,
   deleteIngredient,
   importIngredient,
+  getIngredientsByIds,
 };

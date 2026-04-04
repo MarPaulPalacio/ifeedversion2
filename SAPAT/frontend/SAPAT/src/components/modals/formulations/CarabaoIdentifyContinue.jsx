@@ -98,21 +98,6 @@ function CarabaoIdentifyContinue({
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsDisabled(true)
-
-    
-    
-    // client-side validation
-    // if (
-    //   formulations.some(
-    //     (formulation) =>
-    //       formulation.code.toLowerCase() === formData.code.toLowerCase()
-    //   )
-    // ) {
-    //   setCodeError('Code already exists ')
-    //   setNameError('')
-    //   setIsDisabled(false)
-    //   return
-    // } else 
       
       if (
       formulations.some(
@@ -131,12 +116,14 @@ function CarabaoIdentifyContinue({
     try {
       let bodynutrient_constraints = []
       let nutrients = []
+      let dmintake = 0;
 
 
-        function nutrientsToConstraintFormat(bodynutrient_constraints, formData) {
+        function nutrientsToConstraintFormat(bodynutrient_constraints, formData, drymatterintake, dmNutrient) {
             const nutrients = bodynutrient_constraints.map(nc => {
+              console.log("Nutrient Constraint:", nc)
               const constraint_percent = 0.20;
-              
+
               let minimumvalue = 0;
               let maximumvalue = 10000;
 
@@ -150,11 +137,11 @@ function CarabaoIdentifyContinue({
                   minimumvalue = minimumvalue * 1.30;
                   maximumvalue = maximumvalue * 1.30;
                 }
-                if (nc.name === 'Total Digestible Nutrients' && formData.is_pregnant === true){
+                if (nc.name === 'Total Digestible Nutrients' && formData.months_pregnant !="Not Pregnant"){
                   minimumvalue = minimumvalue * 1.25;
                   maximumvalue = maximumvalue * 1.25;
                 }
-                if (nc.name === 'Crude Protein' && formData.is_pregnant === true){
+                if (nc.name === 'Crude Protein' && formData.months_pregnant !== "Not Pregnant"){
                   minimumvalue = minimumvalue * 1.50;
                   maximumvalue = maximumvalue * 1.50;
                 }
@@ -162,7 +149,22 @@ function CarabaoIdentifyContinue({
                   minimumvalue = minimumvalue * 1.25;
                   maximumvalue = maximumvalue * 1.25;
                 }
-              } 
+
+              } else if (formData.animal_group === 'Heifer | Dumalaga') {
+                if (formData.months_pregnant && formData.months_pregnant >= 7) {
+                  // 3rd Trimester
+                  minimumvalue = minimumvalue * 1.30;
+                  maximumvalue = maximumvalue * 1.30;
+                }
+                if (nc.name === 'Total Digestible Nutrients' && formData.months_pregnant !="Not Pregnant"){
+                  minimumvalue = minimumvalue * 1.25;
+                  maximumvalue = maximumvalue * 1.25;
+                }
+                if (nc.name === 'Crude Protein' && formData.months_pregnant !== "Not Pregnant"){
+                  minimumvalue = minimumvalue * 1.50;
+                  maximumvalue = maximumvalue * 1.50;
+                }
+              }
               return {
                 nutrient_id: nc.nutrientid,
                 _id: nc._id,
@@ -173,11 +175,21 @@ function CarabaoIdentifyContinue({
                 maximum:maximumvalue,
                 // minimum: 0,
                 // maximum:10000,
-                value: nc.value
+                value: nc.value,
+                unit: nc.unit
               }
             });
-          return nutrients;
+
+            console.log("Nutrients after mapping constraints:", dmNutrient)
+            const nutrientWithDryMatter = 
+            nutrients.find(n => n.name === 'Dry Matter') 
+              ? nutrients 
+              : [...nutrients, { nutrient_id: dmNutrient._id, _id: dmNutrient._id, name: 'Dry Matter', minimum: drymatterintake * 0.8 * 1000, maximum: drymatterintake * 1.2 * 1000, value: 0, unit: '%' }]
+            return nutrientWithDryMatter;
+            // return nutrients;
         }
+      
+
       
       function cowWeight(weight) {
         const weights = [350, 400, 450, 500, 550, 600, 650, 700, 750, 800];
@@ -186,6 +198,7 @@ function CarabaoIdentifyContinue({
         return weights.reduce((prev, curr) => Math.abs(curr - weight) < Math.abs(prev - weight) ? curr : prev);
       }
 
+      
       
       // Fetch body nutrient constraints if animal group is Cow and body weight is provided
       if (formData.animal_group === 'Cow | Inahing kalabaw' && formData.body_weight) {
@@ -196,13 +209,46 @@ function CarabaoIdentifyContinue({
         });
 
         bodynutrient_constraints = res.data.formulation.nutrientrequirement;
+
+        const drymatterintake = res.data.formulation.intake ? (res.data.formulation.intake*formData.body_weight) : 0;
         // console.log("BNC:", bodynutrient_constraints)
-        nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData);
         
+        dmintake = res.data.formulation.intake ? (res.data.formulation.intake*formData.body_weight) : 0;
+
+        const nutrientRes = await axios.get(`${import.meta.env.VITE_API_URL}/nutrient/filtered/${ownerId}`);
+
+        console.log("Nutrient Response:", nutrientRes.data.nutrients)
+       
+        const dmNutrient = nutrientRes.data.nutrients.find(n => n.name === 'Dry Matter' || n.abbreviation === 'DM');
+
+        nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, drymatterintake, dmNutrient);
+      } else {
+        console.log("Animal group is not Cow or body weight is missing, skipping body nutrient constraint fetch.")
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/carabao`, {
+          params: { weight: cowWeight(formData.body_weight), adg: formData.average_daily_gain},
+        });
+
+        bodynutrient_constraints = res.data.formulation.nutrientrequirement;
+
+        const drymatterintake = res.data.formulation.intake ? (res.data.formulation.intake*formData.body_weight) : 0;
+        // console.log("BNC:", bodynutrient_constraints)
+        
+        dmintake = res.data.formulation.intake ? (res.data.formulation.intake*formData.body_weight) : 0;
+
+        const nutrientRes = await axios.get(`${import.meta.env.VITE_API_URL}/nutrient/filtered/${ownerId}`);
+
+        console.log("Nutrient Response:", nutrientRes.data.nutrients)
+       
+        const dmNutrient = nutrientRes.data.nutrients.find(n => n.name === 'Dry Matter' || n.abbreviation === 'DM');
+
+        nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, drymatterintake, dmNutrient);
+
       }
 
       
+
       
+      const milkyield = formData.milk_yield ? parseFloat(formData.milk_yield) : 0;
       if (carabaoConfiguration.multipleCarabaos=== true && carabaoConfiguration.temporaryNameArray!==null && carabaoConfiguration.temporaryNameArray.length !==0 && identifyCurrentCarabaoPhase()!==null && carabaoConfiguration.sameConfigTypeArray.includes(identifyCurrentCarabaoPhase()[1])){
         await Promise.all(
           carabaoConfiguration.temporaryNameArray.map(async (element) => {
@@ -210,7 +256,8 @@ function CarabaoIdentifyContinue({
               ...formData,
               name: element,
             };
-            const body = { ...updatedFormData, ownerId, ownerName, userType, bodynutrient_constraints, nutrients };
+            console.log("Form Data for multiple carabaos:", nutrients)
+            const body = { ...updatedFormData, dmintake, ownerId, ownerName, userType, bodynutrient_constraints, nutrients, milkyield};
             console.log("Data before posting", formData)
             const res = await axios.post(`${import.meta.env.VITE_API_URL}/formulation`, body);
             let newFormulation = res.data.formulations;
@@ -220,42 +267,14 @@ function CarabaoIdentifyContinue({
         );
         carabaoConfiguration.currentCarabaoCreation += carabaoConfiguration.carabaoPhases[identifyCurrentCarabaoPhase()[1]]
       } else {
-        
-        
-        const body = { ...formData, ownerId, ownerName, userType, bodynutrient_constraints, nutrients};
+        console.log("Form Data for single carabao:", formData)
+        const body = { ...formData, dmintake, ownerId, ownerName, userType, bodynutrient_constraints, nutrients, milkyield};
         const res = await axios.post(`${import.meta.env.VITE_API_URL}/formulation`, body);
         let newFormulation = res.data.formulations
         newFormulation.access = 'owner'
         onResult(newFormulation, 'success', 'Successfully created formulation.', carabaoConfiguration, setCarabaoConfiguration)
       }
-      
 
-      // If a template is selected, clone its dependencies
-      // if (selectedTemplate && selectedTemplate.id && selectedTemplate.id !== 0) {
-      //   try {
-      //     setIsDisabled(true)
-      //     const cloneRes = await axios.post(
-      //       `${import.meta.env.VITE_API_URL}/formulation/${newFormulation._id}/clone-template`,
-      //       {
-      //         templateId: selectedTemplate.id,
-      //         userId: ownerId
-      //       }
-      //     )
-      //     if (cloneRes.data && cloneRes.data.formulations) {
-      //       newFormulation = cloneRes.data.formulations
-      //     }
-      //   } catch (cloneErr) {
-      //     console.error(cloneErr)
-      //     onResult(null, 'error', 'Failed to clone template dependencies.')
-      //     setIsDisabled(false)
-      //     return
-      //   }
-      // }
-
-      
-      
-      
-      // Reset form
 
     } catch (err) {
       console.log(err)
@@ -275,7 +294,7 @@ function CarabaoIdentifyContinue({
         average_daily_gain: '',
         milk_price: '',
         milk_yield: '',
-        fat_protein_content: '',
+        fat_protein_content: ''
       })
       if (identifyCurrentCarabaoPhase()!==null && carabaoConfiguration.currentCarabaoCreation != carabaoConfiguration.numberofCarabaos && carabaoConfiguration.multipleCarabaos===true){
         const carabaoType = identifyCurrentCarabaoPhase()[1]
@@ -369,55 +388,56 @@ function CarabaoIdentifyContinue({
                 </div>
                 )}
                 
-                <div className={`form-control w-full space-x-5 ${formData.is_pregnant ? '' : 'md:mt-5'}`}>
-                  <input 
-                    type="checkbox"
-                    name="is_pregnant"
-                    checked={formData.is_pregnant}
-                    disabled={isDisabled}
-                    onChange={handleCheckBoxChange}
-                    className='checkbox mb-2'
-                  />
-                  <label className={`label whitespace-normal`}>
-                    <span className="label-text">Is Pregnant (Buntis?)</span>
-                  </label>
-                  {formData.is_pregnant ===true && (
-                    <div>
-                      <input
-                          type="number"
-                          name="months_pregnant"
-                          value={formData.months_pregnant}
-                          required
-                          disabled={isDisabled}
-                          onChange={handleChange}
-                          placeholder="Enter Months Pregnant"
-                          className={`input input-bordered w-full rounded-xl ${monthsPregnantError ? 'border-red-500' : ''}`}
-                      />
-                    </div>
-                  )}
-                  
-                </div>
+                <div className='form-control w-full space-x-5 md:pt-0 pt-0'>
+                    <label className="label whitespace-normal">
+                      <span className="label-text">Is Pregnant (Buntis?)</span>
+                    </label>
+                    <select
+                      name="months_pregnant"
+                      value={formData.months_pregnant || "Not Pregnant"}
+                      disabled={isDisabled}
+                      onChange={handleChange}
+                      className={`select select-bordered w-full rounded-xl ${monthsPregnantError ? 'border-red-500' : ''}`}
+                    >
+                      <option value="Not Pregnant">Not Pregnant (Hindi Buntis)</option>
+                      <option value="1">1-8 Months</option>
+                      <option value="9">9-11 Months</option>
+                    </select>
+                  </div>
                 
                 
                 
               </>
             )}
 
-            { formData.animal_group !== "" && formData.animal_group !== "Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" && (
+            { formData.animal_group !== "" && formData.animal_group !== "Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" && 
+            formData.animal_group !== "Cow | Inahing kalabaw" && (
               <div className='form-control w-full'>
+  
                 <label className="label whitespace-normal">
-                  <span className="label-text">Average Daily Gain (in kg)</span>
+                  <span className="label-text font-medium">Average Daily Gain (in kg)</span>
                 </label>
-                <input
-                  type="number"
+                <select
                   name="average_daily_gain"
                   value={formData.average_daily_gain}
                   required
                   disabled={isDisabled}
                   onChange={handleChange}
-                  placeholder="Enter average daily gain"
-                  className={`input input-bordered w-full rounded-xl ${averageDailyGainError ? 'border-red-500' : ''}`}
-              />
+                  className={`select select-bordered w-full rounded-xl ${averageDailyGainError ? 'border-red-500' : ''}`}
+                >
+                  <option value="" disabled>Select Average Daily Gain</option>
+                  <option value="0">0 kg (Maintenance)</option>
+                  <option value="0.25">0.25 kg</option>
+                  <option value="0.5">0.50 kg</option>
+                  <option value="0.75">0.75 kg</option>
+                  <option value="1">1 kg</option>
+                </select>
+                {averageDailyGainError && (
+                  <label className="label">
+                    <span className="label-text-alt text-red-500">Please select a gain value.</span>
+                  </label>
+                )}
+
               {averageDailyGainError && (
                 <p className="mt-1 text-sm text-red-500" role="alert">
                   {averageDailyGainError}
@@ -495,7 +515,7 @@ function CarabaoIdentifyContinue({
             )}
 
             {/* Template Combobox - only show if userType is not 'admin' */}
-            {userType !== 'admin' && (
+            {/* {userType !== 'admin' && (
               <div className="form-control w-full">
                 <label className="label whitespace-normal">
                   <span className="label-text">Use Group Template (Optional)</span>
@@ -539,7 +559,7 @@ function CarabaoIdentifyContinue({
                   </div>
                 </Combobox>
               </div>
-            )}
+            )} */}
 
             
           </div>

@@ -13,13 +13,30 @@ function EditFormulationModal({
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    animal_group: '',
     description: '',
+    animal_group: '',
+    is_lactating: '',
+    is_pregnant: false,
+    body_weight: '',
+    average_daily_gain: '',
+    milk_price: '',
+    milk_yield: '',
+    fat_content: '',
+    months_pregnant: 0,
+    milkYieldProgress: [],
+
   })
 
   const [isDisabled, setIsDisabled] = useState(false)
-  const [codeError, setCodeError] = useState('')
   const [nameError, setNameError] = useState('')
+  const [codeError, setCodeError] = useState('')
+  // ... other error states kept for your logic consistency
+  const [bodyWeightError] = useState('')
+  const [averageDailyGainError] = useState('')
+  const [milkYieldError] = useState('')
+  const [fatProteinContentError] = useState('')
+  const [milkPriceError] = useState('')
+  const [monthsPregnantError] = useState('')
 
   useEffect(() => {
     if (formulation) {
@@ -27,198 +44,213 @@ function EditFormulationModal({
     }
   }, [formulation])
 
+  useEffect(() => {
+    console.log("FORMULATION USED HERE FOR EDITING", formulation)
+  }, [])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsDisabled(true)
 
-    // client-side validation
-    if (
-      formulations
+    if (formulations && formulations.length > 0) {
+      const isDuplicate = formulations
         .filter((f) => f.name !== formulation.name)
-        .some(
-          (formulation) =>
-            formulation.code.toLowerCase() === formData.code.toLowerCase()
-        )
-    ) {
-      setCodeError('Code already exists ')
-      setNameError('')
-      setIsDisabled(false)
-      return
-    } else if (
-      formulations
-        .filter((f) => f.name !== formulation.name)
-        .some(
-          (formulation) =>
-            formulation.name.toLowerCase() === formData.name.toLowerCase()
-        )
-    ) {
-      setNameError('Name already exists')
-      setCodeError('')
-      setIsDisabled(false)
-      return
-    } else {
-      setNameError('')
+        .some((f) => f.name.toLowerCase() === formData.name.toLowerCase())
+
+      if (isDuplicate) {
+        setNameError('Name already exists')
+        setIsDisabled(false)
+        return
+      }
     }
+
+    setNameError('')
+
     try {
-      const { _id, ...body } = formData
-      const res = await axios.put(
-        `${import.meta.env.VITE_API_URL}/formulation/${_id}`,
-        body
-      )
-      const formulationData = res.data.formulations
-      const messageData = res.data.message
+      let bodynutrient_constraints = []
+      let nutrients = []
+
+      // Helper functions retained from your original logic
+      const nutrientsToConstraintFormat = (bnc, data) => {
+        return bnc.map((nc) => {
+          const constraint_percent = 0.2
+          let min = nc.constraintvalue - nc.constraintvalue * constraint_percent
+          let max = nc.constraintvalue + nc.constraintvalue * constraint_percent
+
+          if (data.animal_group === 'Cow | Inahing kalabaw') {
+            if (data.months_pregnant >= 7) { min *= 1.3; max *= 1.3 }
+            if (nc.name === 'Total Digestible Nutrients' && data.is_pregnant) { min *= 1.25; max *= 1.25 }
+            if (nc.name === 'Crude Protein' && data.is_pregnant) { min *= 1.5; max *= 1.5 }
+            if (nc.is_lactating === 'Early Lactation (1-100 Days)') { min *= 1.25; max *= 1.25 }
+           
+          }
+          return {
+            nutrient_id: nc.nutrientid,
+            _id: nc._id,
+            name: nc.name,
+            minimum: min,
+            maximum: max,
+            value: nc.value,
+          }
+        })
+      }
+
+      const cowWeight = (weight) => {
+        const weights = [350, 400, 450, 500, 550, 600, 650, 700, 750, 800]
+        if (weight < 350) return 350
+        if (weight > 800) return 800
+        return weights.reduce((prev, curr) => Math.abs(curr - weight) < Math.abs(prev - weight) ? curr : prev)
+      }
+
+      if (formData.animal_group === 'Cow | Inahing kalabaw' && formData.body_weight) {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/cow`, {
+          params: { weight: cowWeight(formData.body_weight) },
+        })
+        bodynutrient_constraints = res.data.formulation.nutrientrequirement
+        nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData)
+      }
+
+      const body = { ...formData, bodynutrient_constraints, nutrients }
+      const res = await axios.put(`${import.meta.env.VITE_API_URL}/formulation/${formulation._id}`, body)
+
       onResult(
-        formulationData,
-        messageData,
-        messageData === 'success'
-          ? 'Successfully updated formulation.'
-          : 'Failed to update formulation.'
+        res.data.formulations,
+        res.data.message,
+        res.data.message === 'success' ? 'Successfully updated formulation.' : 'Failed to update formulation.'
       )
     } catch (err) {
       console.log(err)
     } finally {
       setIsDisabled(false)
-      setCodeError('')
-      setNameError('')
+      // Resetting exactly as your original code did
+      setFormData({
+        code: '', name: '', description: '', animal_group: '', is_lactating: '',
+        is_pregnant: false, weight: '', average_daily_gain: '', milk_price: '',
+        milk_yield: '', fat_content: '', months_pregnant: 0, body_weight: 0, pregnant_phase:0
+      })
     }
   }
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleCheckBoxChange = (e) => {
+    const { name, checked } = e.target
+    setFormData((prev) => ({ ...prev, [name]: checked }))
   }
 
   return (
-    <dialog
-      id="edit_formulation_modal"
-      className={`modal ${isOpen ? 'modal-open' : ''}`}
-    >
-      <div className='text-5xl'>
-        BIG HELLO
-      </div>
-      <div className="modal-box relative mt-[64px] w-11/12 max-w-2xl rounded-3xl bg-white md:mt-0">
-        {/* Close button */}
-        <button
-          className="btn btn-sm btn-circle absolute top-4 right-4"
-          onClick={onClose}
-        >
-          <RiCloseLine className="h-5 w-5" />
-        </button>
+    <dialog id="edit_formulation_modal" className={`modal ${isOpen ? 'modal-open' : ''}`}>
+      <div className="modal-box relative w-11/12 max-w-4xl rounded-3xl bg-white p-0 overflow-hidden">
+        
+        {/* Header - Fixed to reduce vertical jumping */}
+        <div className="p-6 pb-2">
+          <button className="btn btn-sm btn-circle absolute top-4 right-4" onClick={onClose}>
+            <RiCloseLine className="h-5 w-5" />
+          </button>
+          <h3 className="text-[#4A3728] mb-1 text-lg font-bold">Update Formulation</h3>
+          <p className="flex text-sm text-gray-500 items-center gap-1">
+            <Info /> Modify basic details of your feed formulation.
+          </p>
+        </div>
 
-        <h3 className="text-deepbrown mb-1 text-lg font-bold">
-          Edit Formulation
-        </h3>
-        <p className="mb-8 flex text-sm text-gray-500">
-          <Info />
-          Modify basic details of your feed formulation.
-        </p>
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[70vh]">
+          {/* Scrollable middle section to keep modal small on big screens */}
+          <div className="overflow-y-auto p-6 pt-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Code</span></label>
+                <input type="text" name="code" value={formData.code} required disabled={isDisabled} onChange={handleChange} className={`input input-bordered w-full rounded-xl ${codeError ? 'border-red-500' : ''}`} />
+              </div>
 
-        {/* Form fields */}
-        <form onSubmit={handleSubmit}>
-          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Code</span>
-              </label>
-              <input
-                type="text"
-                name="code"
-                value={formData.code}
-                required
-                disabled={isDisabled}
-                onChange={handleChange}
-                placeholder="Enter code"
-                className={`input input-bordered w-full rounded-xl ${codeError ? 'border-red-500' : ''}`}
-              />
-              {codeError && (
-                <p className="mt-1 text-sm text-red-500" role="alert">
-                  {codeError}
-                </p>
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Name</span></label>
+                <input type="text" name="name" value={formData.name} required disabled={isDisabled} onChange={handleChange} className={`input input-bordered w-full rounded-xl ${nameError ? 'border-red-500' : ''}`} />
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Animal Group</span></label>
+                <select name="animal_group" value={formData.animal_group} required disabled={isDisabled} onChange={handleChange} className="select select-bordered w-full rounded-xl">
+                  <option value="Heifer | Dumalaga">Heifer | Dumalaga</option>
+                  <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">Calf (0-4 months)</option>
+                  <option value="Growing Calves (5-12 months) | Lumalaking bula">Growing Calves</option>
+                  <option value="Junior Bull | Lumalaking bulugan">Junior Bull</option>
+                  <option value="Cow | Inahing kalabaw">Cow | Inahing kalabaw</option>
+                  <option value="Senior Bull | Bulugan">Senior Bull</option>
+                </select>
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Body Weight (kg)</span></label>
+                <input type="number" name="body_weight" value={formData.body_weight} required disabled={isDisabled} onChange={handleChange} className={`input input-bordered w-full rounded-xl ${bodyWeightError ? 'border-red-500' : ''}`} />
+              </div>
+
+              {formData.animal_group !== "Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" || formData.animal_group !== "Cow | Inahing kalabaw" && (
+                <div className="form-control w-full">
+                  <label className="label"><span className="label-text">Avg Daily Gain (kg)</span></label>
+                  <input type="number" name="average_daily_gain" value={formData.average_daily_gain} required disabled={isDisabled} onChange={handleChange} className="input input-bordered w-full rounded-xl" />
+                </div>
               )}
-            </div>
 
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Name</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                required
-                disabled={isDisabled}
-                onChange={handleChange}
-                placeholder="Enter name"
-                className={`input input-bordered w-full rounded-xl ${nameError ? 'border-red-500' : ''}`}
-              />
-              {nameError && (
-                <p className="mt-1 text-sm text-red-500" role="alert">
-                  {nameError}
-                </p>
+              {formData.animal_group === 'Cow | Inahing kalabaw' && (
+                <div className="form-control w-full">
+                  <label className="label"><span className="label-text">Lactation Stage</span></label>
+                  <select name="is_lactating" value={formData.is_lactating} onChange={handleChange} className="select select-bordered w-full rounded-xl">
+                    <option value="Not Lactating">Dry (Not Lactating)</option>
+                    <option value="Early Lactation (1-100 Days)">Early (1-100 Days)</option>
+                    <option value="Mid Lactation (101-200 Days)">Mid (101-200 Days)</option>
+                    <option value="Late Lactation (201-305 Days)">Late (201-305 Days)</option>
+                  </select>
+                </div>
               )}
-            </div>
 
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">Animal Group</span>
-              </label>
-              <select
-                name="animal_group"
-                value={formData.animal_group}
-                disabled={isDisabled}
-                onChange={handleChange}
-                className="select select-bordered w-full rounded-xl"
-              >
-                <option value="" disabled>
-                  Select group
-                </option>
-                <option value="Fish">Fish</option>
-                <option value="Swine">Swine</option>
-                <option value="Poultry">Poultry</option>
-                <option value="Water Buffalo">Water Buffalo</option>
-              </select>
-            </div>
+              {(formData.animal_group === 'Cow | Inahing kalabaw' || formData.animal_group === 'Heifer | Dumalaga') && (
+                <div className="form-control w-full flex flex-row items-center gap-3 pt-8">
+                  <input type="checkbox" name="is_pregnant" checked={formData.is_pregnant} onChange={handleCheckBoxChange} className="checkbox checkbox-warning" />
+                  <label className="label p-0"><span className="label-text">Pregnant?</span></label>
+                  {formData.is_pregnant && (
+                    <input type="number" name="pregnant_phase" value={formData.pregnant_phase} onChange={handleChange} className="input input-bordered input-sm w-20 rounded-lg" placeholder="Mo." />
+                  )}
+                </div>
+              )}
 
-            <div className="form-control w-full md:col-span-2">
-              <label className="label">
-                <span className="label-text">Description</span>
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                disabled={isDisabled}
-                onChange={handleChange}
-                placeholder="Enter description"
-                className="textarea textarea-bordered w-full rounded-xl"
-                rows="3"
-                maxLength="60"
-              ></textarea>
+              {formData.animal_group === "Cow | Inahing kalabaw" && (
+                <>
+                  <div className="form-control w-full">
+                    <label className="label"><span className="label-text">Milk Yield (kg)</span></label>
+                    <input type="number" name="milkYieldProgress" value={formData.milkYieldProgress[formData.milkYieldProgress.length-1]} onChange={handleChange} className="input input-bordered w-full rounded-xl" />
+                  </div>
+                  <div className="form-control w-full">
+                    <label className="label"><span className="label-text">Fat/Protein %</span></label>
+                    <input type="number" name="fat_content" value={formData.fat_content} onChange={handleChange} className="input input-bordered w-full rounded-xl" />
+                  </div>
+                  <div className="form-control w-full">
+                    <label className="label"><span className="label-text">Milk Price (Php)</span></label>
+                    <input type="number" name="milk_price" value={formData.milk_price} onChange={handleChange} className="input input-bordered w-full rounded-xl" />
+                  </div>
+                </>
+              )}
+
+              <div className="form-control w-full md:col-span-2 lg:col-span-3">
+                <label className="label"><span className="label-text">Description</span></label>
+                <textarea name="description" value={formData.description} onChange={handleChange} className="textarea textarea-bordered w-full rounded-xl" rows="2" maxLength="60"></textarea>
+              </div>
             </div>
           </div>
-          {/* Modal actions */}
-          <div className="modal-action">
-            <button
-              type="button"
-              className="btn rounded-xl px-8"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className={`btn rounded-xl bg-amber-500 ${isDisabled ? 'disabled bg-red-100' : 'hover:bg-amber-600'} px-8 text-white`}
-            >
-              {`${isDisabled ? 'Updating...' : 'Update'}`}
+
+          {/* Footer Actions - Fixed with Amber Theme */}
+          <div className="modal-action p-6 pt-2 bg-white border-t">
+            <button type="button" className="btn rounded-xl px-8" onClick={onClose}>Cancel</button>
+            <button type="submit" className={`btn rounded-xl bg-amber-500 hover:bg-amber-600 px-8 text-white border-none ${isDisabled ? 'bg-amber-200' : ''}`} disabled={isDisabled}>
+              {isDisabled ? 'Updating...' : 'Update'}
             </button>
           </div>
         </form>
       </div>
-      <form method="dialog" className="modal-backdrop">
-        <button onClick={onClose}>close</button>
-      </form>
+      <form method="dialog" className="modal-backdrop"><button onClick={onClose}>close</button></form>
     </dialog>
   )
 }

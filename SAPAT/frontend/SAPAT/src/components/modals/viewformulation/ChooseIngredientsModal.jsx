@@ -9,7 +9,6 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
   // Update filtered ingredients whenever search term or ingredients list changes
   
   const ingredientFilterMachine = () => {
-    console.log("INGREDIENTSsasd:", ingredients)
     let filtered = []
     if (groupFilter.length === 0) {
       filtered = ingredients
@@ -21,21 +20,18 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
           groupFilter.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
       )
     }
-
     
-    
-
     if (!searchTerm.trim()) {
       setFilteredIngredients(filtered)
     } else {
       const term = searchTerm.toLowerCase().trim()
-      const filtered = filtered.filter(
+      const filtered2 = filtered.filter(
         (ingredient) =>
           ingredient.name.toLowerCase().includes(term) ||
           (ingredient.group && ingredient.group.toLowerCase().includes(term))
       )
-      setFilteredIngredients(filtered)
-      
+      console.log("Filtered2 here:", filtered2)
+      setFilteredIngredients(filtered2)
     }
   }
   useEffect(() => {
@@ -77,7 +73,7 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
     } else {
       setCheckedIngredients([
         ...checkedIngredients,
-        { ingredient_id: id, name: ingredient.name },
+        { ingredient_id: id, name: ingredient.name, group: ingredient.group },
       ])
     }
   }
@@ -88,7 +84,7 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
     if (e.target.checked) {
       setCheckedIngredients([
         ...checkedIngredients,
-        { ingredient_id: id, name: ingredient.name },
+        { ingredient_id: id, name: ingredient.name, group: ingredient.group },
       ])
     } else {
       setCheckedIngredients(
@@ -115,7 +111,7 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
       filteredIngredients.forEach((ingredient) => {
         const id = ingredient.ingredient_id ?? ingredient._id
         if (!newChecked.some((item) => item.ingredient_id === id)) {
-          newChecked.push({ ingredient_id: id, name: ingredient.name })
+          newChecked.push({ ingredient_id: id, name: ingredient.name, group: ingredient.group })
         }
       })
       setCheckedIngredients(newChecked)
@@ -136,8 +132,8 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
       id="choose_ingredients_modal"
       className={`modal ${isOpen ? 'modal-open' : ''}`}
     >
+      {/* Maintained w-11/12, max-w-3xl, and rounded-3xl */}
       <div className="modal-box relative mt-[64px] w-11/12 max-w-3xl rounded-3xl bg-white md:mt-0">
-        {/* Close button */}
         <button
           className="btn btn-sm btn-circle absolute top-4 right-4"
           onClick={onClose}
@@ -150,7 +146,6 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
         </h3>
         <p className="mb-4 text-sm text-gray-500">Description</p>
 
-        {/* Search input */}
         <div className="relative mb-4">
           <div className="relative">
             <RiSearchLine className="absolute top-1/2 left-3 -translate-y-1/2 transform text-gray-400" />
@@ -172,23 +167,25 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
           </div>
         </div>
 
-        {/* Ingredients table */}
         <form onSubmit={handleSubmit}>
-          <div className="max-h-64 overflow-hidden overflow-y-auto rounded-2xl border border-gray-200">
-            <table className="table-pin-rows table w-full">
+          {/* Added 'max-h-64' for desktop but 'max-h-[40vh]' for mobile to prevent cutoff */}
+          <div className="max-h-[40vh] md:max-h-64 overflow-y-auto rounded-2xl border border-gray-200">
+            {/* Added 'table-xs' on mobile to make the rows tighter */}
+            <table className="table table-xs md:table-md table-pin-rows w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th>
+                  <th className="bg-gray-50">
                     <input
                       type="checkbox"
                       checked={isAllChecked && filteredIngredients.length > 0}
                       onChange={handleSelectAll}
                     />
                   </th>
-                  <th className="font-semibold">Name</th>
-                  <th className="font-semibold">Price</th>
-                  <th className="font-semibold">Available</th>
-                  <th className="font-semibold">Group</th>
+                  <th className="font-semibold bg-gray-50">Name</th>
+                  {/* Hiding non-essential columns on mobile using 'hidden sm:table-cell' */}
+                  <th className="font-semibold bg-gray-50 hidden sm:table-cell">Price</th>
+                  <th className="font-semibold bg-gray-50 hidden md:table-cell">Available</th>
+                  <th className="font-semibold bg-gray-50">Group</th>
                 </tr>
               </thead>
               <tbody>
@@ -218,16 +215,17 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
                           onChange={(e) => handleCheckboxChange(ingredient, e)}
                         />
                       </td>
-                      <td>{ingredient.name}</td>
-                      <td>{ingredient.price}</td>
-                      <td>{ingredient.available}</td>
+                      {/* Truncate name so it doesn't break the layout on small screens */}
+                      <td className="max-w-[120px] md:max-w-none truncate">{ingredient.name}</td>
+                      <td className="hidden sm:table-cell">{ingredient.price}</td>
+                      <td className="hidden md:table-cell">{ingredient.available}</td>
                       <td>{ingredient.group}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan="5" className="py-4 text-center">
-                      No ingredients found. Try another search term.
+                      No ingredients found.
                     </td>
                   </tr>
                 )}
@@ -235,7 +233,6 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
             </table>
           </div>
 
-          {/* Selected count */}
           <div className="mt-4 text-sm text-gray-600">
             {checkedIngredients.length > 0 && (
               <span>
@@ -245,7 +242,6 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
             )}
           </div>
 
-          {/* Modal actions */}
           <div className="modal-action">
             <button
               type="button"
@@ -256,7 +252,7 @@ function ChooseIngredientsModal({ isOpen, onClose, ingredients, onResult, ingred
             </button>
             <button
               type="submit"
-              className="btn bg-green-button rounded-xl px-8 text-white hover:bg-green-600"
+              className="btn bg-green-button rounded-xl px-8 text-white hover:bg-green-600 border-none"
               disabled={checkedIngredients.length === 0}
             >
               Add

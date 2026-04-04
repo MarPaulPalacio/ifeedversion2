@@ -3,10 +3,12 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import UserCustomizationModal from '../modals/formulations/UserCustomizationModal.jsx'
 import { useState } from 'react'
 
-function GenerateReport({ userAccess, formulation, owner, weight, shadowPrices = [] }) {
-  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false)
+function GenerateReport({ userAccess, formulation, owner, weight, shadowPrices = [], isCustomizationModalOpen, setIsCustomizationModalOpen }) {
+  
 
   const handleGenerateReport = async (customization) => {
+
+    console.log("THis is the customization:", customization)
     // Create a new PDFDocument
     const pdfDoc = await PDFDocument.create()
 
@@ -78,7 +80,7 @@ function GenerateReport({ userAccess, formulation, owner, weight, shadowPrices =
 
       // Embed the image in the PDF
       const logoImage = await pdfDoc.embedPng(logoImageData)
-      const logoDims = logoImage.scale(0.075)
+      const logoDims = logoImage.scale(0.010)
 
       // Draw the logo
       page.drawImage(logoImage, {
@@ -101,7 +103,7 @@ function GenerateReport({ userAccess, formulation, owner, weight, shadowPrices =
     }
 
     // Add company name beside logo
-    page.drawText('SAPAT', {
+    page.drawText('iFEED v2', {
       x: margin + 40,
       y: height - margin - 25,
       size: 16,
@@ -694,11 +696,11 @@ function GenerateReport({ userAccess, formulation, owner, weight, shadowPrices =
         <RiFileChartLine /> Generate report
       </button>
 
-      <UserCustomizationModal
+      {/* <UserCustomizationModal
         isOpen={isCustomizationModalOpen}
         onClose={() => setIsCustomizationModalOpen(false)}
         onGenerate={handleGenerateReport}
-      />
+      /> */}
     </div>
   )
 }

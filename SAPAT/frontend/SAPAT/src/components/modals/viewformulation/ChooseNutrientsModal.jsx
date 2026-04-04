@@ -98,7 +98,6 @@ function ChooseNutrientsModal({ isOpen, onClose, nutrients, onResult }) {
       id="choose_nutrients_modal"
       className={`modal ${isOpen ? 'modal-open' : ''}`}
     >
-      
       <div className="modal-box relative mt-[64px] w-11/12 max-w-3xl rounded-3xl bg-white md:mt-0">
         {/* Close button */}
         <button
@@ -137,7 +136,8 @@ function ChooseNutrientsModal({ isOpen, onClose, nutrients, onResult }) {
 
         {/* Nutrients table */}
         <form onSubmit={handleSubmit}>
-          <div className="max-h-64 overflow-y-auto rounded-2xl border border-gray-200">
+          {/* Changed max-height to 40vh for mobile, 64 for desktop */}
+          <div className="max-h-[40vh] md:max-h-64 overflow-y-auto rounded-2xl border border-gray-200">
             <table className="table-pin-rows table w-full">
               <thead className="bg-gray-50">
                 <tr>
@@ -148,10 +148,12 @@ function ChooseNutrientsModal({ isOpen, onClose, nutrients, onResult }) {
                       onChange={handleSelectAll}
                     />
                   </th>
-                  <th className="font-semibold">Abbreviation</th>
-                  <th className="font-semibold">Name</th>
-                  <th className="font-semibold">Unit</th>
-                  <th className="font-semibold">Group</th>
+                  {/* HIDDEN ON MOBILE */}
+                  <th className="font-semibold hidden sm:table-cell text-deepbrown">Abbreviation</th>
+                  <th className="font-semibold text-deepbrown">Name</th>
+                  <th className="font-semibold text-deepbrown">Unit</th>
+                  {/* HIDDEN ON MOBILE */}
+                  <th className="font-semibold hidden md:table-cell text-deepbrown">Group</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,16 +183,19 @@ function ChooseNutrientsModal({ isOpen, onClose, nutrients, onResult }) {
                           onChange={(e) => handleCheckboxChange(nutrient, e)}
                         />
                       </td>
-                      <td>{nutrient.abbreviation}</td>
-                      <td>{nutrient.name}</td>
+                      {/* HIDDEN ON MOBILE */}
+                      <td className="hidden sm:table-cell">{nutrient.abbreviation}</td>
+                      {/* TRUNCATED ON MOBILE TO PREVENT OVERFLOW */}
+                      <td className="max-w-[120px] md:max-w-none truncate">{nutrient.name}</td>
                       <td>{nutrient.unit}</td>
-                      <td>{nutrient.group}</td>
+                      {/* HIDDEN ON MOBILE */}
+                      <td className="hidden md:table-cell">{nutrient.group}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan="5" className="py-4 text-center">
-                      No nutrients found. Try another search term.
+                      No nutrients found.
                     </td>
                   </tr>
                 )}
@@ -219,7 +224,7 @@ function ChooseNutrientsModal({ isOpen, onClose, nutrients, onResult }) {
             </button>
             <button
               type="submit"
-              className="btn bg-green-button rounded-xl px-8 text-white hover:bg-green-600"
+              className="btn bg-green-button rounded-xl px-8 text-white hover:bg-green-600 border-none"
               disabled={checkedNutrients.length === 0}
             >
               Add
@@ -232,6 +237,7 @@ function ChooseNutrientsModal({ isOpen, onClose, nutrients, onResult }) {
       </form>
     </dialog>
   )
+
 }
 
 export default ChooseNutrientsModal

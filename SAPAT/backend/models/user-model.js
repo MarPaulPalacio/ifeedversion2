@@ -22,7 +22,8 @@ const userSchema = new Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  type: String
 });
 
 export default model('User', userSchema);
