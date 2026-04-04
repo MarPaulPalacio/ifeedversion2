@@ -106,18 +106,21 @@ function Table({
                     </p>
                   </div>
                   
-                  {(actions && user?.userType === 'admin' && page !== "groupformulations" || page==="formulations")  && (
+                  {((actions && user?.userType === 'admin' && page !== "groupformulations") || (page==="formulations"))  && (
+
+
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      
                       <button 
                         disabled={row?.access && row?.access !== 'owner'}
-                        className="btn btn-ghost btn-xs text-deepbrown"
+                        className={`btn btn-ghost btn-sm ${row?.access === 'owner' ? 'text-deepbrown' : 'text-gray-300'}`}
                         onClick={() => onEdit(row)}
                       >
                         <RiPencilLine size={16} />
                       </button>
                       <button 
                         disabled={row?.access && row?.access !== 'owner'}
-                        className="btn btn-ghost btn-xs text-red-500"
+                        className={`btn btn-ghost btn-sm ${row?.access === 'owner' ? 'text-deepbrown' : 'text-gray-300'}`}
                         onClick={() => onDelete(row)}
                       >
                         <RiDeleteBinLine size={16} />
@@ -164,7 +167,7 @@ function Table({
             {t(header)}
           </th>
         ))}
-        {actions && user?.userType === "admin" && page !== "groupformulations" && (
+        {((actions && user?.userType === "admin" && page !== "groupformulations") || (actions && page === "formulations")) && (
           <th className="text-deepbrown text-right py-4 pr-6">{t('Actions')}</th>
         )}
       </tr>
@@ -231,19 +234,19 @@ function Table({
                   </td>
                 ))}
 
-              {actions && user?.userType === 'admin' && page !== "groupformulations" && (
+              {((actions && user?.userType === 'admin' && page !== "groupformulations") || (page==="formulations")) && (
                 <td className="py-3 pr-4 text-right">
                   <div className="flex justify-end gap-1">
                     <button
                       disabled={row?.access && row?.access !== 'owner'}
-                      className="btn btn-ghost btn-sm text-deepbrown"
+                      className={`btn btn-ghost btn-sm ${row?.access === 'owner' ? 'text-deepbrown' : 'text-gray-300'}`}
                       onClick={(e) => { e.stopPropagation(); onEdit(row); }}
                     >
                       <RiPencilLine size={18} />
                     </button>
                     <button
                       disabled={row?.access && row?.access !== 'owner'}
-                      className="btn btn-ghost btn-sm text-red-600"
+                      className={`btn btn-ghost btn-sm ${row?.access === 'owner' ? 'text-red-600' : 'text-gray-300'}`}
                       onClick={(e) => { e.stopPropagation(); onDelete(row); }}
                     >
                       <RiDeleteBinLine size={18} />
