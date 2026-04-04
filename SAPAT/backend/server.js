@@ -14,9 +14,12 @@ const app = express();
 app.use(express.json());
 
 const corsOptions = {
-  origin: [process.env.CLIENT_URL], 
+  // Ensure this is a string. Remove the [ ] brackets.
+  origin: process.env.CLIENT_URL || "http://localhost:5173", 
   credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"] // Add OPTIONS for pre-flight
 };
+
 app.use(cors(corsOptions));
 
 const httpServer = createServer(app); // to be able to combine socket and express
@@ -64,6 +67,6 @@ io.on("connection", handleSocket);
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, "0.0.0.0", () => {
+httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on port ${PORT}`);
 });
