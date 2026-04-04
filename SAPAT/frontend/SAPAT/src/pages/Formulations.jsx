@@ -70,8 +70,12 @@ function Formulations() {
       setPaginationInfo(fetchedData.pagination)
 
       const groupRes = await axios.get(
-      `${import.meta.env.VITE_API_URL}/groupformulations/all`
-    );
+        `${import.meta.env.VITE_API_URL}/groupformulations/all`, 
+        {
+          params: { user_id: user?._id }, // Passes ?user_id=64abc... to the URL
+          withCredentials: true          // Essential for your CORS/Session setup
+        }
+      );
       const groupData = groupRes.data;
       setGroupFormulations(groupData.groupFormulations || []);
       setIsLoading(false)

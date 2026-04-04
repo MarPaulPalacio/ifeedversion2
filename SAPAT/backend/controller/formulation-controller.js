@@ -6,6 +6,7 @@ import GroupFormulation from '../models/group-formulation.js';
 import User from '../models/user-model.js';
 import Cow from "../models/cow_nutrient_constraint.js";
 import RegularBuffalo from "../models/regularbuffalo_nutrient_constraint.js";
+import mongoose from 'mongoose';
 
 
 
@@ -937,27 +938,43 @@ const upsertGroupFormulation = async (formulation) => {
 
 const getAllGroupFormulations = async (req, res) => {
   try {
-    // fetch all groups, populate basic formulation info
-    const groups = await GroupFormulation.find()
-      .populate({
-        path: 'formulations',
-        select: 'code name animal_group body_weight fat_content lactating_phase pregnant_phase', // only these fields
-      })
-      .populate({
-        path: 'createdBy',
-        select: 'displayName', // optional: who created the group
-      })
-      .sort({ createdAt: -1 }); // latest first
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ message: 'user_id required' });
+
+    // 1. Convert to ObjectId to avoid casting errors
+    const searchId = new mongoose.Types.ObjectId(user_id);
+
+    // 2. Find Formulations where the user is a collaborator
+    // Note: We use "collaborators.userId" to match your object structure
+    const userFormulations = await Formulation.find({ 
+      "collaborators.userId": searchId 
+    }).select('_id');
+
+    const formIds = userFormulations.map(f => f._id);
+
+    // 3. Find Groups containing those specific formulations
+    const groups = await GroupFormulation.find({
+      formulations: { $in: formIds }
+    })
+    .populate({
+      path: 'formulations',
+      // Optional: If you want to only show the user the formulations they 
+      // actually have access to within a group:
+      match: { "collaborators.userId": searchId },
+      select: 'code name animal_group body_weight fat_content collaborators', 
+    })
+    .populate('createdBy', 'displayName')
+    .sort({ createdAt: -1 });
 
     res.status(200).json({
       message: 'success',
       groupFormulations: groups,
     });
   } catch (err) {
-    console.error('Error fetching group formulations:', err);
+    console.error('Final Query Error:', err);
     res.status(500).json({ message: 'error', error: err.message });
-  };
-}
+  }
+};
 
 const upsertGroupFormulationForUpdate = async (formulation) => {
   const bwCategory = getBodyWeightRange(formulation.body_weight);
