@@ -113,14 +113,14 @@ function Table({
                       
                       <button 
                         disabled={row?.access && row?.access !== 'owner'}
-                        className={`btn btn-ghost btn-sm ${row?.access === 'owner' ? 'text-deepbrown' : 'text-gray-300'}`}
+                        className={`btn btn-ghost btn-sm ${row?.access === 'owner' || page !== "formulations" ? 'text-deepbrown' : 'text-gray-300'}`}
                         onClick={() => onEdit(row)}
                       >
                         <RiPencilLine size={16} />
                       </button>
                       <button 
                         disabled={row?.access && row?.access !== 'owner'}
-                        className={`btn btn-ghost btn-sm ${row?.access === 'owner' ? 'text-deepbrown' : 'text-gray-300'}`}
+                        className={`btn btn-ghost btn-sm ${row?.access === 'owner' || page !== "formulations" ? 'text-deepbrown' : 'text-gray-300'}`}
                         onClick={() => onDelete(row)}
                       >
                         <RiDeleteBinLine size={16} />
@@ -239,14 +239,14 @@ function Table({
                   <div className="flex justify-end gap-1">
                     <button
                       disabled={row?.access && row?.access !== 'owner'}
-                      className={`btn btn-ghost btn-sm ${row?.access === 'owner' ? 'text-deepbrown' : 'text-gray-300'}`}
+                      className={`btn btn-ghost btn-sm ${row?.access === 'owner' || page !== "formulations" ? 'text-deepbrown' : 'text-gray-300'}`}
                       onClick={(e) => { e.stopPropagation(); onEdit(row); }}
                     >
                       <RiPencilLine size={18} />
                     </button>
                     <button
                       disabled={row?.access && row?.access !== 'owner'}
-                      className={`btn btn-ghost btn-sm ${row?.access === 'owner' ? 'text-red-600' : 'text-gray-300'}`}
+                      className={`btn btn-ghost btn-sm ${row?.access === 'owner' || page !== "formulations" ? 'text-red-600' : 'text-gray-300'}`}
                       onClick={(e) => { e.stopPropagation(); onDelete(row); }}
                     >
                       <RiDeleteBinLine size={18} />
