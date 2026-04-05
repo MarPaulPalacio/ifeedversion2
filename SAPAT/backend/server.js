@@ -9,6 +9,7 @@ import handleMongoDB from './config/mongodb.js';
 import passport from './config/auth.js';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
+import mongoose from 'mongoose';
 
 dotenv.config();
 const app = express();
@@ -32,6 +33,20 @@ const io = new Server(httpServer, {
 
 
 handleMongoDB();
+
+// Wait for mongodb to be ready before initializing session store
+// Add error handler for mongodb connection
+mongoose.connection.on('connected', () => {
+  console.log('✅ Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️ Mongoose disconnected from MongoDB');
+});
 
 // auth
 if (process.env.NODE_ENV === 'production') {
@@ -105,12 +120,21 @@ app.get('/auth/google',
 app.get('/auth/google/callback',
   passport.authenticate('google', {
     failureRedirect: `${process.env.CLIENT_URL}`, // TODO: create a login failed page
-    successRedirect: `${process.env.CLIENT_URL}/dashboard`,
     failureMessage: true
   }),
   (req, res) => {
-    console.log('Google OAuth Callback - User authenticated:', req.user);
-    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+    console.log('✅ Google OAuth Callback - User authenticated:', req.user?._id);
+    console.log('Session ID after auth:', req.sessionID);
+    
+    // Force save session before redirecting
+    req.session.save((err) => {
+      if (err) {
+        console.error('❌ Error saving session:', err);
+        return res.redirect(`${process.env.CLIENT_URL}?error=session_save_failed`);
+      }
+      console.log('✅ Session saved successfully');
+      res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+    });
   }
 );
 

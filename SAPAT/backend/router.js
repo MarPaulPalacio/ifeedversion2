@@ -40,13 +40,29 @@ const handleRoutes = (app) => {
     console.log('Session ID:', req.sessionID);
     console.log('Session:', req.session);
     console.log('User:', req.user);
-    console.log('isAuthenticated():', req.isAuthenticated());
+    console.log('req.isAuthenticated():', req.isAuthenticated());
     console.log('=======================');
-    if (req.isAuthenticated()) {
-      console.log('isAuthenticated: User is authenticated');
+    
+    // Check both req.isAuthenticated() and req.user for reliability
+    if (req.isAuthenticated() && req.user) {
+      console.log('✅ User is authenticated');
       return next();
     }
-    console.log('isAuthenticated: User is not authenticated');
+    
+    if (req.user && !req.isAuthenticated()) {
+      console.log('⚠️ User exists but isAuthenticated() is false - attempting fix');
+      // Force set the user again
+      req.login(req.user, (err) => {
+        if (err) {
+          console.error('❌ Error re-logging in user:', err);
+          return res.status(401).json({ error: 'Authentication failed' });
+        }
+        return next();
+      });
+      return;
+    }
+    
+    console.log('❌ User is not authenticated');
     res.status(401).json({ error: 'Not authenticated' });
   };
 
