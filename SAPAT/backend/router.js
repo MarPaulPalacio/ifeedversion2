@@ -55,12 +55,18 @@ const handleRoutes = (app) => {
 
   // Get current user route - with additional fallback methods
   app.get('/api/user', (req, res) => {
-    console.log('===== GET /api/user =====');
+    console.log('\n===== GET /api/user =====');
+    console.log('Timestamp:', new Date().toISOString());
     console.log('Session ID:', req.sessionID);
-    console.log('req.user:', req.user);
-    console.log('req.isAuthenticated():', req.isAuthenticated());
-    console.log('Session data:', req.session?.passport);
-    console.log('========================');
+    console.log('User:', req.user);
+    console.log('isAuthenticated:', req.isAuthenticated());
+    console.log('Request headers:', {
+      cookie: req.headers.cookie ? `${req.headers.cookie.substring(0, 50)}...` : 'NO COOKIE HEADER',
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+    });
+    console.log('Session passport:', req.session?.passport);
+    console.log('========================\n');
     
     // Method 1: Standard passport authentication
     if (req.isAuthenticated() && req.user) {

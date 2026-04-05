@@ -13,9 +13,20 @@ const AuthProvider = ({ children }) => {
     
     const fetchUser = async () => {
       try {
-        console.log('Fetching user from API...')
+        console.log('🔵 Fetching user from API...')
+        console.log('API_URL:', API_URL)
+        
         const res = await fetch(`${API_URL}/api/user`, {
           credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        
+        console.log('📊 Response status:', res.status)
+        console.log('📊 Response headers:', {
+          'content-type': res.headers.get('content-type'),
+          'set-cookie': res.headers.get('set-cookie'),
         })
         
         if (res.ok) {
@@ -25,19 +36,21 @@ const AuthProvider = ({ children }) => {
           setLoading(false)
           return true
         } else {
+          const errorText = await res.text()
+          console.log('❌ API returned error:', res.status, errorText)
           throw new Error(`API returned ${res.status}`)
         }
       } catch (err) {
-        console.error('Fetch user error (attempt ' + (retryCount + 1) + '):', err)
+        console.error('❌ Fetch user error (attempt ' + (retryCount + 1) + '):', err.message)
         retryCount++
         
         // Retry with delay if we haven't exceeded max retries
         if (retryCount < maxRetries) {
-          console.log(`Retrying in 500ms... (${retryCount}/${maxRetries})`)
-          setTimeout(fetchUser, 500)
+          console.log(`⏳ Retrying in 1000ms... (${retryCount}/${maxRetries})`)
+          setTimeout(fetchUser, 1000)
         } else {
           // Max retries exceeded
-          console.log('Max retries exceeded, user not authenticated')
+          console.log('❌ Max retries exceeded, user not authenticated')
           setUser(null)
           setLoading(false)
         }
@@ -45,8 +58,8 @@ const AuthProvider = ({ children }) => {
       }
     }
 
-    // Add a small initial delay to let cookies settle after OAuth redirect
-    setTimeout(fetchUser, 100)
+    // Add initial delay to let cookies settle after OAuth redirect
+    setTimeout(fetchUser, 200)
   }, [])
 
   const logout = async () => {
