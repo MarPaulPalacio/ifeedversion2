@@ -89,13 +89,13 @@ try {
 app.use(session({
   store: sessionStore,
   secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
-  resave: false,
-  saveUninitialized: false,
+  resave: true, // Save session even if not modified (needed for Passport)
+  saveUninitialized: true, // Save uninitialized session (needed for first-time login)
   name: 'connect.sid',
   cookie: { 
     secure: process.env.NODE_ENV === 'production',
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    sameSite: 'none', // Required for cross-domain
     httpOnly: true,
     path: '/',
   }
@@ -103,6 +103,16 @@ app.use(session({
 
 // Log session middleware
 app.use((req, res, next) => {
+  // Intercept response to track Set-Cookie headers
+  const originalSend = res.send;
+  res.send = function(data) {
+    const setCookieHeader = res.getHeader('Set-Cookie');
+    if (setCookieHeader) {
+      console.log('📤 Set-Cookie header being sent:', setCookieHeader);
+    }
+    return originalSend.call(this, data);
+  };
+  
   if (req.path === '/') return next(); // Skip logging for root
   console.log(`[${new Date().toISOString()}] Session ID: ${req.sessionID} | Path: ${req.path}`);
   next();
@@ -110,6 +120,16 @@ app.use((req, res, next) => {
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Middleware to ensure session is saved after passport authentication
+app.use((req, res, next) => {
+  if (req.user) {
+    console.log('✅ User loaded from session:', req.user.email);
+    // Mark session as modified to ensure it gets saved
+    req.session.touch();
+  }
+  next();
+});
 
 app.get('/auth/google',
   passport.authenticate('google', { 
@@ -119,22 +139,16 @@ app.get('/auth/google',
 
 app.get('/auth/google/callback',
   passport.authenticate('google', {
-    failureRedirect: `${process.env.CLIENT_URL}`, // TODO: create a login failed page
+    failureRedirect: `${process.env.CLIENT_URL}/?login=failed`,
     failureMessage: true
   }),
   (req, res) => {
     console.log('✅ Google OAuth Callback - User authenticated:', req.user?._id);
     console.log('Session ID after auth:', req.sessionID);
+    console.log('Redirecting to:', `${process.env.CLIENT_URL}/dashboard`);
     
-    // Force save session before redirecting
-    req.session.save((err) => {
-      if (err) {
-        console.error('❌ Error saving session:', err);
-        return res.redirect(`${process.env.CLIENT_URL}?error=session_save_failed`);
-      }
-      console.log('✅ Session saved successfully');
-      res.redirect(`${process.env.CLIENT_URL}/dashboard`);
-    });
+    // Let Express set the cookie automatically and redirect
+    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
   }
 );
 
