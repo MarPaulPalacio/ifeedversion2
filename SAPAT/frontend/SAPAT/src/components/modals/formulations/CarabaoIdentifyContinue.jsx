@@ -256,9 +256,9 @@ function CarabaoIdentifyContinue({
               ...formData,
               name: element,
             };
-            console.log("Form Data for multiple carabaos:", nutrients)
+            
             const body = { ...updatedFormData, dmintake, ownerId, ownerName, userType, bodynutrient_constraints, nutrients, milkyield};
-            console.log("Data before posting", formData)
+            
             const res = await axios.post(`${import.meta.env.VITE_API_URL}/formulation`, body);
             let newFormulation = res.data.formulations;
             newFormulation.access = 'owner';
