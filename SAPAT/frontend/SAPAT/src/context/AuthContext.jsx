@@ -8,22 +8,45 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`${API_URL}/api/user`, {
-      credentials: 'include',
-    })
-      .then((res) => {
-        if (res.ok) return res.json()
-        throw new Error('Not authenticated')
-      })
-      .then((userData) => {
-        setUser(userData)
-      })
-      .catch(() => {
-        setUser(null)
-      })
-      .finally(() => {
-        setLoading(false)
-      })
+    let retryCount = 0
+    const maxRetries = 3
+    
+    const fetchUser = async () => {
+      try {
+        console.log('Fetching user from API...')
+        const res = await fetch(`${API_URL}/api/user`, {
+          credentials: 'include',
+        })
+        
+        if (res.ok) {
+          const userData = await res.json()
+          console.log('✅ User fetched successfully:', userData)
+          setUser(userData)
+          setLoading(false)
+          return true
+        } else {
+          throw new Error(`API returned ${res.status}`)
+        }
+      } catch (err) {
+        console.error('Fetch user error (attempt ' + (retryCount + 1) + '):', err)
+        retryCount++
+        
+        // Retry with delay if we haven't exceeded max retries
+        if (retryCount < maxRetries) {
+          console.log(`Retrying in 500ms... (${retryCount}/${maxRetries})`)
+          setTimeout(fetchUser, 500)
+        } else {
+          // Max retries exceeded
+          console.log('Max retries exceeded, user not authenticated')
+          setUser(null)
+          setLoading(false)
+        }
+        return false
+      }
+    }
+
+    // Add a small initial delay to let cookies settle after OAuth redirect
+    setTimeout(fetchUser, 100)
   }, [])
 
   const logout = async () => {
@@ -56,7 +79,7 @@ const AuthProvider = ({ children }) => {
         throw new Error('Lblocks auth failed')
       }
     } catch (err) {
-      console.error('Logout failed:', err)
+      console.error('Liveblocks auth failed:', err)
     }
   }
 
