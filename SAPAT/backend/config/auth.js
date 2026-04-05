@@ -6,12 +6,15 @@ import User from '../models/user-model.js';
 dotenv.config();
 
 passport.serializeUser((user, done) => {
-    done(null, user.id);
+    console.log('Serializing user:', user._id);
+    done(null, user._id);
 });
 
 passport.deserializeUser(async (id, done) => {
     try {
+        console.log('Deserializing user with id:', id);
         const user = await User.findById(id);
+        console.log('User found:', user ? user.email : 'not found');
         done(null, user);
     } catch (err) {
         console.error('Deserialize User Error:', err);

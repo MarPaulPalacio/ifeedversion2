@@ -39,7 +39,14 @@ if (process.env.NODE_ENV === 'production') {
 // Session configuration with MongoDB store
 const sessionStore = new MongoStore({
   mongoUrl: process.env.MONGODB_URI,
-  touchAfter: 24 * 3600 // lazy session update (in seconds)
+  touchAfter: 24 * 3600, // lazy session update (in seconds)
+  autoRemove: 'interval',
+  autoRemoveInterval: 10 // remove expired sessions every 10 minutes
+});
+
+// Log session store errors
+sessionStore.on('error', (err) => {
+  console.error('MongoStore error:', err);
 });
 
 app.use(session({
@@ -47,6 +54,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  name: 'connect.sid',
   cookie: { 
     secure: process.env.NODE_ENV === 'production', // set to true if using https
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
@@ -69,7 +77,11 @@ app.get('/auth/google/callback',
     failureRedirect: `${process.env.CLIENT_URL}`, // TODO: create a login failed page
     successRedirect: `${process.env.CLIENT_URL}/dashboard`,
     failureMessage: true
-  })
+  }),
+  (req, res) => {
+    console.log('Google OAuth Callback - User authenticated:', req.user);
+    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+  }
 );
 
 

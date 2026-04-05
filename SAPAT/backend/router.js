@@ -36,6 +36,12 @@ import {handleLiveblocksAuth, handleSyncMasterToChildren} from './config/liveblo
 const handleRoutes = (app) => {
   // Check if user is authenticated middleware
   const isAuthenticated = (req, res, next) => {
+    console.log('===== AUTH CHECK =====');
+    console.log('Session ID:', req.sessionID);
+    console.log('Session:', req.session);
+    console.log('User:', req.user);
+    console.log('isAuthenticated():', req.isAuthenticated());
+    console.log('=======================');
     if (req.isAuthenticated()) {
       console.log('isAuthenticated: User is authenticated');
       return next();
@@ -76,6 +82,21 @@ const handleRoutes = (app) => {
   app.get('/', (req, res) => {
     res.send('Hello World');
     console.log('MongoDB Connection State:', mongoose.connection.readyState);
+  });
+
+  // Health check endpoint to verify MongoDB
+  app.get('/api/health/db', (req, res) => {
+    try {
+      const mongoStatus = mongoose.connection.readyState;
+      // 0: disconnected, 1: connected, 2: connecting, 3: disconnecting
+      const stateName = ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoStatus];
+      res.json({ 
+        mongodb: stateName,
+        dbname: mongoose.connection.name || 'unknown'
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
 
