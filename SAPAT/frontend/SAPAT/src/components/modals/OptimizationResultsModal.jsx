@@ -50,7 +50,7 @@ const OptimizationResultsModal = ({
    * Logic: (Weight * DM%) * Nutrient%
    * Last element is always treated as the multiplier for others
    */
-  const getIngredientContribution = (ingredientId, weightInGrams, nutrientTargetId, ing) => {
+  const getIngredientContribution = (ingredientId, weightInGrams, nutrientTargetId, ing, unit = 'grams') => {
     const ingredientData = detailedIngredients.find(item => item._id === ingredientId);
     if (!ingredientData || !ingredientData.nutrients) return 0;
 
@@ -175,54 +175,97 @@ const OptimizationResultsModal = ({
                 <thead className="sticky top-0 bg-gray-50 text-gray-500 z-10 border-b">
                   <tr className="uppercase text-[9px] md:text-[10px]">
                     <th className="text-left py-3 px-4 sticky left-0 bg-gray-50 z-20 shadow-sm">Ingredient</th>
-                    <th>g/animal</th>
-                    {formulation.nutrients.map((nut, i) => <th key={i}>{nut.name}</th>)}
+                    <th>kg/animal per day</th>
+                    {formulation.nutrients.find(nut => nut.name === "Dry Matter") && (
+                      <th>Dry Matter (kg)</th>
+                    )}
+                    {formulation.nutrients.map((nut, i) => (
+                      nut.name !== "Dry Matter" && (
+                        nut.name === "Total Digestible Nutrients" ?
+                        <th key={i}>{nut.name} (kg)</th> :
+                        <th key={i}>{nut.name} (g)</th>
+                      )
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="text-[11px] md:text-sm">
                   {results.ingredients.map((ing, idx) => {
-    // FIX: Instead of relying on detailedIngredients[idx], 
-    // find the exact data matching this ingredient's ID
-    const ingredientData = detailedIngredients.find(
-      (item) => (item._id === ing.ingredient_id) || (item.name === ing.name)
-    );
+                    const ingredientData = detailedIngredients.find(
+                      (item) => (item._id === ing.ingredient_id) || (item.name === ing.name)
+                    );
 
-    return (
-      <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50/50">
-        <td className="py-2 px-4 text-left text-gray-700 font-medium sticky left-0 bg-white z-10 border-r">
-          {ing.name}
-        </td>
-        <td className="font-mono font-bold text-deepbrown">
-          {formatNum(ing.value)}
-        </td>
-        {formulation.nutrients.map((nut) => (
-          <td key={nut._id} className="text-gray-500">
-            {/* Pass the found ingredientData directly to the function */}
-            {formatNum(getIngredientContribution(
-              ingredientData?._id, 
-              ing.value, 
-              nut.nutrient_id || nut._id, 
-              ingredientData // Pass the pre-found data here
-            ))}
-          </td>
-        ))}
-      </tr>
-    );
-  })}
-                  {/* Totals and Expectations */}
+                    return (
+                      <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50/50">
+                        <td className="py-2 px-4 text-left text-gray-700 font-medium sticky left-0 bg-white z-10 border-r">
+                          {ing.name}
+                        </td>
+                        <td className="font-mono font-bold text-deepbrown">
+                          {formatNum(ing.value / 1000, 3)} kg
+                        </td>
+                        {formulation.nutrients.find(nut => nut.name === "Dry Matter") && (
+                          <td className="text-gray-500 font-mono">
+                            {formatNum(getIngredientContribution(
+                              ingredientData?._id, 
+                              ing.value, 
+                              formulation.nutrients.find(n => n.name === "Dry Matter").nutrient_id || formulation.nutrients.find(n => n.name === "Dry Matter")._id, 
+                              ingredientData,
+                              "kilograms"
+                            ) / 1000, 2)} kg
+                          </td>
+                        )}
+                        {formulation.nutrients.map((nut) => 
+                          nut.name !== "Dry Matter" && (
+                            nut.name === "Total Digestible Nutrients" ?
+                            <td key={nut._id} className="text-gray-500 font-mono">
+                              {formatNum(getIngredientContribution(
+                                ingredientData?._id, 
+                                ing.value, 
+                                nut.nutrient_id || nut._id, 
+                                ingredientData,
+                                "kilograms"
+                              ) / 1000, 2)} kg
+                            </td> :
+                            <td key={nut._id} className="text-gray-500 font-mono">
+                              {formatNum(getIngredientContribution(
+                                ingredientData?._id, 
+                                ing.value, 
+                                nut.nutrient_id || nut._id, 
+                                ingredientData,
+                                "grams"
+                              ), 2)} g
+                            </td>
+                          )
+                        )}
+                      </tr>
+                    );
+                  })}
                   <tr className="bg-amber-50 font-bold border-t-2 border-amber-100">
-                    <td className="sticky left-0 bg-amber-50 z-10 text-left px-4">TOTAL ACHIEVED</td>
-                    <td className="font-mono text-amber-700">{formatNum(results.totalWeight * 1000)}</td>
-                    {formulation.nutrients.map((nut, i) => (
-                      <td key={i}>{formatNum(getAchievedTotal(results.nutrients, nut.name))}</td>
-                    ))}
+                    <td className="sticky left-0 bg-amber-50 z-10 text-left px-4">TOTAL</td>
+                    <td className="font-mono text-amber-700">{formatNum(results.totalWeight, 2)} kg</td>
+                    {formulation.nutrients.find(nut => nut.name === "Dry Matter") && (
+                      <td className="font-mono text-amber-700">{formatNum(getAchievedTotal(results.nutrients, "Dry Matter") / 1000, 2)} kg</td>
+                    )}
+                    {formulation.nutrients.map((nut, i) =>
+                      nut.name !== "Dry Matter" && (
+                        nut.name === "Total Digestible Nutrients" ?
+                        <td key={i} className="font-mono text-amber-700">{formatNum(getAchievedTotal(results.nutrients, nut.name) / 1000, 2)} kg</td> :
+                        <td key={i} className="font-mono text-amber-700">{formatNum(getAchievedTotal(results.nutrients, nut.name), 2)} g</td>
+                      )
+                    )}
                   </tr>
                   <tr className="bg-amber-500 font-bold text-white">
-                    <td className="sticky left-0 bg-amber-500 z-10 text-left px-4">EXPECTED REQ.</td>
-                    <td className="font-mono">{formatNum(results.totalWeight * 1000)}</td>
-                    {formulation.nutrients.map((nut, i) => (
-                      <td key={i}>{formatNum(getExpectedTarget(formulation.nutrients, nut.name))}</td>
-                    ))}
+                    <td className="sticky left-0 bg-amber-500 z-10 text-left px-4">REQ.</td>
+                    <td className="font-mono">{formatNum(results.totalWeight, 2)} kg</td>
+                    {formulation.nutrients.find(nut => nut.name === "Dry Matter") && (
+                      <td className="font-mono">{formatNum(getExpectedTarget(formulation.nutrients, "Dry Matter") / 1000, 2)} kg</td>
+                    )}
+                    {formulation.nutrients.map((nut, i) =>
+                      nut.name !== "Dry Matter" && (
+                        nut.name === "Total Digestible Nutrients" ?
+                        <td key={i} className="font-mono">{formatNum(getExpectedTarget(formulation.nutrients, nut.name) / 1000, 2)} kg</td> :
+                        <td key={i} className="font-mono">{formatNum(getExpectedTarget(formulation.nutrients, nut.name), 2)} g</td>
+                      )
+                    )}
                   </tr>
                 </tbody>
               </table>
