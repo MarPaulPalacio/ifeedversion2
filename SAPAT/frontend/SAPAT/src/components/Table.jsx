@@ -106,7 +106,8 @@ function Table({
                     </p>
                   </div>
                   
-                  {((actions && user?.userType === 'admin' && page !== "groupformulations") || (page==="formulations"))  && (
+                  {/* Nutrients cannot be deleted or added */}
+                  {((actions && user?.userType === 'admin' && page !== "groupformulations" && page !=="nutrients") || (page==="formulations" ))  && (
 
 
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -167,7 +168,7 @@ function Table({
             {t(header)}
           </th>
         ))}
-        {((actions && user?.userType === "admin" && page !== "groupformulations") || (actions && page === "formulations")) && (
+        {((actions && user?.userType === "admin" && page !== "groupformulations" && page !=="nutrients") || (actions && page === "formulations")) && (
           <th className="text-deepbrown text-right py-4 pr-6">{t('Actions')}</th>
         )}
       </tr>
@@ -234,7 +235,7 @@ function Table({
                   </td>
                 ))}
 
-              {((actions && user?.userType === 'admin' && page !== "groupformulations") || (page==="formulations")) && (
+              {((actions && user?.userType === 'admin' && page !== "groupformulations" && page !=="nutrients") || (page==="formulations")) && (
                 <td className="py-3 pr-4 text-right">
                   <div className="flex justify-end gap-1">
                     <button

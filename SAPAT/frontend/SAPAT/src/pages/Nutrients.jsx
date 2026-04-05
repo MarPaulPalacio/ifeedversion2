@@ -196,7 +196,8 @@ function Nutrients() {
 
         {/* Action buttons and search */}
         <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
-          <div className="flex w-full flex-wrap gap-2 md:w-auto">
+          {/* Nutrients Limited to the first 5 nutrients first */}
+          {/* <div className="flex w-full flex-wrap gap-2 md:w-auto">
             
               
               {user?.userType === 'admin' && (
@@ -209,7 +210,7 @@ function Nutrients() {
                 </button>
               )}
 
-          </div>
+          </div> */}
           <div className="flex flex-col flex-wrap gap-2 md:flex-row">
             <div className="flex gap-2">
               <SortBy
