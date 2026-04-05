@@ -25,6 +25,7 @@ const createFormulation = async (req, res) => {
             fat_content:fat_protein_content, lactating_phase: is_lactating, pregnant_phase: months_pregnant, origNutrientTargets: nutrients
         });
 
+        
         const filteredFormulation = {
             "_id": newFormulation._id,
             "code": code,
