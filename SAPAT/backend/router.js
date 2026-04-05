@@ -53,10 +53,30 @@ const handleRoutes = (app) => {
     res.status(401).json({ error: 'Not authenticated', sessionID: req.sessionID });
   };
 
-  // Get current user route
-  app.get('/api/user', isAuthenticated, (req, res) => {
-    console.log('User:', req.user);
-    res.json(req.user);
+  // Get current user route - with additional fallback methods
+  app.get('/api/user', (req, res) => {
+    console.log('===== GET /api/user =====');
+    console.log('Session ID:', req.sessionID);
+    console.log('req.user:', req.user);
+    console.log('req.isAuthenticated():', req.isAuthenticated());
+    console.log('Session data:', req.session?.passport);
+    console.log('========================');
+    
+    // Method 1: Standard passport authentication
+    if (req.isAuthenticated() && req.user) {
+      console.log('✅ Method 1: Authenticated via session');
+      return res.json(req.user);
+    }
+    
+    // Method 2: Session exists but req.user not set - try deserialize
+    if (req.session?.passport?.user) {
+      console.log('⚠️ Method 2: Session has passport data but req.user not set');
+      return res.json(req.session.passport.user);
+    }
+    
+    // Not authenticated
+    console.log('❌ User not authenticated');
+    res.status(401).json({ error: 'Not authenticated' });
   });
 
   // Logout route
@@ -101,12 +121,31 @@ const handleRoutes = (app) => {
     }
     req.session.views++;
     
+    // Force the session to save and include Set-Cookie header
+    req.session.save(() => {
+      res.json({
+        sessionID: req.sessionID,
+        views: req.session.views,
+        user: req.user || null,
+        isAuthenticated: req.isAuthenticated(),
+        setCookieInfo: 'Check Response Headers for Set-Cookie header',
+        message: 'If views increments, sessions are working'
+      });
+    });
+  });
+
+  // Cookie test endpoint - explicitly set test cookie
+  app.get('/api/test/set-cookie', (req, res) => {
+    res.cookie('test-cookie', 'test-value', {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'none',
+      maxAge: 60 * 60 * 1000
+    });
+    
     res.json({
-      sessionID: req.sessionID,
-      views: req.session.views,
-      user: req.user || null,
-      isAuthenticated: req.isAuthenticated(),
-      message: 'Session test - if views increments, sessions are working'
+      message: 'Test cookie set',
+      checkCookies: 'Check DevTools → Cookies for test-cookie'
     });
   });
 

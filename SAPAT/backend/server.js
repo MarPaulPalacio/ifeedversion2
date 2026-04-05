@@ -89,15 +89,17 @@ try {
 app.use(session({
   store: sessionStore,
   secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
-  resave: true, // Save session even if not modified (needed for Passport)
-  saveUninitialized: true, // Save uninitialized session (needed for first-time login)
+  resave: true,
+  saveUninitialized: true,
   name: 'connect.sid',
+  proxy: true, // Trust proxy (Railway is behind proxy)
   cookie: { 
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'none', // Required for cross-domain
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'none',
     httpOnly: true,
     path: '/',
+    // Don't set domain - let browser handle it for API calls
   }
 }));
 
