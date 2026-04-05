@@ -16,7 +16,20 @@ const AuthProvider = ({ children }) => {
         console.log('🔵 Fetching user from API...')
         console.log('API_URL:', API_URL)
         
-        const res = await fetch(`${API_URL}/api/user`, {
+        // Check if we have a session ID from OAuth callback
+        const params = new URLSearchParams(window.location.search)
+        const sessionId = params.get('sid')
+        console.log('Session ID from URL:', sessionId)
+        
+        // Build the URL with session ID if available
+        let apiUrl = `${API_URL}/api/user`
+        if (sessionId) {
+          apiUrl += `?sid=${sessionId}`
+          // Clean up the URL to remove the sid parameter for cleaner history
+          window.history.replaceState({}, document.title, window.location.pathname)
+        }
+        
+        const res = await fetch(apiUrl, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',

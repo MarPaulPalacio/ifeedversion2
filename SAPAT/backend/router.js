@@ -53,35 +53,78 @@ const handleRoutes = (app) => {
     res.status(401).json({ error: 'Not authenticated', sessionID: req.sessionID });
   };
 
-  // Get current user route - with additional fallback methods
-  app.get('/api/user', (req, res) => {
+  // Get current user route - with multiple fallback methods
+  app.get('/api/user', async (req, res) => {
     console.log('\n===== GET /api/user =====');
     console.log('Timestamp:', new Date().toISOString());
-    console.log('Session ID:', req.sessionID);
-    console.log('User:', req.user);
+    console.log('Session ID (from cookie):', req.sessionID);
+    console.log('Query param sid (from URL):', req.query.sid);
+    console.log('req.user:', req.user);
     console.log('isAuthenticated:', req.isAuthenticated());
-    console.log('Request headers:', {
-      cookie: req.headers.cookie ? `${req.headers.cookie.substring(0, 50)}...` : 'NO COOKIE HEADER',
-      origin: req.headers.origin,
-      referer: req.headers.referer,
-    });
-    console.log('Session passport:', req.session?.passport);
-    console.log('========================\n');
     
-    // Method 1: Standard passport authentication
+    // Method 1: Standard passport authentication (cookie-based)
     if (req.isAuthenticated() && req.user) {
-      console.log('✅ Method 1: Authenticated via session');
+      console.log('✅ Method 1: Authenticated via session cookie');
       return res.json(req.user);
     }
     
-    // Method 2: Session exists but req.user not set - try deserialize
+    // Method 2: Session exists but req.user not set
     if (req.session?.passport?.user) {
       console.log('⚠️ Method 2: Session has passport data but req.user not set');
       return res.json(req.session.passport.user);
     }
     
+    // Method 3: Use session ID from URL parameter (POST-OAuth fallback)
+    const sessionIdToUse = req.query.sid || req.sessionID;
+    if (sessionIdToUse) {
+      console.log('🔵 Method 3: Attempting to deserialize session from ID:', sessionIdToUse);
+      try {
+        // Use the mongoStore to get the session directly from MongoDB
+        // The session store has a "get" method we can use
+        const session = await new Promise((resolve, reject) => {
+          // Access the store from express-session middleware
+          // This is a workaround - we fetch directly from MongoDB
+          const sessionCollection = mongoose.connection.collection('sessions');
+          if (!sessionCollection) {
+            reject(new Error('Sessions collection not found'));
+            return;
+          }
+          
+          sessionCollection.findOne({ _id: sessionIdToUse }, (err, doc) => {
+            if (err) reject(err);
+            resolve(doc);
+          });
+        });
+        
+        if (session && session.session) {
+          console.log('✅ Found session in MongoDB');
+          const sessionData = JSON.parse(session.session);
+          if (sessionData.passport?.user) {
+            // Found user in passport data
+            console.log('✅ Found user in session passport data:', sessionData.passport.user);
+            // Try to populate the full user object
+            try {
+              const User = mongoose.model('User');
+              const user = await User.findById(sessionData.passport.user);
+              if (user) {
+                console.log('✅ Loaded full user object from database');
+                return res.json(user);
+              }
+            } catch (err) {
+              console.log('⚠️ Could not load full user, returning session data');
+              return res.json(sessionData.passport.user);
+            }
+          }
+        }
+        console.log('❌ Session not found or no user in session');
+      } catch (err) {
+        console.error('❌ Error in Method 3:', err.message);
+      }
+    }
+    
     // Not authenticated
-    console.log('❌ User not authenticated');
+    console.log('❌ User not authenticated - no valid session found');
+    console.log('========================\n');
     res.status(401).json({ error: 'Not authenticated' });
   });
 

@@ -147,10 +147,12 @@ app.get('/auth/google/callback',
   (req, res) => {
     console.log('✅ Google OAuth Callback - User authenticated:', req.user?._id);
     console.log('Session ID after auth:', req.sessionID);
-    console.log('Redirecting to:', `${process.env.CLIENT_URL}/dashboard`);
     
-    // Let Express set the cookie automatically and redirect
-    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+    // Pass session ID to frontend via URL parameter so it can use it for subsequent requests
+    const redirectUrl = `${process.env.CLIENT_URL}/dashboard?sid=${req.sessionID}`;
+    console.log('Redirecting to:', redirectUrl);
+    
+    res.redirect(redirectUrl);
   }
 );
 
