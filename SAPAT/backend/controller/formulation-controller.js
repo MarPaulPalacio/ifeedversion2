@@ -8,15 +8,12 @@ import Cow from "../models/cow_nutrient_constraint.js";
 import RegularBuffalo from "../models/regularbuffalo_nutrient_constraint.js";
 import mongoose from 'mongoose';
 
-
-
 const createFormulation = async (req, res) => {
     const {
         code, name, description, animal_group, body_weight, ownerId, ownerName, 
         nutrients, dmintake, milkyield, fat_protein_content, is_lactating, months_pregnant
     } = req.body;
     try {
-        const User = (await import('../models/user-model.js')).default;
         const owner = await User.findById(ownerId);
         const isTemplate = owner && owner.userType === 'admin';
         const newFormulation = await Formulation.create({
@@ -927,13 +924,23 @@ const upsertGroupFormulation = async (formulation) => {
   }
 
   // Create new group with the formulation detail included
-  return await GroupFormulation.create({
-    name: groupName,
-    description: groupName,
-    formulations: [formulation._id],
-    formulationDetails: [formulationDetail],
-    createdBy: formulation.collaborators?.[0]?.userId || null
-  });
+    return await GroupFormulation.findOneAndUpdate(
+        { name: groupName }, // Search criteria
+        { 
+        $addToSet: { 
+            formulations: formulation._id,
+            formulationDetails: formulationDetail 
+        },
+        $set: { 
+            lastUpdated: new Date(),
+            description: groupName 
+        },
+        $setOnInsert: { 
+            createdBy: formulation.collaborators?.[0]?.userId || null 
+        }
+        },
+        { upsert: true, new: true } // Create if doesn't exist, return the updated doc
+    );
 };
 
 const getAllGroupFormulations = async (req, res) => {
