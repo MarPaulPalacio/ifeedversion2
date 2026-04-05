@@ -84,6 +84,29 @@ const handleRoutes = (app) => {
     console.log('MongoDB Connection State:', mongoose.connection.readyState);
   });
 
+  // Session test endpoint
+  app.get('/api/session/test', (req, res) => {
+    if (!req.session) {
+      return res.status(500).json({ error: 'Session not initialized' });
+    }
+    
+    console.log('Session test - ID:', req.sessionID);
+    console.log('Session test - Content:', JSON.stringify(req.session, null, 2));
+    
+    if (!req.session.views) {
+      req.session.views = 0;
+    }
+    req.session.views++;
+    
+    res.json({
+      sessionID: req.sessionID,
+      views: req.session.views,
+      user: req.user || null,
+      isAuthenticated: req.isAuthenticated(),
+      message: 'Session test - if views increments, sessions are working'
+    });
+  });
+
   // Health check endpoint to verify MongoDB
   app.get('/api/health/db', (req, res) => {
     try {

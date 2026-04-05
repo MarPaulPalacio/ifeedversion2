@@ -18,7 +18,9 @@ const corsOptions = {
   // Ensure this is a string. Remove the [ ] brackets.
   origin: process.env.CLIENT_URL || "http://localhost:5173", 
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"] // Add OPTIONS for pre-flight
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
@@ -36,33 +38,61 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-// Session configuration with MongoDB store
-const sessionStore = new MongoStore({
-  mongoUrl: process.env.MONGODB_URI,
-  touchAfter: 24 * 3600, // lazy session update (in seconds)
-  autoRemove: 'interval',
-  autoRemoveInterval: 10 // remove expired sessions every 10 minutes
-});
+console.log('Initializing session store with MongoDB...');
+console.log('MONGODB_URI set:', !!process.env.MONGODB_URI);
+console.log('SESSION_SECRET set:', !!process.env.SESSION_SECRET);
 
-// Log session store errors
-sessionStore.on('error', (err) => {
-  console.error('MongoStore error:', err);
-});
+// Session configuration with MongoDB store
+let sessionStore;
+try {
+  sessionStore = new MongoStore({
+    mongoUrl: process.env.MONGODB_URI,
+    touchAfter: 24 * 3600, // lazy session update (in seconds)
+    autoRemove: 'interval',
+    autoRemoveInterval: 10 // remove expired sessions every 10 minutes
+  });
+
+  // Log session store events
+  sessionStore.on('error', (err) => {
+    console.error('❌ MongoStore error:', err);
+  });
+
+  sessionStore.on('connected', () => {
+    console.log('✅ MongoStore connected to MongoDB');
+  });
+
+  sessionStore.on('disconnected', () => {
+    console.log('⚠️ MongoStore disconnected from MongoDB');
+  });
+
+  console.log('✅ MongoStore initialized');
+} catch (err) {
+  console.error('❌ Failed to initialize MongoStore:', err);
+  process.exit(1);
+}
 
 app.use(session({
   store: sessionStore,
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
   resave: false,
   saveUninitialized: false,
   name: 'connect.sid',
   cookie: { 
-    secure: process.env.NODE_ENV === 'production', // set to true if using https
+    secure: process.env.NODE_ENV === 'production',
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    httpOnly: true, // Prevent client-side JS from accessing the cookie
+    httpOnly: true,
     path: '/',
   }
 }));
+
+// Log session middleware
+app.use((req, res, next) => {
+  if (req.path === '/') return next(); // Skip logging for root
+  console.log(`[${new Date().toISOString()}] Session ID: ${req.sessionID} | Path: ${req.path}`);
+  next();
+});
+
 app.use(passport.initialize());
 app.use(passport.session());
 

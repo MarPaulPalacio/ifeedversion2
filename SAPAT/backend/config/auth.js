@@ -31,11 +31,13 @@ passport.use(new GoogleStrategy({
   },
   async function(request, accessToken, refreshToken, profile, done) {
     try {
+      console.log('🔵 Google Strategy - Processing profile:', profile.id);
       // Find or create user
       let user = await User.findOne({ googleId: profile.id });
       
       if (!user) {
         // Create new user if doesn't exist
+        console.log('Creating new user...');
         user = await User.create({
           googleId: profile.id,
           email: profile.email,
@@ -45,11 +47,14 @@ passport.use(new GoogleStrategy({
           profilePicture: profile.photos[0].value,
           userType: 'regular'
         });
+        console.log('✅ New user created:', user._id);
+      } else {
+        console.log('✅ Existing user found:', user._id);
       }
       console.log('Google Strategy: User created or found');
       return done(null, user);
     } catch (err) {
-      console.error('Google Strategy: Error creating or finding user', err);
+      console.error('❌ Google Strategy Error:', err);
       return done(err, null);
     }
   }
