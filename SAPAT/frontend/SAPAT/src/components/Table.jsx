@@ -53,15 +53,15 @@ function Table({
   const getRowData = (row) => {
     if (!row) return []
     if (page === 'formulations') {
-      return ['code', 'name', 'description', 'animal_group', 'access'].map(f => row[f] || 'N/A')
+      return ['code', 'name', 'description', 'animal_group', 'access'].map(f => row[f] || t('N/A'))
     } else if (page === 'ingredients') {
-      const rowData = ['name', 'price', 'available', 'group', 'description'].map(f => row[f] || 'N/A')
-      rowData[2] = Number(rowData[2]) === 1 ? 'Yes' : 'No'
+      const rowData = ['name', 'price', 'available', 'group', 'description'].map(f => row[f] || t('N/A'))
+      rowData[2] = Number(rowData[2]) === 1 ? t('Yes') : t('No')
       return rowData
     } else if (page === 'nutrients') {
-      return ['abbreviation', 'name', 'unit', 'description', 'group'].map(f => row[f] || 'N/A')
+      return ['abbreviation', 'name', 'unit', 'description', 'group'].map(f => row[f] || t('N/A'))
     } else if (page === 'groupformulations') {
-      return [row.name || 'N/A', row.description || 'N/A', row.formulations?.length || 0]
+      return [row.name || t('N/A'), row.description || t('N/A'), row.formulations?.length || 0]
     }
     return Object.values(row)
   }

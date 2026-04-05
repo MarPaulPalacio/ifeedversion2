@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import useAuth from '../hook/useAuth'
 
 function Login() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { t } = useTranslation()
   const API_URL = import.meta.env.VITE_API_URL
 
   useEffect(() => {
@@ -45,11 +47,11 @@ function Login() {
         {/* Login modal */}
         <div className="mx-auto flex h-auto w-7/8 flex-col items-center justify-center rounded-lg bg-white p-8 shadow-lg md:mx-0 md:w-96">
           <h1 className="text-charcoal-header mb-6 text-2xl font-bold md:text-3xl">
-            Welcome to iFeed V2.0
+            {t('Welcome to iFeed V2.0')}
           </h1>
 
           <p className="mb-8 text-center text-gray-600">
-            Sign in or sign up with your Google account to continue.
+            {t('Sign in or sign up with your Google account to continue.')}
           </p>
 
           <button
@@ -62,7 +64,7 @@ function Login() {
               src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
               alt="Google logo"
             />
-            Continue with Google
+            {t('Continue with Google')}
           </button>
         </div>
       </div>

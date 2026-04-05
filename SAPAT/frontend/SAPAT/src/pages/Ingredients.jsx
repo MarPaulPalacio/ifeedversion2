@@ -132,14 +132,14 @@ function Ingredients() {
       setShowToast(true)
       setMessage(
         messageData === 'success'
-          ? 'Ingredient deleted successfully'
-          : 'Failed to delete ingredient.'
+          ? t('Ingredient deleted successfully')
+          : t('Failed to delete ingredient.')
       )
       setToastAction(messageData)
     } catch (err) {
       console.log(err)
       setShowToast(true)
-      setMessage('Failed to delete formulation.')
+      setMessage(t('Failed to delete ingredient.'))
       setToastAction('error')
     }
   }

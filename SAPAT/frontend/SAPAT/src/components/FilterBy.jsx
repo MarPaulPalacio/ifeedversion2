@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect } from 'react'
 import { debounce } from 'lodash'
 import { RiFilterLine } from 'react-icons/ri'
+import { useTranslation } from 'react-i18next'
 
 export default function FilterBy({ handleFilterQuery, options = [] }) {
+  const { t } = useTranslation()
   const [selectedFilters, setSelectedFilters] = useState([])
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
@@ -57,8 +59,8 @@ export default function FilterBy({ handleFilterQuery, options = [] }) {
             <RiFilterLine className="h-4 w-4 md:h-5 md:w-5" />
             <span>
               {selectedFilters.length > 0
-                ? `Filters (${selectedFilters.length})`
-                : 'Filter'}
+                ? `${t('Filter')} (${selectedFilters.length})`
+                : t('Filter')}
             </span>
           </div>
           <svg
@@ -104,7 +106,7 @@ export default function FilterBy({ handleFilterQuery, options = [] }) {
                   onClick={clearAllFilters}
                   className="text-sm text-red-500 hover:text-red-700"
                 >
-                  Clear all filters
+                  {t('Clear all filters')}
                 </button>
               </div>
             )}

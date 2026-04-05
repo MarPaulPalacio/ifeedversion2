@@ -135,14 +135,14 @@ function Formulations() {
       setShowToast(true)
       setMessage(
         messageData === 'success'
-          ? 'Formulation deleted successfully'
-          : 'Failed to delete formulation.'
+          ? t('Formulation deleted successfully')
+          : t('Failed to delete formulation.')
       )
       setToastAction(messageData)
     } catch (err) {
       console.log(err)
       setShowToast(true)
-      setMessage('Failed to delete formulation.')
+      setMessage(t('Failed to delete formulation.'))
       setToastAction('error')
     }
   }

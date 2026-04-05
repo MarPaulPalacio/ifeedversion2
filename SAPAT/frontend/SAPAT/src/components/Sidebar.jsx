@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   RiDashboardLine,
   RiLeafLine,
@@ -14,14 +15,15 @@ function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const { t } = useTranslation()
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false)
   const [targetPath, setTargetPath] = useState(null)
 
   const menuItems = [
-    { path: '/dashboard', icon: RiDashboardLine, label: 'Dashboard' },
-    { path: '/ingredients', icon: RiLeafLine, label: 'Ingredients' },
-    { path: '/nutrients', icon: RiStackLine, label: 'Nutrients' },
-    { path: '/formulations', icon: RiFlaskLine, label: 'Formulate' },
+    { path: '/dashboard', icon: RiDashboardLine, label: ('Dashboard') },
+    { path: '/ingredients', icon: RiLeafLine, label: ('Ingredients') },
+    { path: '/nutrients', icon: RiStackLine, label: ('Nutrients') },
+    { path: '/formulations', icon: RiFlaskLine, label: ('Formulate') },
   ]
 
   const handleLogout = async () => {
@@ -81,7 +83,7 @@ function Sidebar() {
           className="flex flex-1 flex-col items-center justify-center rounded-xl py-2 text-darkbrown hover:text-red-600 md:hidden"
         >
           <RiLogoutBoxLine className="h-5 w-5" />
-          <span className="mt-1 text-[10px]">Logout</span>
+          <span className="mt-1 text-[10px]">{t('Logout')}</span>
         </button>
       </nav>
 
@@ -92,7 +94,7 @@ function Sidebar() {
           className="text-darkbrown hover:bg-red-500 flex w-full items-center justify-center rounded-xl p-2 transition-colors hover:text-white md:justify-start md:px-4"
         >
           <RiLogoutBoxLine className="h-6 w-6" />
-          <span className="ml-3 hidden md:block">Logout</span>
+          <span className="ml-3 hidden md:block">{t('Logout')}</span>
         </button>
       </div>
 
@@ -103,8 +105,8 @@ function Sidebar() {
           navigate(targetPath);
           setIsConfirmationModalOpen(false);
         }}
-        title="Unsaved Changes"
-        description="You have unsaved formulation progress. Are you sure you want to leave?"
+        title={t('Unsaved Changes')}
+        description={t('You have unsaved formulation progress. Are you sure you want to leave?')}
         type="save"
       />
     </div>

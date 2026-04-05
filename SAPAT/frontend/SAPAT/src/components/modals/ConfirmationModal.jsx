@@ -1,4 +1,5 @@
 import { RiCloseLine } from 'react-icons/ri'
+import { useTranslation } from 'react-i18next'
 
 function ConfirmationModal({
   isOpen,
@@ -8,6 +9,7 @@ function ConfirmationModal({
   description,
   type,
 }) {
+  const { t } = useTranslation()
   return (
     <dialog
       id="confirmation_modal"
@@ -28,7 +30,7 @@ function ConfirmationModal({
         {/* Modal actions */}
         <div className="modal-action">
           <button className={`${type === 'save' ? 'hidden' : ''} btn rounded-xl px-8`} onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </button>
           {type === 'delete' ? (
             <button
@@ -38,10 +40,10 @@ function ConfirmationModal({
                 onClose()
               }}
             >
-              Delete
+              {t('Delete')}
             </button>
           ) : (type === 'save') ? (
-            <div className={`tooltip`} data-tip={"This exits the page."}>
+            <div className={`tooltip`} data-tip={t('This exits the page.')}>
               <button
                 className="btn btn-warning rounded-xl px-8 text-white"
                 onClick={() => {
@@ -49,7 +51,7 @@ function ConfirmationModal({
                   onClose()
                 }}
               >
-                It’s Already Saved.
+                {t('It\'s Already Saved.')}
               </button>
             </div>
           ) : (
@@ -60,13 +62,13 @@ function ConfirmationModal({
                 onClose()
               }}
             >
-              Add
+              {t('Add')}
             </button>
           )}
         </div>
       </div>
       <form method="dialog" className="modal-backdrop">
-        <button onClick={onClose}>close</button>
+        <button onClick={onClose}>{t('close')}</button>
       </form>
     </dialog>
   )

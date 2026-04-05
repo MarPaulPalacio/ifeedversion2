@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react'
 import { debounce } from 'lodash'
 import { RiArrowUpDownLine } from 'react-icons/ri'
+import { useTranslation } from 'react-i18next'
 
 export default function SortBy({ handleFilterQuery, options }) {
+  const { t } = useTranslation()
   const [sortOption, setSortOption] = useState('')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
@@ -14,7 +16,7 @@ export default function SortBy({ handleFilterQuery, options }) {
 
   // Find the current selected option label
   const currentLabel =
-    options.find((option) => option.value === sortOption)?.label || 'Sort'
+    options.find((option) => option.value === sortOption)?.label || t('Sort')
 
   return (
     <div className="relative">

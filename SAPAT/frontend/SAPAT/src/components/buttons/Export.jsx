@@ -2,8 +2,10 @@ import { RiFileDownloadLine } from 'react-icons/ri'
 import axios from 'axios'
 import * as XLSX from 'xlsx'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 function Export({ ingredients, onExport }) {
+  const { t } = useTranslation()
   const [nutrientNames, setNutrientNames] = useState([])
 
   const transformIngredientsData = async (ingredients) => {
@@ -71,10 +73,10 @@ function Export({ ingredients, onExport }) {
       // Write the workbook and trigger download
       XLSX.writeFile(workbook, 'SAPAT_ingredient_data.xlsx')
 
-      onExport('Ingredients exported!', 'success')
+      onExport(t('Ingredients exported!'), 'success')
     } catch (err) {
       console.log(err)
-      onExport('Failed to export ingredients.', 'error')
+      onExport(t('Failed to export ingredients.'), 'error')
     }
   }
 
@@ -84,7 +86,7 @@ function Export({ ingredients, onExport }) {
       className="border-deepbrown text-deepbrown hover:bg-deepbrown active:bg-deepbrown/80 flex cursor-pointer items-center gap-1 rounded-lg border px-2 py-1 text-sm transition-colors hover:text-white md:gap-2 md:px-4 md:py-2 md:text-base"
     >
       <RiFileDownloadLine className="h-4 w-4 md:h-5 md:w-5" />
-      <span>Export</span>
+      <span>{t('Export')}</span>
     </button>
   )
 }

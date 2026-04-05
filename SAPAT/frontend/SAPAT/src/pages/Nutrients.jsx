@@ -113,14 +113,14 @@ function Nutrients() {
       setShowToast(true)
       setMessage(
         messageData === 'success'
-          ? 'Nutrient deleted successfully'
-          : 'Failed to delete nutrient.'
+          ? t('Nutrient deleted successfully')
+          : t('Failed to delete nutrient.')
       )
       setToastAction(messageData)
     } catch (err) {
       console.log(err)
       setShowToast(true)
-      setMessage('Failed to delete formulation.')
+      setMessage(t('Failed to delete nutrient.'))
       setToastAction('error')
     }
   }
