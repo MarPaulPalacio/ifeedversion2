@@ -1,12 +1,11 @@
 import { RiFileChartLine } from 'react-icons/ri'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
-const handleGenerateReport = async (customization, formulation, owner, shadowPrices) => {
+const handleGenerateReport = async (customization, formulation, owner, shadowPrices, weight) => {
     // Create a new PDFDocument
-    console.log("Customization here PDF FormData?:", owner)
     const pdfDoc = await PDFDocument.create()
     
-
+    console.log("Weight in handleGenerateReport:", weight)
     
     // Embed fonts for better typography
     const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman)

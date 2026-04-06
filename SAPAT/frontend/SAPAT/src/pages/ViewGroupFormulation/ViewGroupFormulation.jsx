@@ -1286,13 +1286,13 @@ const [detailedIngredients, setDetailedIngredients] = useState('')
                 {!showDropdown && (
                   <ul tabIndex={0} className="dropdown-content menu bg-base-200 rounded-box z-[10] w-56 p-2 shadow-lg">
                     <li>
-                      <button className="py-2" onClick={() => handleOptimize('simplex')}>
-                        Simplex Feed Formulation Ratio
+                      <button className="py-2" onClick={() => handleOptimize('simplex-soft-constraints')}>
+                        Simplex Soft Constraints
                       </button>
                     </li>
                     <li>
                       <button className="py-2" onClick={() => handleOptimize('simplex-dry-matter')}>
-                        Simplex Dry Matter Ratio
+                        Simplex Hard Constraints
                       </button>
                     </li>
                   </ul>

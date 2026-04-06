@@ -22,7 +22,8 @@ function ReportGenerationModal({ isOpen, onClose, onGenerate, userAccess, formul
 
     try {
       console.log("FoRMAS DFS", formData)
-      await onGenerate(formData, formulation, owner, shadowPrices)
+      console.log("Form Data on submit weight:", weight)
+      await onGenerate(formData, formulation, owner, shadowPrices, weight)
       setError('')
       onClose() // Close the modal after successful generation
     } catch (err) {

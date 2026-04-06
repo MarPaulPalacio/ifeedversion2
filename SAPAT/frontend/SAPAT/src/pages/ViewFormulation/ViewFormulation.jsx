@@ -1433,8 +1433,8 @@ const toggleTab = (tab) => {
             </div>
             {/* 4. High Z-index ensures it floats over the content below */}
             <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[100] w-52 p-2 shadow-xl border border-base-200 mt-2">
-              <li><button className="py-2.5 text-xs" onClick={() => handleOptimize('simplex')}>Simplex Feed Ratio</button></li>
-              <li><button className="py-2.5 text-xs" onClick={() => handleOptimize('simplex-dry-matter')}>Simplex Dry Matter</button></li>
+              <li><button className="py-2.5 text-xs" onClick={() => handleOptimize('simplex-soft-constraint')}>Simplex Soft Constraint</button></li>
+              <li><button className="py-2.5 text-xs" onClick={() => handleOptimize('simplex-dry-matter')}>Simplex Hard Constraint</button></li>
             </ul>
           </div>
 
@@ -1990,7 +1990,7 @@ const toggleTab = (tab) => {
 </div>
 
         {constraintMode === 'percent' && (
-          <ManualFormulation
+      <ManualFormulation
         isOpen ={isManualFormulationOpen}
         onClose={()=>setIsManualFormulationOpen(false)}
         results={optimizationResults}

@@ -214,15 +214,6 @@ const OptimizationResultsBox = ({
           </table>
         </div>
       </div>
-
-      <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-        <button 
-          className="btn btn-sm w-full bg-green-600 hover:bg-green-700 border-none rounded-xl text-white shadow-md text-[10px] font-bold uppercase tracking-wider" 
-          onClick={onGenerateReport}
-        >
-          Generate Report <RiArrowRightSLine />
-        </button>
-      </div>
     </div>
   );
 };

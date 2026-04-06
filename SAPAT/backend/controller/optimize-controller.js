@@ -178,7 +178,6 @@ const constraints = nutrients.map(nutrient => {
     vars: ingredients.map(ing => {
       const isForage = forageIngredients.some(f => f.name === ing.name);
       
-      if (type === "simplex-dry-matter") {
         const ingData = ingredientsData.find(d => d._id?.toString() === ing.ingredient_id?.toString());
         const dmEntry = ingData?.nutrients.find(n => n.nutrient?.toString() === dmNutrientId?.toString());
         const dmDecimal = dmEntry?.value || 1.0;
@@ -187,17 +186,12 @@ const constraints = nutrients.map(nutrient => {
           name: ing.name,
           coef: isForage ? dmDecimal : 0
         };
-      } else {
-        return {
-          name: ing.name,
-          coef: isForage ? 1 : 0
-        };
-      }
+
     }),
     bnds: {
       type: "GLP_LO",
-      lb: type === "simplex-dry-matter" ? (dmTarget * 0.60) : (weight * 0.60),
-      ub: type === "simplex-dry-matter" ? dmTarget : weight
+      lb: type === (dmTarget * 0.60),
+      ub: type === dmTarget
     }
   });
 
@@ -207,7 +201,6 @@ const constraints = nutrients.map(nutrient => {
       const isByproduct = byproductIngredients.some(b => b.name === ing.name);
       
       
-      if (type === "simplex-dry-matter") {
         const ingData = ingredientsData.find(d => d._id?.toString() === ing.ingredient_id?.toString());
         const dmEntry = ingData?.nutrients.find(n => n.nutrient?.toString() === dmNutrientId?.toString());
         const dmDecimal = dmEntry?.value || 1.0;
@@ -216,17 +209,12 @@ const constraints = nutrients.map(nutrient => {
           name: ing.name,
           coef: isByproduct ? dmDecimal : 0
         };
-      } else {
-        return {
-          name: ing.name,
-          coef: isByproduct ? 1 : 0
-        };
-      }
+      
     }),
     bnds: {
       type: "GLP_UP",
       lb: 0,
-      ub: type === "simplex-dry-matter" ? (dmTarget * 0.40) : (weight * 0.40)
+      ub: type === (dmTarget * 0.40) 
     }
   });
 
@@ -235,7 +223,6 @@ const constraints = nutrients.map(nutrient => {
     vars: ingredients.map(ing => {
       const isVM = vitaminmineral.some(v => v.name === ing.name);
       
-      if (type === "simplex-dry-matter") {
         const ingData = ingredientsData.find(d => d._id?.toString() === ing.ingredient_id?.toString());
         const dmEntry = ingData?.nutrients.find(n => n.nutrient?.toString() === dmNutrientId?.toString());
         const dmDecimal = dmEntry?.value || 1.0;
@@ -244,17 +231,12 @@ const constraints = nutrients.map(nutrient => {
           name: ing.name,
           coef: isVM ? dmDecimal : 0
         };
-      } else {
-        return {
-          name: ing.name,
-          coef: isVM ? 1 : 0
-        };
-      }
+  
     }),
     bnds: {
       type: "GLP_UP",
       lb: 0,
-      ub: type === "simplex-dry-matter" ? (dmTarget * 0.03) : (weight * 0.03)
+      ub: type === (dmTarget * 0.03) 
     }
   });
   // === nutrient ratio constraints ===
@@ -409,6 +391,9 @@ const computeCost = (optimizedIngredients, objectives, weight) => {
 }
 
 const simplex = async (req, res) => {
+
+  const { type } = req.body;
+
   const { objectives, constraints, variableBounds, weight} = await formatInput(req.body);
   try {
     const glpk = GLPK();
@@ -474,8 +459,19 @@ const simplex = async (req, res) => {
 
     console.log(`optimal is ${glpk.GLP_OPT}; but it's ${output.result.status}`)
     // Check if the result has an optimal solution
+
+    let isSuccessful = false;
+
+    if (type === 'simplex-dry-matter') {
+      // Strict check: must be exactly GLP_OPT (Optimal)
+      isSuccessful = (output.result.status === glpk.GLP_OPT);
+    } else {
+      // Loose check: any truthy status (Feasible, Suboptimal, etc.)
+      isSuccessful = !!output.result.status;
+    }
+
     // if (output.result.status == glpk.GLP_OPT) {
-    if (output.result.status){
+    if (isSuccessful) {
       console.log("optimal found!")
       console.log("=======================================DEBUG HERE=======================================")
       console.log("optimize-controller.js")
