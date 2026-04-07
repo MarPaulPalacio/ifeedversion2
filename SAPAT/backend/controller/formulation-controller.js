@@ -391,22 +391,28 @@ const updateFormulation = async (req, res) => {
   }));
 
   try {
-    const formulation = await Formulation.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          code, name, description, animal_group, cost, weight, ingredients, nutrients,
-          nutrientRatioConstraints, lastUpdated: new Date(),
-          typeProgress: typeProgress ? [...typeProgress] : undefined,
-          weightProgress: weightProgress ? [...weightProgress] : undefined,
-          milkYieldProgress: milkYieldProgress ? [...milkYieldProgress] : undefined,
-          dateProgress: dateProgress ? [...dateProgress] : undefined,
-          body_weight, pregnant_phase: months_pregnant,
-          lactating_phase: is_lactating, fat_content: fat_protein_content
-        }
+const formulation = await Formulation.findByIdAndUpdate(
+    id,
+    {
+      // 1. Use $set for standard fields that should be overwritten
+      $set: {
+        code, name, description, animal_group, cost, weight, ingredients, nutrients,
+        nutrientRatioConstraints, lastUpdated: new Date(),
+        body_weight, pregnant_phase: months_pregnant,
+        lactating_phase: is_lactating, fat_content: fat_protein_content
       },
-      { new: true }
-    );
+      // 2. Use $push to add new elements to the end of the existing arrays
+      // We use $each in case you are sending an array of new points
+    $push: {
+        // Only push if the value exists to avoid pushing 'null' or 'undefined'
+        ...(body_weight !== undefined && { weightProgress: body_weight }),
+        ...(animal_group && { typeProgress: animal_group }),
+        ...(is_lactating && { milkYieldProgress: is_lactating }),
+        dateProgress: new Date() 
+    }
+    },
+    { new: true }
+  );
 
     if (!formulation) {
       return res.status(404).json({ message: 'error' });

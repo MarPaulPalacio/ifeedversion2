@@ -18,7 +18,7 @@ const createNutrient = async (req, res) => {
 }
 
 const getAllNutrients = async (req, res) => {
-  const { userId } = req.params;
+  const { userId } = req.params;  // Not yet used for now
   const { skip=0, limit=8 } = req.query;
 
   try {
@@ -28,8 +28,8 @@ const getAllNutrients = async (req, res) => {
     const userNutrients = await Nutrient.find({});
     console.log('User Nutrients:', userNutrients); // Debugging line
     // global nutrients and overrides
-    const globalNutrients = await handleGetNutrientGlobalAndOverride(userId);
-    const nutrients = [...globalNutrients, ...userNutrients];
+    // const globalNutrients = await handleGetNutrientGlobalAndOverride(userId);
+    const nutrients = [...userNutrients];
 
     // pagination
     const totalCount = nutrients.length;
