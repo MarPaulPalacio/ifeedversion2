@@ -69,31 +69,66 @@ function EditFormulationModal({
     try {
       let bodynutrient_constraints = []
       let nutrients = []
+      let dmintake = 0;
 
       // Helper functions retained from your original logic
-      const nutrientsToConstraintFormat = (bnc, data) => {
-        return bnc.map((nc) => {
-          const constraint_percent = 0.2
-          let min = nc.constraintvalue - nc.constraintvalue * constraint_percent
-          let max = nc.constraintvalue + nc.constraintvalue * constraint_percent
+      const nutrientsToConstraintFormat = (bnc, data, dmNutrient, drymatterintake) => {
+  // 1. First, map the existing nutrients to the constraint format
+  const nutrients = bnc.map((nc) => {
+    const constraint_percent = 0.2
+    let min = nc.constraintvalue - nc.constraintvalue * constraint_percent
+    let max = nc.constraintvalue + nc.constraintvalue * constraint_percent
 
-          if (data.animal_group === 'Cow | Inahing kalabaw') {
-            if (data.months_pregnant >= 7) { min *= 1.3; max *= 1.3 }
-            if (nc.name === 'Total Digestible Nutrients' && data.is_pregnant) { min *= 1.25; max *= 1.25 }
-            if (nc.name === 'Crude Protein' && data.is_pregnant) { min *= 1.5; max *= 1.5 }
-            if (nc.is_lactating === 'Early Lactation (1-100 Days)') { min *= 1.25; max *= 1.25 }
-           
-          }
-          return {
-            nutrient_id: nc.nutrientid,
-            _id: nc._id,
-            name: nc.name,
-            minimum: min,
-            maximum: max,
-            value: nc.value,
-          }
-        })
+    if (data.animal_group === 'Cow | Inahing kalabaw') {
+      if (data.months_pregnant >= 7) { min *= 1.3; max *= 1.3 }
+      if (nc.name === 'Total Digestible Nutrients' && data.is_pregnant) { min *= 1.25; max *= 1.25 }
+      if (nc.name === 'Crude Protein' && data.is_pregnant) { min *= 1.5; max *= 1.5 }
+      if (nc.is_lactating === 'Early Lactation (1-100 Days)') { min *= 1.25; max *= 1.25 }
+
+    } else if (data.animal_group === 'Heifer | Dumalaga') {
+      if (data.months_pregnant && data.months_pregnant >= 7) {
+        min *= 1.30;
+        max *= 1.30;
       }
+      if (nc.name === 'Total Digestible Nutrients' && data.months_pregnant !== "Not Pregnant") {
+        min = min * 1.25;
+        max = max * 1.25;
+      }
+      if (nc.name === 'Crude Protein' && data.months_pregnant !== "Not Pregnant") {
+        min = min * 1.50;
+        max = max * 1.50;
+      }
+    }
+
+    return {
+      nutrient_id: nc.nutrientid,
+      _id: nc._id,
+      name: nc.name,
+      minimum: min,
+      maximum: max,
+      value: nc.value || 0,
+      unit: nc.unit || '%' // Added to maintain consistency
+    }
+  })
+
+  // 2. Now, apply your Dry Matter check logic
+  const nutrientWithDryMatter = nutrients.find(n => n.name === 'Dry Matter')
+    ? nutrients
+    : [
+        ...nutrients,
+        {
+          nutrient_id: dmNutrient._id,
+          _id: dmNutrient._id,
+          name: 'Dry Matter',
+          minimum: drymatterintake * 0.8 * 1000,
+          maximum: drymatterintake * 1.2 * 1000,
+          value: 0,
+          unit: '%'
+        }
+      ];
+
+  return nutrientWithDryMatter;
+}
 
       const cowWeight = (weight) => {
         const weights = [350, 400, 450, 500, 550, 600, 650, 700, 750, 800]
@@ -103,12 +138,44 @@ function EditFormulationModal({
       }
 
       if (formData.animal_group === 'Cow | Inahing kalabaw' && formData.body_weight) {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/cow`, {
-          params: { weight: cowWeight(formData.body_weight) },
-        })
-        bodynutrient_constraints = res.data.formulation.nutrientrequirement
-        nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData)
-      }
+  // --- COW LOGIC ---
+  const res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/cow`, {
+    params: { weight: cowWeight(formData.body_weight) },
+  });
+
+  bodynutrient_constraints = res.data.formulation.nutrientrequirement;
+  
+  // Calculate intake
+  const drymatterintake = res.data.formulation.intake ? (res.data.formulation.intake * formData.body_weight) : 0;
+  
+  // Fetch DM Nutrient details from database
+  const nutrientRes = await axios.get(`${import.meta.env.VITE_API_URL}/nutrient/filtered/1234567890`); // Replace with actual ownerId or relevant identifier
+  const dmNutrient = nutrientRes.data.nutrients.find(n => n.name === 'Dry Matter' || n.abbreviation === 'DM');
+
+  // Format with constraints
+  nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, dmNutrient, drymatterintake);
+
+} else {
+  // --- CARABAO / HEIFER LOGIC ---
+  const res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/carabao`, {
+    params: { 
+      weight: cowWeight(formData.body_weight), 
+      adg: formData.average_daily_gain 
+    },
+  });
+
+  bodynutrient_constraints = res.data.formulation.nutrientrequirement;
+
+  // Calculate intake
+  const drymatterintake = res.data.formulation.intake ? (res.data.formulation.intake * formData.body_weight) : 0;
+
+  // Fetch DM Nutrient details from database
+  const nutrientRes = await axios.get(`${import.meta.env.VITE_API_URL}/nutrient/filtered/1234567890`); // Replace with actual ownerId or relevant identifier
+  const dmNutrient = nutrientRes.data.nutrients.find(n => n.name === 'Dry Matter' || n.abbreviation === 'DM');
+
+  // Format with constraints
+  nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, dmNutrient, drymatterintake);
+}
 
       const body = { ...formData, bodynutrient_constraints, nutrients }
       const res = await axios.put(`${import.meta.env.VITE_API_URL}/formulation/${formulation._id}`, body)
@@ -188,10 +255,26 @@ function EditFormulationModal({
                 <input type="number" name="body_weight" value={formData.body_weight} required disabled={isDisabled} onChange={handleChange} className={`input input-bordered w-full rounded-xl ${bodyWeightError ? 'border-red-500' : ''}`} />
               </div>
 
-              {formData.animal_group !== "Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" || formData.animal_group !== "Cow | Inahing kalabaw" && (
+              {(formData.animal_group !== "Cow | Inahing kalabaw") && (
                 <div className="form-control w-full">
-                  <label className="label"><span className="label-text">Avg Daily Gain (kg)</span></label>
-                  <input type="number" name="average_daily_gain" value={formData.average_daily_gain} required disabled={isDisabled} onChange={handleChange} className="input input-bordered w-full rounded-xl" />
+                  <label className="label whitespace-normal">
+                  <span className="label-text font-medium">Average Daily Gain (in kg)</span>
+                </label>
+                <select
+                  name="average_daily_gain"
+                  value={formData.average_daily_gain}
+                  required
+                  disabled={isDisabled}
+                  onChange={handleChange}
+                  className={`select select-bordered w-full rounded-xl ${averageDailyGainError ? 'border-red-500' : ''}`}
+                >
+                  <option value="" disabled>Select Average Daily Gain</option>
+                  <option value="0">0 kg (Maintenance)</option>
+                  <option value="0.25">0.25 kg</option>
+                  <option value="0.5">0.50 kg</option>
+                  <option value="0.75">0.75 kg</option>
+                  <option value="1">1 kg</option>
+                </select>
                 </div>
               )}
 
