@@ -137,6 +137,20 @@ function EditFormulationModal({
         return weights.reduce((prev, curr) => Math.abs(curr - weight) < Math.abs(prev - weight) ? curr : prev)
       }
 
+      function regularBuffaloWeight(weight) {
+        const weights = [100,150,200,250,300,350, 400, 450];
+        if (weight < 100) return 100;
+        if (weight > 450) return 450;
+        return weights.reduce((prev, curr) => Math.abs(curr - weight) < Math.abs(prev - weight) ? curr : prev);
+      }
+
+      function seniorBull(weight){
+        const weights = [350, 400, 450, 500, 550, 600, 650, 700, 750, 800];
+        if (weight < 350) return 350;
+        if (weight > 800) return 800;
+        return weights.reduce((prev, curr) => Math.abs(curr - weight) < Math.abs(prev - weight) ? curr : prev);
+      }
+
       if (formData.animal_group === 'Cow | Inahing kalabaw' && formData.body_weight) {
   // --- COW LOGIC ---
   const res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/cow`, {
@@ -156,26 +170,31 @@ function EditFormulationModal({
   nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, dmNutrient, drymatterintake);
 
 } else {
-  // --- CARABAO / HEIFER LOGIC ---
-  const res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/carabao`, {
-    params: { 
-      weight: cowWeight(formData.body_weight), 
-      adg: formData.average_daily_gain 
-    },
-  });
+        let res = null;
+        if (formData.animal_group === 'Senior Bull | Bulugan (> 3 taon)' && formData.body_weight){
+          res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/seniorbull`, {
+            params: { weight: seniorBull(formData.body_weight)},
+          })
+        } else {
+          res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/carabao`, {
+          params: { weight: regularBuffaloWeight(formData.body_weight), adg: formData.average_daily_gain, lactating: formData.is_lactating},
+          });
+        }
+        
+        console.log("Carabao Formulation Response:", res.data.formulation)
+        bodynutrient_constraints = res.data.formulation.nutrientrequirement;
 
-  bodynutrient_constraints = res.data.formulation.nutrientrequirement;
+        const drymatterintake = res.data.formulation.intake ? (res.data.formulation.intake*formData.body_weight) : 0;
+        
+        dmintake = res.data.formulation.intake ? (res.data.formulation.intake*formData.body_weight) : 0;
 
-  // Calculate intake
-  const drymatterintake = res.data.formulation.intake ? (res.data.formulation.intake * formData.body_weight) : 0;
+        const nutrientRes = await axios.get(`${import.meta.env.VITE_API_URL}/nutrient/filtered/${ownerId}`);
+       
+        const dmNutrient = nutrientRes.data.nutrients.find(n => n.name === 'Dry Matter' || n.abbreviation === 'DM');
 
-  // Fetch DM Nutrient details from database
-  const nutrientRes = await axios.get(`${import.meta.env.VITE_API_URL}/nutrient/filtered/1234567890`); // Replace with actual ownerId or relevant identifier
-  const dmNutrient = nutrientRes.data.nutrients.find(n => n.name === 'Dry Matter' || n.abbreviation === 'DM');
+        nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, drymatterintake, dmNutrient);
 
-  // Format with constraints
-  nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, dmNutrient, drymatterintake);
-}
+      }
 
       const body = { ...formData, bodynutrient_constraints, nutrients }
       const res = await axios.put(`${import.meta.env.VITE_API_URL}/formulation/${formulation._id}`, body)
@@ -246,7 +265,7 @@ function EditFormulationModal({
                   <option value="Growing Calves (5-12 months) | Lumalaking bula">Growing Calves</option>
                   <option value="Junior Bull | Lumalaking bulugan">Junior Bull</option>
                   <option value="Cow | Inahing kalabaw">Cow | Inahing kalabaw</option>
-                  <option value="Senior Bull | Bulugan">Senior Bull</option>
+                  <option value="Senior Bull | Bulugan (> 3 taon)">Senior Bull</option>
                 </select>
               </div>
 
@@ -255,7 +274,7 @@ function EditFormulationModal({
                 <input type="number" name="body_weight" value={formData.body_weight} required disabled={isDisabled} onChange={handleChange} className={`input input-bordered w-full rounded-xl ${bodyWeightError ? 'border-red-500' : ''}`} />
               </div>
 
-              {(formData.animal_group !== "Cow | Inahing kalabaw") && (
+              {(formData.animal_group !== "Cow | Inahing kalabaw") && (formData.animal_group !== "Senior Bull | Bulugan (> 3 taon)") && (
                 <div className="form-control w-full">
                   <label className="label whitespace-normal">
                   <span className="label-text font-medium">Average Daily Gain (in kg)</span>

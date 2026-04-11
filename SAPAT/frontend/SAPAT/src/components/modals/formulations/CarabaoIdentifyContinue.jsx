@@ -428,7 +428,7 @@ function CarabaoIdentifyContinue({
               </>
             )}
 
-            { formData.animal_group !== "" && formData.animal_group !== "Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" && 
+            { formData.animal_group !== "" && 
             formData.animal_group !== "Cow | Inahing kalabaw" && formData.animal_group!=="Senior Bull | Bulugan (> 3 taon)" && (
               <div className='form-control w-full'>
                 <label className="label whitespace-normal">
