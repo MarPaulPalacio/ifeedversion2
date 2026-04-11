@@ -180,6 +180,8 @@ function EditFormulationModal({
           params: { weight: regularBuffaloWeight(formData.body_weight), adg: formData.average_daily_gain, lactating: formData.is_lactating},
           });
         }
+
+       
         
         console.log("Carabao Formulation Response:", res.data.formulation)
         bodynutrient_constraints = res.data.formulation.nutrientrequirement;
@@ -188,11 +190,12 @@ function EditFormulationModal({
         
         dmintake = res.data.formulation.intake ? (res.data.formulation.intake*formData.body_weight) : 0;
 
-        const nutrientRes = await axios.get(`${import.meta.env.VITE_API_URL}/nutrient/filtered/${ownerId}`);
+        const nutrientRes = await axios.get(`${import.meta.env.VITE_API_URL}/nutrient/filtered/1234567890`); // Replace with actual ownerId or relevant identifier
        
         const dmNutrient = nutrientRes.data.nutrients.find(n => n.name === 'Dry Matter' || n.abbreviation === 'DM');
 
         nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, drymatterintake, dmNutrient);
+        
 
       }
 

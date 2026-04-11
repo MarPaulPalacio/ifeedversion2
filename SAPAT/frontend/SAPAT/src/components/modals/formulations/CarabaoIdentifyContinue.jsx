@@ -422,9 +422,6 @@ function CarabaoIdentifyContinue({
                       <option value="9">9-11 Months</option>
                     </select>
                   </div>
-                
-                
-                
               </>
             )}
 
