@@ -198,6 +198,20 @@ function CarabaoIdentifyContinue({
         return weights.reduce((prev, curr) => Math.abs(curr - weight) < Math.abs(prev - weight) ? curr : prev);
       }
 
+      function regularBuffaloWeight(weight) {
+        const weights = [100,150,200,250,300,350, 400, 450];
+        if (weight < 100) return 100;
+        if (weight > 450) return 450;
+        return weights.reduce((prev, curr) => Math.abs(curr - weight) < Math.abs(prev - weight) ? curr : prev);
+      }
+
+      function seniorBull(weight){
+        const weights = [350, 400, 450, 500, 550, 600, 650, 700, 750, 800];
+        if (weight < 350) return 350;
+        if (weight > 800) return 800;
+        return weights.reduce((prev, curr) => Math.abs(curr - weight) < Math.abs(prev - weight) ? curr : prev);
+      }
+
       
       
       // Fetch body nutrient constraints if animal group is Cow and body weight is provided
@@ -223,21 +237,25 @@ function CarabaoIdentifyContinue({
 
         nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, drymatterintake, dmNutrient);
       } else {
-        console.log("Animal group is not Cow or body weight is missing, skipping body nutrient constraint fetch.")
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/carabao`, {
-          params: { weight: cowWeight(formData.body_weight), adg: formData.average_daily_gain},
-        });
-
+        let res = null;
+        if (formData.animal_group === 'Senior Bull | Bulugan (> 3 taon)' && formData.body_weight){
+          res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/seniorbull`, {
+            params: { weight: seniorBull(formData.body_weight)},
+          })
+        } else {
+          res = await axios.get(`${import.meta.env.VITE_API_URL}/formulation/carabao`, {
+          params: { weight: regularBuffaloWeight(formData.body_weight), adg: formData.average_daily_gain, lactating: formData.is_lactating},
+          });
+        }
+        
+        console.log("Carabao Formulation Response:", res.data.formulation)
         bodynutrient_constraints = res.data.formulation.nutrientrequirement;
 
         const drymatterintake = res.data.formulation.intake ? (res.data.formulation.intake*formData.body_weight) : 0;
-        // console.log("BNC:", bodynutrient_constraints)
         
         dmintake = res.data.formulation.intake ? (res.data.formulation.intake*formData.body_weight) : 0;
 
         const nutrientRes = await axios.get(`${import.meta.env.VITE_API_URL}/nutrient/filtered/${ownerId}`);
-
-        console.log("Nutrient Response:", nutrientRes.data.nutrients)
        
         const dmNutrient = nutrientRes.data.nutrients.find(n => n.name === 'Dry Matter' || n.abbreviation === 'DM');
 
@@ -411,9 +429,8 @@ function CarabaoIdentifyContinue({
             )}
 
             { formData.animal_group !== "" && formData.animal_group !== "Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" && 
-            formData.animal_group !== "Cow | Inahing kalabaw" && (
+            formData.animal_group !== "Cow | Inahing kalabaw" && formData.animal_group!=="Senior Bull | Bulugan (> 3 taon)" && (
               <div className='form-control w-full'>
-  
                 <label className="label whitespace-normal">
                   <span className="label-text font-medium">Average Daily Gain (in kg)</span>
                 </label>

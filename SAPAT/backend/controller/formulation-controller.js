@@ -6,6 +6,7 @@ import GroupFormulation from '../models/group-formulation.js';
 import User from '../models/user-model.js';
 import Cow from "../models/cow_nutrient_constraint.js";
 import RegularBuffalo from "../models/regularbuffalo_nutrient_constraint.js";
+import Bull from "../models/bull_nutrient_constraint.js";
 import mongoose from 'mongoose';
 
 const createFormulation = async (req, res) => {
@@ -73,16 +74,23 @@ const getCarabaoFormulation = async (req, res) => {
     // Extract both weight and ADG from the query parameters
     const weight = Number(req.query.weight);
     const adg = Number(req.query.adg);
-
-    console.log(`Searching Carabao Formulation - Weight: ${weight}, ADG: ${adg}`);
-
+    const lactating = req.query.lactating === 'true' ? true : false; // Convert lactating to boolean
     try {
         console.log("Carabao formulation found:");
-        const carabaoFormulation = await RegularBuffalo.findOne({ 
-            weight: weight, 
-            gain: adg 
-        }).populate('nutrientrequirement.nutrientid');
-        console.log("Carabao formulation wehhwhfound:", carabaoFormulation);
+        let carabaoFormulation = null;
+
+        if (lactating){
+            carabaoFormulation = await RegularBuffalo.findOne({ 
+                weight: weight, 
+                gain: adg,
+            }).populate('nutrientrequirement.nutrientid');
+        } else {
+            carabaoFormulation = await RegularBuffalo.findOne({ 
+                weight: weight, 
+                gain: adg 
+            }).populate('nutrientrequirement.nutrientid');
+        }
+        
         if (!carabaoFormulation) {
             return res.status(404).json({ 
                 message: `No Carabao formulation found for Weight: ${weight}kg and ADG: ${adg}kg/day` 
@@ -95,7 +103,35 @@ const getCarabaoFormulation = async (req, res) => {
         });
         
     } catch (err) {
-        console.log("Carabao formulation unfound:", carabaoFormulation);
+        console.error("Error fetching carabao data:", err);
+        res.status(500).json({ 
+            error: err.message, 
+            message: 'error' 
+        });
+    }
+};
+
+const getBullFormulation = async (req, res) => {
+    // Extract both weight and ADG from the query parameters
+    const weight = Number(req.query.weight);
+    try {
+
+        const carabaoFormulation = await Bull.findOne({ 
+            weight: weight,
+        }).populate('nutrientrequirement.nutrientid');
+        
+        if (!carabaoFormulation) {
+            return res.status(404).json({ 
+                message: `No Carabao formulation found for Weight: ${weight}kg` 
+            });
+        }
+
+        res.status(200).json({ 
+            message: 'success', 
+            formulation: carabaoFormulation 
+        });
+        
+    } catch (err) {
         console.error("Error fetching carabao data:", err);
         res.status(500).json({ 
             error: err.message, 
@@ -1132,8 +1168,8 @@ export {
     cloneTemplateToFormulation,
     getCowFormulation,
     getCarabaoFormulation,
+    getBullFormulation,
     getAllGroupFormulations,
     getGroupFormulationById,
     getGroupFormulationFormulations,
-
 };

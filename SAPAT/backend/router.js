@@ -22,7 +22,8 @@ import {
   getCarabaoFormulation,
   getAllGroupFormulations,
   getGroupFormulationById,
-  getGroupFormulationFormulations 
+  getGroupFormulationFormulations,
+  getBullFormulation,
 } from './controller/formulation-controller.js';
 import {
   createIngredient, getAllIngredients, getIngredient, getIngredientsByFilters, updateIngredient, deleteIngredient, importIngredient, getIngredientsByIds
@@ -232,6 +233,7 @@ const handleRoutes = (app) => {
   app.get('/formulation/filtered/:collaboratorId', getAllFormulations);
   app.get('/formulation/cow', getCowFormulation);
   app.get('/formulation/carabao', getCarabaoFormulation);
+  app.get('/formulation/seniorbull', getBullFormulation);
 
   
   app.get('/formulation/special/:animalgroup', getAllSpecialFormulations);
