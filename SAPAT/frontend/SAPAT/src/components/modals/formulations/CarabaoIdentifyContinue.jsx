@@ -164,6 +164,9 @@ function CarabaoIdentifyContinue({
                   minimumvalue = minimumvalue * 1.50;
                   maximumvalue = maximumvalue * 1.50;
                 }
+              } else if (formData.animal_group === 'Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)') {
+                minimumvalue = 0;
+                maximumvalue = 0;
               }
               return {
                 nutrient_id: nc.nutrientid,

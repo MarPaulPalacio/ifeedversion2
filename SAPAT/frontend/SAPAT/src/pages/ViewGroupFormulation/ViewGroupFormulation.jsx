@@ -351,7 +351,12 @@ function ViewGroupFormulation({
 const [detailedIngredients, setDetailedIngredients] = useState('')
   const [isManualFormulationOpen, setIsManualFormulationOpen] = useState(false)
 
-
+  const resetFormulationToInitialState = () => {
+    nutrients.map((nutrient, index) => {
+      handleNutrientMinimumChange(nutrient.nutrient_id, formulation.origNutrientTargets[index].minimum)
+      handleNutrientMaximumChange(nutrient.nutrient_id, formulation.origNutrientTargets[index].maximum)
+    })
+  }
   const handleManualOptimize = async () => {
 
     // Get Necessary Formulations
@@ -1818,12 +1823,22 @@ const [detailedIngredients, setDetailedIngredients] = useState('')
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold">Nutrients (g)</h3>
                     {/* Reference Button */}
-                    <button 
-                      onClick={() => setIsPCCModalOpen(true)}
-                      className="btn btn-ghost btn-xs text-blue-600 hover:bg-blue-50 flex items-center gap-1"
-                    >
-                      <RiBookLine /> Reference: PCC Book
-                    </button>
+                    {formulation.animal_group !== "Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan" && (
+                      <>
+                        <button 
+                        onClick={() => setIsPCCModalOpen(true)}
+                        className="btn btn-ghost btn-xs text-blue-600 hover:bg-blue-50 flex items-center gap-1"
+                      >
+                        <RiBookLine /> Reference: PCC Book
+                      </button>
+                      <button 
+                        onClick={() => resetFormulationToInitialState()}
+                        className="btn btn-ghost btn-xs text-red-600 hover:bg-blue-50 flex items-center gap-1"
+                      >
+                        <RiBookLine /> Reset to PCC Reference
+                      </button>
+                    </>
+                    )}
                   </div>
                 </div>
                 

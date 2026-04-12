@@ -1190,7 +1190,7 @@ const toggleTab = (tab) => {
   const [editingNutrientRatioIndex, setEditingNutrientRatioIndex] = useState(null); // NEW: track which ratio is being edited
   const [nutrientRatioToEdit, setNutrientRatioToEdit] = useState(null); // NEW: store the ratio being edited
   const [missingNutrientsValue, setMissingNutrientsValue] = useState([]);
-  const [advancedPressed, setAdvancedPressed] = useState(false);
+  const [advancedPressed, setAdvancedPressed] = useState(formulation.animal_group==="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)"? true: false);
   const [progressPressed, setProgressPressed] = useState(false);
   // Handler to open modal for editing a nutrient ratio
   const handleEditNutrientRatio = (index) => {
@@ -1284,6 +1284,13 @@ const toggleTab = (tab) => {
       });
   }
 
+
+  const resetFormulationToInitialState = () => {
+    nutrients.map((nutrient, index) => {
+      handleNutrientMinimumChange(nutrient.nutrient_id, formulation.origNutrientTargets[index].minimum)
+      handleNutrientMaximumChange(nutrient.nutrient_id, formulation.origNutrientTargets[index].maximum)
+    })
+  }
   const {
     weight,
     code,
@@ -1473,7 +1480,9 @@ const toggleTab = (tab) => {
               </div>
               <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[100] w-48 p-2 shadow-xl border border-base-200 mt-2">
                 <li><button className="text-xs" onClick={() => setShadowPricingTabOpen(true)}><RiLineChartLine /> Shadow Prices</button></li>
-                <li><button className="text-xs" onClick={() => setAdvancedPressed(!advancedPressed)}><RiSettings4Line /> {advancedPressed ? 'Show Basic' : 'Show Advanced'}</button></li>
+                {formulation.animal_group !=="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" && (
+                  <li><button className="text-xs" onClick={() => setAdvancedPressed(!advancedPressed)}><RiSettings4Line /> {advancedPressed ? 'Show Basic' : 'Show Advanced'}</button></li>
+                )}
                 <li><button className="text-xs" onClick={() => setProgressPressed(!progressPressed)}><RiBarChartLine /> Show Progress</button></li>
                 {optimizationResults && (
                   <li>
@@ -1491,9 +1500,15 @@ const toggleTab = (tab) => {
               </button>
             </div>
             <div className="hidden lg:flex items-center gap-2">
+              {formulation.animal_group !=="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" ? (
               <button className="btn border border-gray-300 bg-white btn-sm gap-2 rounded-xl text-xs px-3 font-medium" onClick={() => setAdvancedPressed(!advancedPressed)}>
                 <RiSettings4Line />  {advancedPressed ? 'Show Basic' : 'Show Advanced'}
               </button>
+              ): 
+              <button className="btn border border-gray-300 bg-white btn-sm gap-2 rounded-xl text-xs px-3 font-medium" disabled>
+                <RiSettings4Line />  Manual Modify
+              </button>
+              }
             </div>
             <div className="hidden lg:flex items-center gap-2">
               <button 
@@ -2010,12 +2025,25 @@ const toggleTab = (tab) => {
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold">Nutrients (g)</h3>
                     {/* Reference Button */}
-                    <button 
-                      onClick={() => setIsPCCModalOpen(true)}
-                      className="btn btn-ghost btn-xs text-blue-600 hover:bg-blue-50 flex items-center gap-1"
-                    >
-                      <RiBookLine /> Reference: PCC Book
-                    </button>
+
+                    {formulation.animal_group !== "Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" && (
+                      <>
+                        <button 
+                        onClick={() => setIsPCCModalOpen(true)}
+                        className="btn btn-ghost btn-xs text-blue-600 hover:bg-blue-50 flex items-center gap-1"
+                      >
+                        <RiBookLine /> Reference: PCC Book
+                      </button>
+                      <button 
+                        onClick={() => resetFormulationToInitialState()}
+                        className="btn btn-ghost btn-xs text-red-600 hover:bg-blue-50 flex items-center gap-1"
+                      >
+                        <RiBookLine /> Reset to PCC Reference
+                      </button>
+                    </>
+                    )}
+            
+                    
                   </div>
                 </div>
                 
@@ -2130,7 +2158,8 @@ const toggleTab = (tab) => {
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 border-b pb-2 text-xs font-bold uppercase text-gray-500">
                         <span>Nutrient</span>
-                        <span className="text-right">Reference Avg (min+max/2)</span>
+
+                        <span className="text-right">Reference Avg</span>
                       </div>
                       {formulation.origNutrientTargets.map((n) => {
                         const avg = (Number(n.minimum || 0) + Number(n.maximum || 0)) / 2;

@@ -341,9 +341,11 @@ function CarabaoIdentifySetup({
                         name="animalGroupSelection"
                         value={carabaoConfiguration.animalGroupSelection}
                         disabled={isDisabled}
+                        required
                         onChange={handleMultiSelectionChange}
                         className="select select-bordered w-full rounded-xl"
                       >
+                        <option value="">Select Phase</option>
                         <option value="Heifer | Dumalaga">Heifer | Dumalaga</option>
                         <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)</option>
                         <option value="Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)">Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)</option>
