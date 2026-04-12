@@ -1840,7 +1840,7 @@ const [detailedIngredients, setDetailedIngredients] = useState('')
                       <th>Min</th>
                       <th>Max</th>
                       <th>Amount</th>
-                      <th></th>
+                      {/* <th></th> */}
                     </tr>
                   </thead>
                   <tbody>
@@ -1909,7 +1909,7 @@ const [detailedIngredients, setDetailedIngredients] = useState('')
                           </div>
                         </td>
                         <td className="text-gray-600">{nutrient.value.toFixed(3)}</td>
-                        <td>
+                        {/* <td>
                           {!isDisabled && (
                             <button
                               className="btn btn-ghost btn-xs text-red-500 hover:bg-red-200"
@@ -1918,7 +1918,7 @@ const [detailedIngredients, setDetailedIngredients] = useState('')
                               <RiDeleteBinLine />
                             </button>
                           )}
-                        </td>
+                        </td> */}
                       </tr>
                     ))}
                     

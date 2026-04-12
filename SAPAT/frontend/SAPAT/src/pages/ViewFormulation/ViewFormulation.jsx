@@ -2032,7 +2032,7 @@ const toggleTab = (tab) => {
                       <th>Min</th>
                       <th>Max</th>
                       <th>Amount</th>
-                      <th></th>
+                      {/* <th></th> */}
                     </tr>
                   </thead>
                   <tbody>
@@ -2101,7 +2101,7 @@ const toggleTab = (tab) => {
                           </div>
                         </td>
                         <td className="text-gray-600">{nutrient.value.toFixed(3)}</td>
-                        <td>
+                        {/* <td>
                           {!isDisabled && (
                             <button
                               className="btn btn-ghost btn-xs text-red-500 hover:bg-red-200"
@@ -2110,7 +2110,7 @@ const toggleTab = (tab) => {
                               <RiDeleteBinLine />
                             </button>
                           )}
-                        </td>
+                        </td> */}
                       </tr>
                     ))}
                     
