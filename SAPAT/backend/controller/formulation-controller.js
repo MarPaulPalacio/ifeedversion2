@@ -948,10 +948,10 @@ const upsertGroupFormulation = async (formulation) => {
     lactating_phase: formulation.lactating_phase || false,
     pregnant_phase: formulation.pregnant_phase || 0,
     weightProgress: formulation.weightProgress || [],
+    origNutrientTargets: formulation.origNutrientTargets || [],
     milkYieldProgress: formulation.milkYieldProgress || [],
     typeProgress: formulation.typeProgress || [],
     dateProgress: formulation.dateProgress || [],
-    collaborators: formulation.collaborators || []
   };
 
   if (group) {
@@ -1050,7 +1050,8 @@ const upsertGroupFormulationForUpdate = async (formulation) => {
     weightProgress: formulation.weightProgress || [],
     milkYieldProgress: formulation.milkYieldProgress || [],
     typeProgress: formulation.typeProgress || [],
-    dateProgress: formulation.dateProgress || []
+    dateProgress: formulation.dateProgress || [],
+    origNutrientTargets: formulation.origNutrientTargets || [],
   };
 
   // Find the current group the formulation belongs to

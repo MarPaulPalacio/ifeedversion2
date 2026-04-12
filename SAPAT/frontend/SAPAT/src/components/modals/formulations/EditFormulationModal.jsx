@@ -195,10 +195,8 @@ function EditFormulationModal({
         const dmNutrient = nutrientRes.data.nutrients.find(n => n.name === 'Dry Matter' || n.abbreviation === 'DM');
 
         nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, drymatterintake, dmNutrient);
-        
-
       }
-
+      
       const body = { ...formData, bodynutrient_constraints, nutrients }
       const res = await axios.put(`${import.meta.env.VITE_API_URL}/formulation/${formulation._id}`, body)
 

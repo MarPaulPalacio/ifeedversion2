@@ -55,6 +55,11 @@ const formulationDetailsSchema = new Schema({
     nutrients: { type: [nutrientConstraintSchema], default: [] },
     nutrientRatioConstraints: { type: [nutrientRatioConstraintSchema], default: [] },
     collaborators: { type: [userAccessSchema], default: [] },
+    
+    origNutrientTargets: {
+        type: [nutrientConstraintSchema],
+        default: []
+    },
 
     // Progress tracking
     weightProgress: { type: [Number], default: [] },

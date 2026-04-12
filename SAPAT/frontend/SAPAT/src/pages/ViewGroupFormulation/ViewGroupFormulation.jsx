@@ -204,7 +204,7 @@ function ViewGroupFormulation({
 
   // Function to organize ingredients for Ingredients Menu
   const organizeIngredients = (fetchedData, phase) => {
-    
+      console.log(fetchedData, "FETCHED DATA HERE")
       setListOfIngredients(fetchedData)
       // console.log("FETCHED DATA HERE PRESENT ORGANIZE INGREDIENTS: ", formulation)
 
@@ -270,6 +270,7 @@ function ViewGroupFormulation({
         `${import.meta.env.VITE_API_URL}/ingredient/filtered/${owner?.userId}?limit=10000`
       )
       const fetchedData = res.data.ingredients
+      
       organizeIngredients(fetchedData, 'Custom')
       
     } catch (err) {
@@ -1943,6 +1944,7 @@ const [detailedIngredients, setDetailedIngredients] = useState('')
                         const avg = (Number(n.minimum || 0) + Number(n.maximum || 0)) / 2;
                         return (
                           <div key={n.nutrient_id} className="grid grid-cols-2 py-1 text-sm border-b border-gray-50">
+                           
                             <span>{n.name}</span>
                             <span className="text-right font-mono">{avg.toFixed(2)}g</span>
                           </div>
