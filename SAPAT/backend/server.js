@@ -123,6 +123,7 @@ app.use((req, res, next) => {
 app.use(passport.initialize());
 app.use(passport.session());
 
+
 // Middleware to ensure session is saved after passport authentication
 app.use((req, res, next) => {
   if (req.user) {

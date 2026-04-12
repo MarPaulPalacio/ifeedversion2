@@ -147,11 +147,30 @@ const router = createBrowserRouter([
 ])
 
 function App() {
-  const { liveblocksAuth } = useAuth()
+  const { liveblocksAuth } = useAuth(); // This is likely your URL string
 
   return (
     <I18nextProvider i18n={i18n}>
-      <LiveblocksProvider authEndpoint={liveblocksAuth}>
+      <LiveblocksProvider 
+        authEndpoint={async (room) => {
+          // Manually calling fetch to include credentials
+          const response = await fetch(liveblocksAuth, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ room }),
+            // THIS IS THE CRITICAL LINE:
+            credentials: "include", 
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to authenticate Liveblocks session");
+          }
+
+          return await response.json();
+        }}
+      >
         <RouterProvider router={router} />
       </LiveblocksProvider>
     </I18nextProvider>
