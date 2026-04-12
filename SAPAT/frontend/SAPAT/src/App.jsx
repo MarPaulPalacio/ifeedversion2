@@ -147,34 +147,45 @@ const router = createBrowserRouter([
 ])
 
 function App() {
-  const { liveblocksAuth } = useAuth(); // This is likely your URL string
+  const { liveblocksAuth } = useAuth();
+
+  // Define the auth function outside the return or use useCallback
+  const handleAuth = async (room) => {
+    try {
+      const response = await fetch(liveblocksAuth, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ room }),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Auth failed");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Liveblocks auth error:", error);
+      throw error; 
+    }
+  };
 
   return (
     <I18nextProvider i18n={i18n}>
-      <LiveblocksProvider 
-        authEndpoint={async (room) => {
-          // Manually calling fetch to include credentials
-          const response = await fetch(liveblocksAuth, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ room }),
-            // THIS IS THE CRITICAL LINE:
-            credentials: "include", 
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to authenticate Liveblocks session");
-          }
-
-          return await response.json();
-        }}
-      >
-        <RouterProvider router={router} />
-      </LiveblocksProvider>
+      {/* CRITICAL: Only render the provider when liveblocksAuth (the URL) is ready 
+         to prevent "undefined/api/liveblocks-auth" errors.
+      */}
+      {liveblocksAuth ? (
+        <LiveblocksProvider authEndpoint={handleAuth}>
+          <RouterProvider router={router} />
+        </LiveblocksProvider>
+      ) : (
+        <Loading /> 
+      )}
     </I18nextProvider>
-  )
+  );
 }
 
 export default App
