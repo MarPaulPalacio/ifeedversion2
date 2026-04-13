@@ -181,8 +181,6 @@ function EditFormulationModal({
           });
         }
 
-       
-        
         console.log("Carabao Formulation Response:", res.data.formulation)
         bodynutrient_constraints = res.data.formulation.nutrientrequirement;
 
@@ -194,7 +192,12 @@ function EditFormulationModal({
        
         const dmNutrient = nutrientRes.data.nutrients.find(n => n.name === 'Dry Matter' || n.abbreviation === 'DM');
 
-        nutrients = nutrientsToConstraintFormat(bodynutrient_constraints, formData, drymatterintake, dmNutrient);
+        nutrients = nutrientsToConstraintFormat(
+          bodynutrient_constraints, 
+          formData, 
+          dmNutrient, 
+          drymatterintake
+        );
       }
       
       const body = { ...formData, bodynutrient_constraints, nutrients }

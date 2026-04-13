@@ -1291,6 +1291,7 @@ const toggleTab = (tab) => {
       handleNutrientMaximumChange(nutrient.nutrient_id, formulation.origNutrientTargets[index].maximum)
     })
   }
+  
   const {
     weight,
     code,
