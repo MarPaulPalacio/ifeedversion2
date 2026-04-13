@@ -936,7 +936,10 @@ const toggleTab = (tab) => {
       group === 'vitamins' ? showVitaminLimits :
       showVitaminLimits; // for 'vitamins'
     if (filtered.length > 0) {
-      return filtered.map((ingredient, index) => (
+      return (
+      <>
+      
+      {filtered.map((ingredient, index) => (
         <tr key={index} className="hover:bg-base-200 transition-colors border-b border-gray-50">
           <td className="font-medium text-gray-700">{ingredient.name}</td>
           
@@ -988,6 +991,9 @@ const toggleTab = (tab) => {
               }}
                 />
               </td>
+              
+              
+               
             </>
           )}
 
@@ -1007,8 +1013,12 @@ const toggleTab = (tab) => {
               <RiDeleteBinLine size={14} />
             </button>
           </td>
+          
         </tr>
-      ))
+      ))}
+      
+      </>
+      )
     }
   }
 
@@ -1290,6 +1300,20 @@ const toggleTab = (tab) => {
     nutrients.map((nutrient, index) => {
       handleNutrientMinimumChange(nutrient.nutrient_id, formulation.origNutrientTargets[index].minimum)
       handleNutrientMaximumChange(nutrient.nutrient_id, formulation.origNutrientTargets[index].maximum)
+    })
+  }
+
+  const percentFormulationToInitialStateIngredients = () => {
+    ingredients.map((ingredient, index) => {
+      handleIngredientMinimumChange(ingredient.ingredient_id, (ingredient.value/weight * 100).toFixed(1))
+      handleIngredientMaximumChange(ingredient.ingredient_id, 0)
+    })
+  }
+
+  const resetFormulationToInitialStateIngredients = () => {
+    ingredients.map((ingredient, index) => {
+      handleIngredientMinimumChange(ingredient.ingredient_id, 0)
+      handleIngredientMaximumChange(ingredient.ingredient_id, 0)
     })
   }
 
@@ -1676,6 +1700,18 @@ const toggleTab = (tab) => {
           )
           }
           { !advancedPressed ? (<>
+
+          {constraintMode === 'none' && ingredients?.some(ing => 
+                  (ing.minimum && parseFloat(ing.minimum) !== 0) || 
+                  (ing.maximum && parseFloat(ing.maximum) !== 0)
+                ) && (
+                  <div className="mx-4 mt-2 mb-4 p-3 rounded-lg bg-orange-50 text-orange-800 text-xs flex items-start gap-2 border border-orange-200">
+                    <Info size={16} className="mt-0.5 flex-shrink-0" />
+                    <span>
+                      <strong>Precaution:</strong> You have set strict limits greater than zero. Please ensure the formulation can mathematically satisfy these constraints to avoid calculation errors.
+                    </span>
+                  </div>
+                )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Roughage Table */}
               <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -1864,7 +1900,8 @@ const toggleTab = (tab) => {
           value={constraintMode} // 'none', 'kg', or 'percent'
           onChange={(e) => setConstraintMode(e.target.value)}
         >
-          <option value="none">No Limits</option>
+
+          <option value="none">No Limits/Hide Limits</option>
           <option value="kg">Fixed (kg)</option>
           <option value="percent">Manual Percentage (%)</option>
         </select>
@@ -1900,8 +1937,12 @@ const toggleTab = (tab) => {
           )}
           <th className="text-deepbrown">Classification</th>
 
+
           {constraintMode !== 'percent' && (
+            <>
             <th className="text-deepbrown">Amount</th>
+            <th className="text-deepbrown">% Total</th>
+            </>
           )}
           
           <th></th>
@@ -1958,12 +1999,16 @@ const toggleTab = (tab) => {
             <td className="text-gray-500 text-xs uppercase">{ingredient.group}</td>
 
             {constraintMode !== 'percent' && (
-            <td className="font-mono font-bold text-deepbrown">
+              <>
+              <td className="font-mono font-bold text-deepbrown">
               {ingredient.value.toFixed(3)}
             </td>
-          )}
+            <td className="font-mono font-bold text-deepbrown">
+              {(ingredient.value.toFixed(3)/weight *100).toFixed(1)}
+            </td>
+              </>
             
-
+          )}
             <td className="text-right">
               <button
                 disabled={isDisabled}
@@ -1978,6 +2023,17 @@ const toggleTab = (tab) => {
       </tbody>
     </table>
   </div>
+  {constraintMode === 'none' && ingredients?.some(ing => 
+    (ing.minimum && parseFloat(ing.minimum) !== 0) || 
+    (ing.maximum && parseFloat(ing.maximum) !== 0)
+  ) && (
+    <div className="mx-4 mt-2 mb-4 p-3 rounded-lg bg-orange-50 text-orange-800 text-xs flex items-start gap-2 border border-orange-200">
+      <Info size={16} className="mt-0.5 flex-shrink-0" />
+      <span>
+        <strong>Precaution:</strong> You have set strict limits greater than zero. Please ensure the formulation can mathematically satisfy these constraints to avoid calculation errors.
+      </span>
+    </div>
+  )}
 
   <div className="p-4 border-t border-gray-50 bg-gray-50/50 flex flex-row space-x-5">
     <button
@@ -2389,6 +2445,7 @@ const toggleTab = (tab) => {
             setAdvancedPressed(true);
             setConstraintMode('percent');
             setIsResultsModalOpen(false);
+            percentFormulationToInitialStateIngredients();
           }
         }
       />
