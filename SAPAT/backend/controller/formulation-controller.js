@@ -478,7 +478,8 @@ const formulation = await Formulation.findByIdAndUpdate(
       "dateProgress": formulation.dateProgress || [],
       "fat_content": formulation.fat_content || '',
       "lactating_phase": formulation.lactating_phase || '',
-      "pregnant_phase": formulation.pregnant_phase || ''
+      "pregnant_phase": formulation.pregnant_phase || '',
+
     };
 
     res.status(200).json({ message: 'success', formulations: filteredFormulation });
@@ -902,18 +903,26 @@ const findGroupFormulation = async (req, res) => {
 
 
  // Categorize body weight
-    const getBodyWeightRange = (bw) => {
-        if (bw < 100) return '0-100';
-        if (bw < 200) return '100-200';
-        if (bw < 300) return '200-300';
-        if (bw < 400) return '300-400';
-        if (bw < 500) return '400-500';
-        if (bw < 600) return '500-600';
-        if (bw < 700) return '600-700';
-        if (bw < 800) return '700-800';
-        if (bw < 900) return '800-900';
-        return '900+';
-    };
+const getBodyWeightRange = (bw) => {
+    if (bw < 100) return '0-100';
+    if (bw < 150) return '100-150';
+    if (bw < 200) return '150-200';
+    if (bw < 250) return '200-250';
+    if (bw < 300) return '250-300';
+    if (bw < 350) return '300-350';
+    if (bw < 400) return '350-400';
+    if (bw < 450) return '400-450';
+    if (bw < 500) return '450-500';
+    if (bw < 550) return '500-550';
+    if (bw < 600) return '550-600';
+    if (bw < 650) return '600-650';
+    if (bw < 700) return '650-700';
+    if (bw < 750) return '700-750';
+    if (bw < 800) return '750-800';
+    if (bw < 850) return '800-850';
+    if (bw < 900) return '850-900';
+    return '900+';
+};
 
     // Categorize pregnancy phase
     const getPregnancyCategory = (months) => {
@@ -934,7 +943,7 @@ const upsertGroupFormulation = async (formulation) => {
   const groupName = `${formulation.animal_group}-Weight_${bwCategory}-Fat_${formulation.fat_content}-${formulation.lactating_phase}-${pregnancyCategory}`;
 
   let group = await GroupFormulation.findOne({ name: groupName });
-
+  console.log("COLLABORATORS HERE is there: ", formulation.collaborators)
   const formulationDetail = {
     code: formulation.code,
     name: formulation.name,
@@ -952,8 +961,9 @@ const upsertGroupFormulation = async (formulation) => {
     milkYieldProgress: formulation.milkYieldProgress || [],
     typeProgress: formulation.typeProgress || [],
     dateProgress: formulation.dateProgress || [],
+    collaborators: formulation.collaborators || []
   };
-
+  console.log("FORMULATION DETAIL: ", formulationDetail)
   if (group) {
     // Add formulation ID if not exists
     if (!group.formulations.some(id => id.toString() === formulation._id.toString())) {
@@ -1123,14 +1133,17 @@ const getGroupFormulationFormulations = async (req, res) => {
 
   try {
     // 1. Fetch the group formulation
-    const group = await GroupFormulation.findById(groupFormulationId).lean();
+    const group = await GroupFormulation.findById(groupFormulationId);
+    console.log("USER ID: ", userId)
     if (!group) {
       return res.status(404).json({ message: 'GroupFormulation not found' });
     }
 
+
     // 2. Filter formulations where the user is either owner or in collaborators
     const accessibleFormulations = (group.formulationDetails || []).filter((form) => {
       const isOwner = (form.collaborators || []).some(c => c.userId.toString() === userId && c.access === 'owner');
+      console.log("Is Owner: ", group.formulationDetails)
       const hasAccess = (form.collaborators || []).some(c => c.userId.toString() === userId);
       return isOwner || hasAccess;
     });

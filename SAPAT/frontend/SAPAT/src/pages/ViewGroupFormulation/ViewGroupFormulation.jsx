@@ -129,9 +129,9 @@ function ViewGroupFormulation({
     }
   }, [formulation])
 
-  // useEffect(() => {
-  //   updateWeight(formulation.dmintake || 0)
-  // }, [])
+  useEffect(() => {
+    console.log("Formulations HAHA:", formulations)
+  }, [])
 
 
   // for optimize function results:
