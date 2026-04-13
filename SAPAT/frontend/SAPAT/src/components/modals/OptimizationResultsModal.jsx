@@ -7,7 +7,8 @@ const OptimizationResultsModal = ({
   onClose, 
   results, 
   onGenerateReport,
-  formulation
+  formulation,
+  goToPercent
 }) => {
   const [detailedIngredients, setDetailedIngredients] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -279,6 +280,9 @@ const OptimizationResultsModal = ({
           </button>
           <button className="btn bg-green-button hover:bg-green-600 rounded-xl px-8 text-white flex gap-2 items-center justify-center h-10 min-h-0 border-none shadow-lg" onClick={onGenerateReport}>
             Generate PDF Report <RiArrowRightSLine className="hidden md:block" />
+          </button>
+          <button className="btn bg-white hover:border-green hover:text-green-600 rounded-xl px-8 text-black flex gap-2 items-center justify-center h-10 min-h-0  shadow-lg" onClick={goToPercent}>
+            Switch to Percent Mode <RiArrowRightSLine className="hidden md:block" />
           </button>
         </div>
       </div>

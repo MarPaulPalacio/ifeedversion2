@@ -29,6 +29,7 @@ import ShadowPricingTab from '../../components/modals/viewformulation/ShadowPric
 import Progress from '../../components/modals/formulations/Progress.jsx'
 import EditFormulationModal from '../../components/modals/formulations/EditFormulationModal.jsx';
 import ManualFormulation from '../../components/modals/ManualFormulation.jsx';
+import { set } from 'lodash';
 const COLORS = ['#DC2626', '#D97706', '#059669', '#7C3AED', '#DB2777']
 
 function ViewFormulation({
@@ -1291,7 +1292,7 @@ const toggleTab = (tab) => {
       handleNutrientMaximumChange(nutrient.nutrient_id, formulation.origNutrientTargets[index].maximum)
     })
   }
-  
+
   const {
     weight,
     code,
@@ -1447,11 +1448,6 @@ const toggleTab = (tab) => {
           </div>
 
           )}
-          
-
-          
-
-
 
             <GenerateReport className='z-[9999]'
                   userAccess={userAccess}
@@ -1568,6 +1564,7 @@ const toggleTab = (tab) => {
           <div className="col-span-1">
             <p className="text-[10px] font-bold text-gray-400 uppercase">Name</p>
             <p className="text-sm font-semibold text-deepbrown truncate">{formulation.name || '—'}</p>
+
           </div>
 
           <div className="col-span-1 md:col-span-2">
@@ -2369,11 +2366,9 @@ const toggleTab = (tab) => {
         onHide={hideToast}
       />
 
-      {!isCustomizationModalOpen && (advancedPressed&& constraintMode!=='percent') &&
-      <OptimizeFAB
-        handleOptimize = {handleOptimize}
-      />
-}
+        <OptimizeFAB
+          handleOptimize = {handleOptimize}
+        />
 
       
 
@@ -2389,6 +2384,13 @@ const toggleTab = (tab) => {
           setIsCustomizationModalOpen(true);
         }}
         formulation={formulationRealTime}
+        goToPercent = {
+          () => {
+            setAdvancedPressed(true);
+            setConstraintMode('percent');
+            setIsResultsModalOpen(false);
+          }
+        }
       />
       <UserCustomizationModal
         isOpen={isCustomizationModalOpen}
