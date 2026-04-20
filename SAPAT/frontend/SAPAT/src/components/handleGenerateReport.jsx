@@ -172,6 +172,7 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
       { label: 'Created by:', value: owner.displayName || 'N/A' },
       { label: 'Total Cost:', value: `PHP ${totalCost.toFixed(roundingPrecision)} per ${formulation.weight}kg` },
     ]
+    // console.log("Ingredients Present here ", Ingredients)
 
     fieldData.forEach((field) => {
       page.drawText(field.label, {
@@ -318,6 +319,7 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
     yPosition -= 5
 
     // Draw ingredients rows (using sorted ingredients)
+    console.log(sortedIngredients, "SORTED INGREDIENTS HERE")
     sortedIngredients.forEach((ing) => {
       page.drawText(ing.name, {
         x: nameX,
@@ -343,7 +345,7 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
       //   color: textColor,
       // })
 
-      page.drawText((ing.value * weight).toFixed(roundingPrecision).toString(), {
+      page.drawText((ing.value).toFixed(roundingPrecision).toString() + " kilograms", {
         x: valX,
         y: yPosition,
         size: bodyFontSize,
@@ -422,6 +424,7 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
 
     // Filter nutrients if needed
     let displayNutrients = [...formulation.nutrients]
+    console.log("NUTRIENTS HERE", displayNutrients)
     if (!showEmptyValues) {
       displayNutrients = displayNutrients.filter(nutrient => nutrient.value > 0)
     }
@@ -452,13 +455,26 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
       //   color: textColor,
       // })
 
-      page.drawText(nutrient.value.toFixed(roundingPrecision).toString(), {
+      if (nutrient.name === "Total Digestible Nutrients" || nutrient.name ==="Dry Matter") {
+        page.drawText(
+        ((nutrient.value/1000).toFixed(roundingPrecision)).toString() + " kilograms", {
         x: valX,
         y: yPosition,
         size: bodyFontSize,
         font: timesRomanFont,
         color: textColor,
-      })
+        })
+      } else {
+        page.drawText(
+        nutrient.value.toFixed(roundingPrecision).toString() + " grams", {
+        x: valX,
+        y: yPosition,
+        size: bodyFontSize,
+        font: timesRomanFont,
+        color: textColor,
+        })
+      }
+      
 
       yPosition -= lineHeight
 

@@ -8,13 +8,15 @@ const OptimizationResultsModal = ({
   results, 
   onGenerateReport,
   formulation,
-  goToPercent
+  goToPercent,
+  ispercentcompute
 }) => {
   const [detailedIngredients, setDetailedIngredients] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   // Toggle between 'simple' (Breakdown) and 'detailed' (Nutrient Table)
   const [viewMode, setViewMode] = useState('simple'); 
 
+  
   useEffect(() => {
     const fetchIngredientDetails = async () => {
       if (!isOpen || !results?.ingredients) return;
@@ -51,7 +53,7 @@ const OptimizationResultsModal = ({
    * Logic: (Weight * DM%) * Nutrient%
    * Last element is always treated as the multiplier for others
    */
-  const getIngredientContribution = (ingredientId, weightInGrams, nutrientTargetId, ing, unit = 'grams') => {
+  const getIngredientContribution = (ingredientId, weightInGrams, nutrientTargetId, ing, unit = 'grams', totalweight) => {
     const ingredientData = detailedIngredients.find(item => item._id === ingredientId);
     if (!ingredientData || !ingredientData.nutrients) return 0;
 
@@ -63,20 +65,30 @@ const OptimizationResultsModal = ({
     
     if (!currentNutrientEntry) return 0;
 
-    const weightKg = Number(weightInGrams) / 1000;
+    let weightKg = Number(weightInGrams) / 1000;
+    if (ispercentcompute){
+      weightKg = Number(weightInGrams) /100 * (totalweight);
+    }
+    
     const dmPercentage = Number(dmEntry?.value || 0);
     const dryMatterKg = weightKg * dmPercentage;
 
     if (nutrientTargetId === dmTargetId) {
       return dryMatterKg * 1000; 
     }
-
+    
     return dryMatterKg * Number(currentNutrientEntry.value || 0) * 1000;
   };
 
-  const getAchievedTotal = (nutrientList, targetName) => {
+  const getAchievedTotal = (nutrientList, targetName, totalweight) => {
     if (!nutrientList || !Array.isArray(nutrientList)) return 0;
+   
+    
     const n = nutrientList.find(nut => nut.name?.toLowerCase().includes(targetName.toLowerCase()));
+
+    if (ispercentcompute){
+      return n ? Number(n.value * totalweight *10|| 0) : 0;
+    }
     return n ? Number(n.value || 0) : 0;
   };
 
@@ -87,7 +99,7 @@ const OptimizationResultsModal = ({
   };
 
   return (
-    <dialog className={`modal ${isOpen ? 'modal-open' : ''} z-[999]`}>
+    <dialog className={`modal ${isOpen ? 'modal-open' : ''} z-[999] `}>
       <div className="modal-box relative w-11/12 max-w-4xl rounded-3xl bg-white md:mt-0 shadow-2xl p-5 md:p-6 no-scrollbar">
         <button className="btn btn-sm btn-circle absolute top-4 right-4 z-10" onClick={onClose}>
           <RiCloseLine className="h-5 w-5" />
@@ -129,7 +141,7 @@ const OptimizationResultsModal = ({
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2 text-xs text-gray-500 italic">
             <Info className="shrink-0" />
-            <span>{isLoading ? 'Loading data...' : 'Optimization complete.'}</span>
+            <span>{isLoading ? 'Loading data...' : 'Optimization complete (Ingredients with no value is removed).'}</span>
           </div>
           <div className="flex bg-gray-100 p-1 rounded-xl">
             <button 
@@ -176,7 +188,15 @@ const OptimizationResultsModal = ({
                 <thead className="sticky top-0 bg-gray-50 text-gray-500 z-10 border-b">
                   <tr className="uppercase text-[9px] md:text-[10px]">
                     <th className="text-left py-3 px-4 sticky left-0 bg-gray-50 z-20 shadow-sm">Ingredient</th>
-                    <th>kg/animal per day</th>
+
+                    {ispercentcompute ? 
+                    
+                    <><th>% total feed ratio</th>
+                    <th>kg/animal per day</th></>: 
+                    
+                    <><th>kg/animal per day</th>
+                    <th>% total feed ratio</th></>}
+                    
                     {formulation.nutrients.find(nut => nut.name === "Dry Matter") && (
                       <th>Dry Matter (kg)</th>
                     )}
@@ -187,21 +207,28 @@ const OptimizationResultsModal = ({
                         <th key={i}>{nut.name} (g)</th>
                       )
                     ))}
+                    
                   </tr>
                 </thead>
                 <tbody className="text-[11px] md:text-sm">
-                  {results.ingredients.map((ing, idx) => {
+                  {results.ingredients.filter(ing => ing.value !== 0).map((ing, idx) => {
                     const ingredientData = detailedIngredients.find(
-                      (item) => (item._id === ing.ingredient_id) || (item.name === ing.name)
+                      (item) => ((item._id === ing.ingredient_id) || (item.name === ing.name))
                     );
-
+                    
+                    console.log("TOTAL WEIGHT", results.totalWeight)
                     return (
                       <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50/50">
                         <td className="py-2 px-4 text-left text-gray-700 font-medium sticky left-0 bg-white z-10 border-r">
                           {ing.name}
                         </td>
                         <td className="font-mono font-bold text-deepbrown">
-                          {formatNum(ing.value / 1000, 3)} kg
+                          {ispercentcompute ? formatNum(ing.value, 2) + " %" : formatNum(ing.value / 1000,2) + " kg"}
+                          
+                        </td>
+                        <td className="text-gray-500 font-mono">
+                          {ispercentcompute ? formatNum(((ing.value/100) * (results.totalWeight /100)) * 100, 2) : formatNum(ing.value/results.totalWeight/10, 2) + " %" }
+                          
                         </td>
                         {formulation.nutrients.find(nut => nut.name === "Dry Matter") && (
                           <td className="text-gray-500 font-mono">
@@ -210,7 +237,8 @@ const OptimizationResultsModal = ({
                               ing.value, 
                               formulation.nutrients.find(n => n.name === "Dry Matter").nutrient_id || formulation.nutrients.find(n => n.name === "Dry Matter")._id, 
                               ingredientData,
-                              "kilograms"
+                              "kilograms",
+                              results.totalWeight
                             ) / 1000, 2)} kg
                           </td>
                         )}
@@ -223,7 +251,8 @@ const OptimizationResultsModal = ({
                                 ing.value, 
                                 nut.nutrient_id || nut._id, 
                                 ingredientData,
-                                "kilograms"
+                                "kilograms",
+                                results.totalWeight
                               ) / 1000, 2)} kg
                             </td> :
                             <td key={nut._id} className="text-gray-500 font-mono">
@@ -232,7 +261,8 @@ const OptimizationResultsModal = ({
                                 ing.value, 
                                 nut.nutrient_id || nut._id, 
                                 ingredientData,
-                                "grams"
+                                "grams",
+                                results.totalWeight
                               ), 2)} g
                             </td>
                           )
@@ -242,21 +272,35 @@ const OptimizationResultsModal = ({
                   })}
                   <tr className="bg-amber-50 font-bold border-t-2 border-amber-100">
                     <td className="sticky left-0 bg-amber-50 z-10 text-left px-4">TOTAL</td>
-                    <td className="font-mono text-amber-700">{formatNum(results.totalWeight, 2)} kg</td>
+                    <td className="font-mono text-amber-700">
+                      
+                      {ispercentcompute ? "100 %" : (results.totalWeight) + "kg"}
+                      
+                    </td>
+                    <td className="text-gray-500 font-mono">
+
+                      {ispercentcompute ? (results.totalWeight) + "kg": "100 %"}
+                    </td>
                     {formulation.nutrients.find(nut => nut.name === "Dry Matter") && (
-                      <td className="font-mono text-amber-700">{formatNum(getAchievedTotal(results.nutrients, "Dry Matter") / 1000, 2)} kg</td>
+                      <td className="font-mono text-amber-700">{formatNum(getAchievedTotal(results.nutrients, "Dry Matter", results.totalWeight) / 1000, 2)} kg</td>
                     )}
                     {formulation.nutrients.map((nut, i) =>
                       nut.name !== "Dry Matter" && (
                         nut.name === "Total Digestible Nutrients" ?
-                        <td key={i} className="font-mono text-amber-700">{formatNum(getAchievedTotal(results.nutrients, nut.name) / 1000, 2)} kg</td> :
-                        <td key={i} className="font-mono text-amber-700">{formatNum(getAchievedTotal(results.nutrients, nut.name), 2)} g</td>
+                        <td key={i} className="font-mono text-amber-700">{formatNum(getAchievedTotal(results.nutrients, nut.name, results.totalWeight) / 1000, 2)} kg</td> :
+                        <td key={i} className="font-mono text-amber-700">{formatNum(getAchievedTotal(results.nutrients, nut.name, results.totalWeight), 2)} g</td>
                       )
                     )}
                   </tr>
                   <tr className="bg-amber-500 font-bold text-white">
                     <td className="sticky left-0 bg-amber-500 z-10 text-left px-4">REQ.</td>
-                    <td className="font-mono">{formatNum(results.totalWeight, 2)} kg</td>
+                    <td className="font-mono">
+                      {ispercentcompute ? "100 %" : (results.totalWeight) + "kg"}
+                    </td>
+                    <td className="text-white font-mono">
+
+                      {ispercentcompute ? (results.totalWeight) + "kg": "100 %"}
+                    </td>
                     {formulation.nutrients.find(nut => nut.name === "Dry Matter") && (
                       <td className="font-mono">{formatNum(getExpectedTarget(formulation.nutrients, "Dry Matter") / 1000, 2)} kg</td>
                     )}

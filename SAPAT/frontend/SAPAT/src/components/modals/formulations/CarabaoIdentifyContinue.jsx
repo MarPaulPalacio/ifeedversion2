@@ -174,8 +174,8 @@ function CarabaoIdentifyContinue({
                 name: nc.name,
                 // minimum: nc.constraintvalue - nc.constraintvalue * constraint_percent,
                 // maximum: nc.constraintvalue + nc.constraintvalue * constraint_percent,
-                minimum:minimumvalue,
-                maximum:maximumvalue,
+                minimum:minimumvalue.toFixed(2),
+                maximum:maximumvalue.toFixed(2),
                 // minimum: 0,
                 // maximum:10000,
                 value: nc.value,
@@ -468,13 +468,13 @@ function CarabaoIdentifyContinue({
               <>
               <div className='form-control w-full'>
                 <label className="label whitespace-normal">
-                  <span className="label-text">Milk Yield Per Day - Kg (Nakukuhang gatas bawat araw - kg)</span>
+                  <span className="label-text">Milk Yield Per Day - Kg (Nakukuhang gatas bawat araw - kg) <label className='text-red-400'>* Optional</label></span>
                 </label>
                 <input
                   type="number"
                   name="milk_yield"
                   value={formData.milk_yield}
-                  required
+                  
                   disabled={isDisabled}
                   onChange={handleChange}
                   placeholder="Enter milk yield"
@@ -487,7 +487,7 @@ function CarabaoIdentifyContinue({
                 )}
               </div>
 
-              <div className='form-control w-full'>
+              {/* <div className='form-control w-full'>
                 <label className="label whitespace-normal">
                   <span className="label-text">Fat and Protein Content - % (Taba at Protina - %)</span>
                 </label>
@@ -506,8 +506,8 @@ function CarabaoIdentifyContinue({
                     {fatProteinContentError}
                   </p>
                 )}
-              </div>
-
+              </div> */}
+{/* 
               <div className='form-control w-full'>
                 <label className="label whitespace-normal">
                   <span className="label-text">Milk Price - Php (Presyo ng gatas - Php)</span>
@@ -527,7 +527,7 @@ function CarabaoIdentifyContinue({
                     {milkPriceError}
                   </p>
                 )}
-              </div>
+              </div> */}
               </>
             )}
 

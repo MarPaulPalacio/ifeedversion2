@@ -29,6 +29,8 @@ import ShadowPricingTab from '../../components/modals/viewformulation/ShadowPric
 import Progress from '../../components/modals/formulations/Progress.jsx'
 import EditFormulationModal from '../../components/modals/formulations/EditFormulationModal.jsx';
 import ManualFormulation from '../../components/modals/ManualFormulation.jsx';
+import IngredientSubstituteModal from '../../components/modals/formulations/SubstituteModal.jsx';
+
 import { set } from 'lodash';
 const COLORS = ['#DC2626', '#D97706', '#059669', '#7C3AED', '#DB2777']
 
@@ -62,6 +64,19 @@ function ViewFormulation({
   updateIngredientsMenu,
   nutrientRatioConstraints,
   updateNutrientRatioConstraints,
+  percentFormulationRealTime,
+  updatePercentWeight,
+  updatePercentCode,
+  updatePercentName,
+  updatePercentDescription,
+  updatePercentAnimalGroup,
+  updatePercentCost,
+  updatePercentIngredients,
+  updatePercentNutrients,
+  updatePercentIngredientProperty,
+  updatePercentNutrientProperty,
+  updatePercentShadowPrices,
+  percentShadowPrices
 }) {
   const VITE_API_URL = import.meta.env.VITE_API_URL
 
@@ -167,9 +182,64 @@ const toggleTab = (tab) => {
   const isDisabled = userAccess === 'view'
 
 
-  const [showRoughageLimits, setShowRoughageLimits] = useState(false);
-  const [showConcentrateLimits, setShowConcentrateLimits] = useState(false);
-  const [showVitaminLimits, setShowVitaminLimits] = useState(false);
+  const [showRoughageLimits, setShowRoughageLimits] = useState(true);
+  const [showConcentrateLimits, setShowConcentrateLimits] = useState(true);
+  const [showVitaminLimits, setShowVitaminLimits] = useState(true);
+
+  // for ingredient information:
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const [substitutesLoading, setSubstitutesLoading] = useState(false);
+  const [modalData, setModalData] = useState({
+    name: '',
+    details: null,
+    substitutes: []
+  });
+
+  const [ispercentcompute, setispercentcompute] = useState(false)
+  const [ispercentcomputeLast, setispercentcomputeLast] = useState(false)
+
+const handleIngredientClick = async (ingredient) => {
+  setIsSubModalOpen(true);
+  setSubstitutesLoading(true);
+  
+  // Safely grab the ID whether it's named _id or ingredient_id in this specific map
+  const targetId = ingredient.ingredient_id || ingredient._id;
+
+  // Set an initial skeleton so the modal opens immediately with the name
+  setModalData({ name: ingredient.name, details: null, substitutes: [] });
+
+  try {
+    // 1. Fetch Ingredient Details (Your GET route)
+    // NOTE: Make sure `currentUserId` matches whatever variable holds the user's ID in your frontend
+    const detailsRes = await fetch(`${import.meta.env.VITE_API_URL}/ingredient/${targetId}/${owner?.userId}`);
+    const detailsData = await detailsRes.json();
+    const nutrients = formulationRealTime?.nutrients || []
+    // 2. Fetch K-Means Substitutes (Your POST route)
+    // NOTE: Make sure `selectedNutrients` matches the array of nutrients you are optimizing for
+    const subRes = await fetch(`${import.meta.env.VITE_API_URL}/suggest-substitute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: owner?.userId, 
+        targetIngredientId: targetId,
+        nutrients
+      })
+    });
+    const subData = await subRes.json();
+
+    // Update the state with the newly fetched data
+    setModalData({
+      name: ingredient.name,
+      details: detailsData.ingredients,
+      substitutes: subData.substitutes || []
+    });
+
+  } catch (error) {
+    console.error("Error fetching ingredient data:", error);
+  } finally {
+    setSubstitutesLoading(false);
+  }
+};
 
   const [showLimits, setShowLimits] = useState(false)
   
@@ -532,17 +602,23 @@ const toggleTab = (tab) => {
 
       // UNCOMMENT/DELETE IF NOT NEEDED
       
+      
+      let weight = formulationRealTime?.weight || []
+      let nutrients = formulationRealTime?.nutrients || []
+      let ingredients = formulationRealTime?.ingredients || []  
 
-      const weight = formulationRealTime?.weight || []
-      const nutrients = formulationRealTime?.nutrients || []
-      const ingredients = formulationRealTime?.ingredients || []  
 
+      if (ispercentcompute){
+        weight = percentFormulationRealTime?.weight || []
+        nutrients = percentFormulationRealTime?.nutrients || []
+        ingredients = percentFormulationRealTime?.ingredients || []
+      }
       console.log("DEBUG HERE: FRONTEND SENING OF DATA TO SOLVER!")
       console.log("Ingredients", ingredients)
       console.log("Nutrients", nutrients)
       console.log("Weight", weight)
       console.log("Nutrient Ratios", formulation)
-
+      console.log("FORMULATIONREALTIME", percentFormulationRealTime)
       console.log("Selected Nutrients", selectedNutrients)
       // Temporary Fix
       // Function for obtaining value for as-fed amount (weight) of the feed
@@ -559,20 +635,26 @@ const toggleTab = (tab) => {
       if (weight ===0){
         weightinGrams = ' '
       } 
-      weightinGrams = ' '
       
       console.log(weightinGrams, "weightingrams")
+      console.log("Nutrient Ratio Constraints", ingredients[0].ingredient_id)
+      // const res2 = await axios.post(`${VITE_API_URL}/suggest-substitute`, {
+      //   userId: owner?.userId,
+      //   targetIngredientId: "69bfd202c9683bf137627347",
+      //   nutrients
+      // })
       
 
       
       console.log("Ingredients in grams:", ingredientsInGrams)
+
       const res = await axios.post(`${VITE_API_URL}/optimize/simplex`, {
         userId: owner?.userId,
         ingredients: ingredientsInGrams,
         nutrients,
         weight: weightinGrams,
         nutrientRatioConstraints,
-        type: type
+        type: ispercentcompute ? 'percent' : 'absolute'
       })
 
       console.log("Here is the resdata", res.data) // View Optimization results
@@ -583,30 +665,80 @@ const toggleTab = (tab) => {
       
       const shadowPricesResult = res.data.shadowPrices
       const amountFed = parseFloat(res.data.weight/1000).toFixed(2)
+      const rawTotalWeight = res.data.weight || 0;
 
       console.log("OPTIMIZATION RESULT - AMOUNT FED:", res.data)
       console.log("OPTIMIZATION RESULT:", optimizedIngredients, optimizedNutrients)
-
-      // Update shadow prices in real-time storage
-      updateShadowPrices(shadowPricesResult || []);
-
-      updateCost(optimizedCost/1000)
-      optimizedIngredients.forEach((ing) => {
+      
+      if (ispercentcompute){
+        updatePercentShadowPrices(shadowPricesResult || []);
+        updatePercentCost(optimizedCost);
+        
+        optimizedIngredients.forEach((ing) => {
           const originalIng = ingredients.find(i => i.name === ing.name);
           if (originalIng) {
-            // console.log(`Updating ingredient ${ing.name} with value ${ing.value}`); // Debug log
-              // Ensure you use the exact ID used in your state management
-              updateIngredientProperty(originalIng.ingredient_id, 'value', Number(ing.value)/1000);
+              let percentValue = 0;
+              if (rawTotalWeight > 0) {
+                percentValue = (ing.value / rawTotalWeight) * 100;
+              }
+              
+              console.log("VALUE OF", ing.name, "is", ing.value)
+              updatePercentIngredientProperty(originalIng.ingredient_id, 'value', Number(ing.value.toFixed(2))); // Optional: toFixed cleans up long decimals
           }
-      });
-      optimizedNutrients.forEach((nut) => {
-        const nutrientId = nutrients.find(n => n.name === nut.name)?.nutrient_id;
-        if (nutrientId){
-          updateNutrientProperty(nutrientId, 'value', Number(nut.value))
-        }
-      })
-      updateWeight(amountFed)
+        });
 
+        optimizedNutrients.forEach((nut) => {
+          const nutrientId = nutrients.find(n => n.name === nut.name)?.nutrient_id;
+          if (nutrientId){
+            updatePercentNutrientProperty(nutrientId, 'value', Number(nut.value))
+          }
+        })
+        
+        updatePercentWeight(amountFed)
+      }
+
+      // if (ispercentcompute){
+      //   updatePercentShadowPrices(shadowPricesResult || []);
+      //   updatePercentCost(optimizedCost)
+      //   optimizedIngredients.forEach((ing) => {
+      //     const originalIng = ingredients.find(i => i.name === ing.name);
+      //     if (originalIng) {
+      //       // console.log(`Updating ingredient ${ing.name} with value ${ing.value}`); // Debug log
+      //         // Ensure you use the exact ID used in your state management
+      //         updatePercentIngredientProperty(originalIng.ingredient_id, 'value', Number(ing.value));
+      //     }
+      //   });
+      //   optimizedNutrients.forEach((nut) => {
+      //     const nutrientId = nutrients.find(n => n.name === nut.name)?.nutrient_id;
+      //     if (nutrientId){
+      //       updatePercentNutrientProperty(nutrientId, 'value', Number(nut.value))
+      //     }
+      //   })
+      //   updatePercentWeight(amountFed)
+
+      // }
+       else {
+        // Update shadow prices in real-time storage
+        updateShadowPrices(shadowPricesResult || []);
+
+        updateCost(optimizedCost/1000)
+        optimizedIngredients.forEach((ing) => {
+            const originalIng = ingredients.find(i => i.name === ing.name);
+            if (originalIng) {
+              // console.log(`Updating ingredient ${ing.name} with value ${ing.value}`); // Debug log
+                // Ensure you use the exact ID used in your state management
+                updateIngredientProperty(originalIng.ingredient_id, 'value', Number(ing.value)/1000);
+            }
+        });
+        optimizedNutrients.forEach((nut) => {
+          const nutrientId = nutrients.find(n => n.name === nut.name)?.nutrient_id;
+          if (nutrientId){
+            updateNutrientProperty(nutrientId, 'value', Number(nut.value))
+          }
+        })
+        updateWeight(amountFed)
+      }
+      
       setOptimizationResults({
         ingredients: optimizedIngredients,
         nutrients: optimizedNutrients,
@@ -622,8 +754,13 @@ const toggleTab = (tab) => {
       
       setIsDirty(false)
       setMessage(`Formulation Creator`)
+      setispercentcomputeLast(ispercentcompute)
     } catch (err) {
+
       if (err.response?.data?.status === 'No optimal solution') {
+        console.log("error response from optimization API:", err.response.data.diagnostics, err.response.data.possibleFixes);
+        console.log("Smart Diagnosis", err.response.data.smartDiagnosis)
+        console.log("Possible Fixes", err.response.data.structuralBottlenecks, err.response.data.nutrientShortages, err.response.data.advice)
         // toast instructions
         setShowToast(true)
         setMessage(`No feasible formula found. Please adjust your constraints.`)
@@ -737,6 +874,7 @@ const toggleTab = (tab) => {
       updateIngredientsMenu(ingredientsMenu.filter((item) => !arr2Ids.has(item.ingredient_id || item._id)))
       updateCost(0)
       updateIngredients([...selectedIngredients, ...formattedIngredients])
+      updatePercentIngredients([...selectedIngredients, ...formattedIngredients])
       setIsChooseIngredientsModalOpen(false)
       setIsDirty(false)
       // toast instructions
@@ -807,6 +945,12 @@ const toggleTab = (tab) => {
       )
       updateIngredients(
         ingredients.filter(
+          (item) => item.ingredient_id !== ingredientToRemove.ingredient_id
+        )
+      )
+
+      updatePercentIngredients(
+        percentingredients.filter(
           (item) => item.ingredient_id !== ingredientToRemove.ingredient_id
         )
       )
@@ -884,15 +1028,29 @@ const toggleTab = (tab) => {
   }
 
   const handleIngredientMinimumChange = (index, value) => {
-    value === 'N/A' || value === ''
-      ? updateIngredientProperty(index, 'minimum', 0)
-      : updateIngredientProperty(index, 'minimum', value)
+
+    if (ispercentcompute ===false){
+      value === 'N/A' || value === ''
+        ? updateIngredientProperty(index, 'minimum', 0)
+        : updateIngredientProperty(index, 'minimum', value)
+    } else{
+      value === 'N/A' || value === ''
+        ? updatePercentIngredientProperty(index, 'minimum', 0)
+        : updatePercentIngredientProperty(index, 'minimum', value)
+    }
+    
   }
 
   const handleIngredientMaximumChange = (index, value) => {
-    value === 'N/A' || value === ''
-      ? updateIngredientProperty(index, 'maximum', 0)
-      : updateIngredientProperty(index, 'maximum', value)
+    if (ispercentcompute ===false){
+      value === 'N/A' || value === ''
+        ? updateIngredientProperty(index, 'maximum', 0)
+        : updateIngredientProperty(index, 'maximum', value)
+    } else{
+      value === 'N/A' || value === ''
+        ? updatePercentIngredientProperty(index, 'maximum', 0)
+        : updatePercentIngredientProperty(index, 'maximum', value)
+    }
   }
 
   const handleNutrientMinimumChange = (index, value) => {
@@ -909,39 +1067,51 @@ const toggleTab = (tab) => {
 
   // Render function for Ingredients table rows
   const renderIngredientsTableRows = (group) => {
-        // Ingredients Filtering Roughage, or vitamins, or concentrate
+    // 1. CHOOSE THE ACTIVE LIVEBLOCKS STORAGE BASED ON ispercentcompute
+    const activeFormulation = ispercentcompute ? percentFormulationRealTime : formulationRealTime;
+    
+    // 2. GET THE INGREDIENTS FROM THE ACTIVE FORMULATION
+    const currentIngredients = activeFormulation?.ingredients || [];
 
-      const groupFilter1 = ["grass", "legumes"]
-      const groupFilter2 = ["agricultural by-products", "industrial by-products"]
-      const groupFilter3 = ["vitamin-mineral"]
+    // Ingredients Filtering Roughage, or vitamins, or concentrate
+    const groupFilter1 = ["grass", "legumes"]
+    const groupFilter2 = ["agricultural by-products", "industrial by-products"]
+    const groupFilter3 = ["vitamin-mineral"]
 
-      
-      const filtered = ingredients.filter(
-        (ingredient) => {
-          if (group === 'roughage') {
-            return groupFilter1.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
-          } else if (group === 'concentrate') {
-            return groupFilter2.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
-          } else if (group === 'vitamins') {
-            return groupFilter3.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
-          } else {
-            return ingredient
-          }
+    // 3. FILTER USING currentIngredients INSTEAD OF a static ingredients array
+    const filtered = currentIngredients.filter(
+      (ingredient) => {
+        if (group === 'roughage') {
+          return groupFilter1.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
+        } else if (group === 'concentrate') {
+          return groupFilter2.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
+        } else if (group === 'vitamins') {
+          return groupFilter3.some((g) => ingredient.group?.toLowerCase().includes(g.toLowerCase()))
+        } else {
+          return ingredient
         }
-      )
+      }
+    )
+
     // Determine which state to check based on the group name
     const isLimitVisible = 
       group === 'roughage' ? showRoughageLimits : 
       group === 'concentrate' ? showConcentrateLimits : 
       group === 'vitamins' ? showVitaminLimits :
       showVitaminLimits; // for 'vitamins'
+
     if (filtered.length > 0) {
       return (
       <>
-      
       {filtered.map((ingredient, index) => (
         <tr key={index} className="hover:bg-base-200 transition-colors border-b border-gray-50">
-          <td className="font-medium text-gray-700">{ingredient.name}</td>
+
+          <td 
+            className="text-gray-700 hover:bg-green-button items-center rounded text-sm font-medium hover:text-white cursor-pointer"
+            onClick={() => handleIngredientClick(ingredient)}
+          >
+            {ingredient.name}
+          </td>
           
           {isLimitVisible && (
             <>
@@ -952,20 +1122,25 @@ const toggleTab = (tab) => {
                   disabled={isDisabled}
                   value={ingredient.minimum !== 0 ? ingredient.minimum : 'N/A'}
                   onChange={(e) => {
-                const inputValue = e.target.value
-                // in consideration for 'N/A' values which means 0
-                if (
-                  /^N\/A(\d+|\.)/.test(inputValue) ||
-                  /^\d*\.?\d{0,2}$/.test(inputValue)
-                ) {
-                  // to allow rewriting of input if user types a number after clicking on input with 'N/A'
-                  const processedValue = /^N\/A\d*/.test(inputValue)
-                    ? inputValue.replace('N/A', '')
-                    : inputValue
-                  handleIngredientMinimumChange(ingredient.ingredient_id, processedValue)
-                  setIsDirty(false)
-                }
-              }}
+                    const inputValue = e.target.value;
+                    if (
+                      /^N\/A(\d+|\.)/.test(inputValue) ||
+                      /^\d*\.?\d{0,2}$/.test(inputValue)
+                    ) {
+                      let processedValue = /^N\/A\d*/.test(inputValue)
+                        ? inputValue.replace('N/A', '')
+                        : inputValue;
+
+                      if (ispercentcompute && processedValue !== '' && Number(processedValue) > 100) {
+                        processedValue = '100';
+                      }
+
+                      // Make sure your update handler (handleIngredientMinimumChange) 
+                      // knows to update the correct Liveblocks storage too!
+                      handleIngredientMinimumChange(ingredient.ingredient_id, processedValue);
+                      setIsDirty(false);
+                    }
+                  }}
                 />
               </td>
               <td className="text-center">
@@ -975,33 +1150,32 @@ const toggleTab = (tab) => {
                   disabled={isDisabled}
                   value={ingredient.maximum !== 0 ? ingredient.maximum : 'N/A'}
                   onChange={(e) => {
-                const inputValue = e.target.value
-                // in consideration for 'N/A' values which means 0
-                if (
-                  /^N\/A(\d+|\.)/.test(inputValue) ||
-                  /^\d*\.?\d{0,2}$/.test(inputValue)
-                ) {
-                  // to allow rewriting of input if user types a number after clicking on input with 'N/A'
-                  const processedValue = /^N\/A\d*/.test(inputValue)
-                    ? inputValue.replace('N/A', '')
-                    : inputValue
-                  handleIngredientMaximumChange(ingredient.ingredient_id, processedValue)
-                  setIsDirty(false)
-                }
-              }}
+                    const inputValue = e.target.value;
+                    if (
+                      /^N\/A(\d+|\.)/.test(inputValue) ||
+                      /^\d*\.?\d{0,2}$/.test(inputValue)
+                    ) {
+                      let processedValue = /^N\/A\d*/.test(inputValue)
+                        ? inputValue.replace('N/A', '')
+                        : inputValue;
+
+                      if (ispercentcompute && processedValue !== '' && Number(processedValue) > 100) {
+                        processedValue = '100';
+                      }
+
+                      handleIngredientMaximumChange(ingredient.ingredient_id, processedValue);
+                      setIsDirty(false);
+                    }
+                  }}
                 />
               </td>
-              
-              
-               
             </>
           )}
 
-          {/* Updated Amount Display with "kg" */}
           <td className="font-semibold text-gray-800">
-            {ingredient && weight 
-              ? `${(ingredient.value).toFixed(3)} kg` 
-              : "0.000 kg"}
+            {ingredient 
+              ? `${(ingredient.value || 0).toFixed(3)} ${ispercentcompute ? '%' : 'kg'}` 
+              : `0.000 ${ispercentcompute ? '%' : 'kg'}`}
           </td>
 
           <td className="text-right">
@@ -1016,7 +1190,6 @@ const toggleTab = (tab) => {
           
         </tr>
       ))}
-      
       </>
       )
     }
@@ -1328,6 +1501,20 @@ const toggleTab = (tab) => {
 
   const nutrients = formulationRealTime?.nutrients || []
   const ingredients = formulationRealTime?.ingredients || []  
+
+
+  const {
+    weight: percentweight,
+    code: percentcode,
+    name: percentname,
+    description: percentdescription,
+    animal_group: percentanimal_group,
+    cost: percentcost
+  } = percentFormulationRealTime
+
+  const percentnutrients = percentFormulationRealTime?.nutrients || []
+  const percentingredients = percentFormulationRealTime?.ingredients || []  
+
   
   return (
     <div className="flex h-full flex-col bg-gray-50 md:flex-row">
@@ -1547,6 +1734,61 @@ const toggleTab = (tab) => {
         )}
       </AnimatePresence>
 
+      {/* Slim Constraint Type Selector */}
+<div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 md:px-5 md:py-3 bg-white rounded-xl border border-gray-100 shadow-sm mt-4 mb-4">
+  
+  {/* Header Section */}
+  <div>
+    <h3 className="text-xs font-bold text-deepbrown uppercase tracking-wider">
+      Constraint Setup
+    </h3>
+  </div>
+
+  {/* Radio Buttons Container */}
+  <div className="flex flex-row items-center gap-2 sm:gap-3">
+    
+    {/* Option 1: Percent-Based */}
+    <label 
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all flex-1 md:flex-none ${
+        ispercentcompute 
+          ? 'border-deepbrown bg-gray-50 ring-1 ring-deepbrown/20' 
+          : 'border-gray-100 hover:border-gray-300'
+      }`}
+    >
+      <input
+        type="radio"
+        name="constraintType"
+        checked={ispercentcompute === true}
+        onChange={() => setispercentcompute(true)}
+        className="w-4 h-4 appearance-none border border-gray-300 rounded-full checked:border-deepbrown checked:border-[5px] transition-all"
+      />
+      <span className="text-sm font-semibold text-deepbrown whitespace-nowrap">
+        Percent-Based
+      </span>
+    </label>
+
+    {/* Option 2: Kg-Based */}
+    <label 
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all flex-1 md:flex-none ${
+        !ispercentcompute 
+          ? 'border-deepbrown bg-gray-50 ring-1 ring-deepbrown/20' 
+          : 'border-gray-100 hover:border-gray-300'
+      }`}
+    >
+      <input
+        type="radio"
+        name="constraintType"
+        checked={ispercentcompute === false}
+        onChange={() => setispercentcompute(false)}
+        className="w-4 h-4 appearance-none border border-gray-300 rounded-full checked:border-deepbrown checked:border-[5px] transition-all"
+      />
+      <span className="text-sm font-semibold text-deepbrown whitespace-nowrap">
+        Kg-Based
+      </span>
+    </label>
+
+  </div>
+</div>
       {/* 4. DETAILS / CARABAO INFO PANEL */}
       <AnimatePresence>
   {(activeTab === 'details' || (!isLargeOrSmaller && window.innerWidth >= 768)) && (
@@ -1619,7 +1861,7 @@ const toggleTab = (tab) => {
             <div className="col-span-1">
               <p className="text-[10px] font-bold text-gray-400 uppercase">DM Intake</p>
               <p className="text-sm font-semibold text-deepbrown">
-                {formulation.dmintake || 0} <span className="text-xs font-normal text-gray-500">kg/d</span>
+                {formulation.dmintake.toFixed(2) || 0} <span className="text-xs font-normal text-gray-500">kg/d</span>
               </p>
             </div>
 
@@ -1643,7 +1885,7 @@ const toggleTab = (tab) => {
                   <p className="text-sm font-bold text-blue-700">{formulation.lactating_phase || '—'}</p>
                 </div>
 
-                <div className="col-span-1">
+                {/* <div className="col-span-1">
                   <p className="text-[10px] font-bold text-gray-400 uppercase">Milk Yield</p>
                   <p className="text-sm font-bold text-green-700">
                     {formulation.milkYieldProgress?.length > 0 
@@ -1651,7 +1893,7 @@ const toggleTab = (tab) => {
                       : 0} 
                     <span className="text-xs font-normal opacity-70 ml-1">L/day</span>
                   </p>
-                </div>
+                </div> */}
               </>
             )}
 
@@ -1701,7 +1943,7 @@ const toggleTab = (tab) => {
           }
           { !advancedPressed ? (<>
 
-          {constraintMode === 'none' && ingredients?.some(ing => 
+          {/* {constraintMode === 'none' && ingredients?.some(ing => 
                   (ing.minimum && parseFloat(ing.minimum) !== 0) || 
                   (ing.maximum && parseFloat(ing.maximum) !== 0)
                 ) && (
@@ -1711,7 +1953,7 @@ const toggleTab = (tab) => {
                       <strong>Precaution:</strong> You have set strict limits greater than zero. Please ensure the formulation can mathematically satisfy these constraints to avoid calculation errors.
                     </span>
                   </div>
-                )}
+                )} */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Roughage Table */}
               <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -1743,11 +1985,12 @@ const toggleTab = (tab) => {
                         <th>Name</th>
                         {showRoughageLimits && (
                           <>
-                            <th className="text-center">Min</th>
-                            <th className="text-center">Max</th>
+                           
+                            <th className="text-center">{ispercentcompute ? 'Min (%)' : 'Min (kg)'}</th>
+                            <th className="text-center">{ispercentcompute ? 'Max (%)' : 'Max (kg)'}</th>
                           </>
                         )}
-                        <th>Amount</th>
+                        <th>{ispercentcompute ? 'Amount (%)' : 'Amount (kg)'}</th>
                         
                         <th></th>
                       </tr>
@@ -1798,11 +2041,11 @@ const toggleTab = (tab) => {
                       <th className="text-sm">Name</th>
                       {showConcentrateLimits && (
                         <>
-                          <th className="text-center text-sm">Min</th>
-                          <th className="text-center text-sm">Max</th>
+                          <th className="text-center text-sm">{ispercentcompute ? 'Min (%)' : 'Min (kg)'}</th>
+                          <th className="text-center text-sm">{ispercentcompute ? 'Max (%)' : 'Max (kg)'}</th>
                         </>
                       )}
-                      <th className="text-sm">Amount</th>
+                      <th className="text-sm">{ispercentcompute ? 'Amount (%)' : 'Amount (kg)'}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -1857,11 +2100,11 @@ const toggleTab = (tab) => {
                       <th>Name</th>
                       {showVitaminLimits && (
                         <>
-                          <th className="text-center">Min</th>
-                          <th className="text-center">Max</th>
+                          <th className="text-center">{ispercentcompute ? 'Min (%)' : 'Min (kg)'}</th>
+                          <th className="text-center">{ispercentcompute ? 'Max (%)' : 'Max (kg)'}</th>
                         </>
                       )}
-                      <th>Amount</th>
+                      <th>{ispercentcompute ? 'Amount (%)' : 'Amount (kg)'}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -1884,10 +2127,10 @@ const toggleTab = (tab) => {
             </div>
 
             </>) : (<>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
 
             
-            <div className={`overflow-hidden rounded-xl border border-gray-200 bg-white ${constraintMode === 'percent' ? 'md:col-span-1' : 'md:col-span-1'} `}>
+            <div className={`overflow-hidden rounded-xl border border-gray-200 bg-white ${constraintMode === 'percent' ? 'md:col-span-2' : 'md:col-span-3'}`}>
   <div className="p-4">
     <div className="mb-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
       <h3 className="text-sm font-semibold">All Ingredients (kg)</h3>
@@ -1902,7 +2145,7 @@ const toggleTab = (tab) => {
         >
 
           <option value="none">No Limits/Hide Limits</option>
-          <option value="kg">Fixed (kg)</option>
+          <option value="kg">Fixed</option>
           <option value="percent">Manual Percentage (%)</option>
         </select>
       </div>
@@ -1927,10 +2170,10 @@ const toggleTab = (tab) => {
           {constraintMode !== 'none' && (
             <>
               <th className="text-deepbrown text-center">
-                 {constraintMode === 'percent' ? '(%)' : 'Min (kg)'}
+                 {constraintMode === 'percent' ? '(%)' : !ispercentcompute ? 'Min (kg)' : 'Min (%)'}
               </th>
               {constraintMode !== 'percent' && <th className="text-deepbrown text-center">
-                Max {constraintMode === 'percent' ? '(%)' : '(kg)'}
+                {constraintMode === 'percent' ? '(%)' : !ispercentcompute ? 'Max (kg)' : 'Max (%)'}
               </th> }
               
             </>
@@ -1940,8 +2183,8 @@ const toggleTab = (tab) => {
 
           {constraintMode !== 'percent' && (
             <>
-            <th className="text-deepbrown">Amount</th>
-            <th className="text-deepbrown">% Total</th>
+            <th className="text-deepbrown">{ispercentcompute ? 'Amount (%)' : 'Amount (kg)'}</th>
+            <th className="text-deepbrown">{ispercentcompute ? 'Total (kg)' : 'Total (%)'}</th>
             </>
           )}
           
@@ -1949,7 +2192,8 @@ const toggleTab = (tab) => {
         </tr>
       </thead>
       <tbody>
-        {ingredients?.map((ingredient, index) => (
+        {
+        (ispercentcompute ? percentingredients : ingredients).map((ingredient, index) => (
           <tr key={index} className="hover:bg-base-200/50 transition-colors">
             <td className="max-w-[120px] truncate md:max-w-none font-medium">
               {ingredient.name}
@@ -1966,7 +2210,22 @@ const toggleTab = (tab) => {
                       className="input input-bordered input-xs w-20 pr-6"
                       placeholder="N/A"
                       value={ingredient.minimum || ''}
-                      onChange={(e) => handleIngredientMinimumChange(ingredient.ingredient_id, e.target.value)}
+                      onChange={(e) => {
+                        const inputValue = e.target.value;
+                        if (
+                          /^N\/A(\d+|\.)/.test(inputValue) ||
+                          /^\d*\.?\d{0,2}$/.test(inputValue)
+                        ) {
+                          let processedValue = /^N\/A\d*/.test(inputValue)
+                            ? inputValue.replace('N/A', '')
+                            : inputValue;
+
+                          if (ispercentcompute && processedValue !== '' && Number(processedValue) > 100) {
+                            processedValue = '100';
+                          }
+                        handleIngredientMinimumChange(ingredient.ingredient_id, processedValue)}
+                      
+                      }}
                     />
                     {constraintMode === 'percent' && (
                       <span className="absolute right-2 text-[10px] text-gray-400">%</span>
@@ -1983,7 +2242,26 @@ const toggleTab = (tab) => {
                       className="input input-bordered input-xs w-20 pr-6"
                       placeholder="N/A"
                       value={ingredient.maximum || ''}
-                      onChange={(e) => handleIngredientMaximumChange(ingredient.ingredient_id, e.target.value)}
+                      onChange={(e) => {
+                        const inputValue = e.target.value;
+                        if (
+                          /^N\/A(\d+|\.)/.test(inputValue) ||
+                          /^\d*\.?\d{0,2}$/.test(inputValue)
+                        ) {
+                          let processedValue = /^N\/A\d*/.test(inputValue)
+                            ? inputValue.replace('N/A', '')
+                            : inputValue;
+                          console.log(ispercentcompute)
+                          console.log(processedValue!=='')
+                          console.log(Number(processedValue))
+                          console.log(processedValue)
+                          if (ispercentcompute && processedValue !== '' && Number(processedValue) > 100) {
+                            console.log('Processed Value Exceed 100:', processedValue); // Debug log
+                            processedValue = 100;
+                          }
+                        handleIngredientMaximumChange(ingredient.ingredient_id, processedValue)}
+                      
+                      }}
                     />
                     {constraintMode === 'percent' && (
                       <span className="absolute right-2 text-[10px] text-gray-400">%</span>
@@ -2001,10 +2279,12 @@ const toggleTab = (tab) => {
             {constraintMode !== 'percent' && (
               <>
               <td className="font-mono font-bold text-deepbrown">
-              {ingredient.value.toFixed(3)}
+                {ispercentcompute ? ingredient.value.toFixed(3) + " %" : ingredient.value.toFixed(3) + " kg"}
+
             </td>
             <td className="font-mono font-bold text-deepbrown">
-              {(ingredient.value.toFixed(3)/weight *100).toFixed(1)}
+              {ispercentcompute ? ((ingredient.value*percentweight)/100).toFixed(2) + " kg": (ingredient.value.toFixed(3)/weight *100).toFixed(1) + " %" }
+              {/* {(ingredient.value.toFixed(3)/weight *100).toFixed(1)} */}
             </td>
               </>
             
@@ -2051,7 +2331,7 @@ const toggleTab = (tab) => {
       onClick={() => handleManualOptimize()}
       className="bg-yellow-400 flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-deepbrown shadow-sm hover:bg-green-600 active:transform active:scale-95 transition-all disabled:bg-gray-300"
     >
-      <RiCalculatorLine /> Optimize
+      <RiCalculatorLine /> Manual Solve
     </button>
     )}
     
@@ -2059,6 +2339,7 @@ const toggleTab = (tab) => {
 </div>
 
         {constraintMode === 'percent' && (
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white sm:mt-0 mt-4 md:col-span-3">
       <ManualFormulation
         isOpen ={isManualFormulationOpen}
         onClose={()=>setIsManualFormulationOpen(false)}
@@ -2069,11 +2350,12 @@ const toggleTab = (tab) => {
         }}
         formulation={formulationRealTime}
       />
+      </div>
          ) }
             {/* NUtrients section */}
           {constraintMode !== 'percent' &&(
             
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white sm:mt-0 mt-4 ">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white sm:mt-0 mt-4 md:col-span-2">
               <div className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -2086,13 +2368,13 @@ const toggleTab = (tab) => {
                         onClick={() => setIsPCCModalOpen(true)}
                         className="btn btn-ghost btn-xs text-blue-600 hover:bg-blue-50 flex items-center gap-1"
                       >
-                        <RiBookLine /> Reference: PCC Book
+                        <RiBookLine /> Reference: <div className='md:block hidden'> PCC Book</div>
                       </button>
                       <button 
                         onClick={() => resetFormulationToInitialState()}
                         className="btn btn-ghost btn-xs text-red-600 hover:bg-blue-50 flex items-center gap-1"
                       >
-                        <RiBookLine /> Reset to PCC Reference
+                        <RiBookLine /> Reset <div className='md:block hidden'> to PCC Reference</div>
                       </button>
                     </>
                     )}
@@ -2111,9 +2393,9 @@ const toggleTab = (tab) => {
                   <thead>
                     <tr>
                       <th>Name</th>
-                      <th>Min</th>
-                      <th>Max</th>
-                      <th>Amount</th>
+                      <th>{ispercentcompute ? 'Min (g)' : 'Min (g)'}</th>
+                      <th>{ispercentcompute ? 'Max (g)' : 'Max (g)'}</th>
+                      <th>{ispercentcompute ? 'Amount (%)' : 'Amount (kg)'}</th>
                       {/* <th></th> */}
                     </tr>
                   </thead>
@@ -2304,17 +2586,27 @@ const toggleTab = (tab) => {
                     type="text"
                     className="input input-bordered w-[80px] rounded-xl"
                     disabled={isDisabled}
-                    value={weight}
+                    value={ispercentcompute ? percentweight : weight}
                     onFocus={(e) =>
                       updateMyPresence({ focusedId: e.target.id })
                     }
                     onBlur={() => updateMyPresence({ focusedId: null })}
                     onChange={(e) => {
-                      if (e.target.value === '') {
-                        updateWeight(100)
+
+                      if (ispercentcompute){
+                        if (e.target.value === ' ') {
+                          updatePercentWeight(100)
+                        } else {
+                          updatePercentWeight(e.target.value)
+                        }
                       } else {
-                        updateWeight(e.target.value)
+                        if (e.target.value === '') {
+                          updateWeight(100)
+                        } else {
+                          updateWeight(e.target.value)
+                        }
                       }
+                      
                     }}
                     maxLength={20}
                   />
@@ -2426,6 +2718,9 @@ const toggleTab = (tab) => {
           handleOptimize = {handleOptimize}
         />
 
+
+        
+
       
 
       
@@ -2448,6 +2743,7 @@ const toggleTab = (tab) => {
             percentFormulationToInitialStateIngredients();
           }
         }
+        ispercentcompute={ispercentcomputeLast}
       />
       <UserCustomizationModal
         isOpen={isCustomizationModalOpen}
@@ -2467,6 +2763,12 @@ const toggleTab = (tab) => {
         onClose={() => setIsEditModalOpen(false)}
         formulation={formulation}
         onResult={handleEditResult}
+      />
+      <IngredientSubstituteModal 
+        isOpen={isSubModalOpen} 
+        onClose={() => setIsSubModalOpen(false)} 
+        modalData={modalData}
+        substitutesLoading={substitutesLoading}
       />
       
     </div>

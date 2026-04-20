@@ -31,8 +31,9 @@ import {
 import {
   createNutrient, getAllNutrients, getNutrient, getNutrientsByFilters, updateNutrient, deleteNutrient
 } from './controller/nutrient-controller.js'
-import { simplex, pso } from './controller/optimize-controller.js'
+import { simplex} from './controller/optimize-controller.js'
 import {handleLiveblocksAuth, handleSyncMasterToChildren} from './config/liveblocks-auth.js';
+import { suggestSubstitute } from './controller/substitution-ing.js';
 
 const handleRoutes = (app) => {
   // Check if user is authenticated middleware
@@ -252,7 +253,7 @@ const handleRoutes = (app) => {
   app.get('/formulation/:id', getFormulation);
   app.post('/formulation/:id/clone-template', cloneTemplateToFormulation);
   
-
+  
   app.get('/groupformulations/all', getAllGroupFormulations);
   app.get('/groupformulations/:id', getGroupFormulationById);
   app.get('/groupformulations/:groupFormulationId/user/:userId/formulations', getGroupFormulationFormulations);
@@ -275,7 +276,8 @@ const handleRoutes = (app) => {
 
 
   app.post('/optimize/simplex', simplex);
-  app.post('/optimize/pso', pso);
+
+  app.post('/suggest-substitute', suggestSubstitute);
 
 };
 

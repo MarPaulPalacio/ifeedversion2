@@ -274,7 +274,7 @@ const handleArrayChange = (e) => {
                 className="select select-bordered w-full rounded-xl"
               >
                 <option value="" disabled>
-                  Choose Carabao Phase
+                  Choose Carabao Category
                 </option>
                 <option value="Heifer | Dumalaga">{t('Heifer')}</option>
                 <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">{t('Calf (0-4 months) - lower than 100kg')}</option>

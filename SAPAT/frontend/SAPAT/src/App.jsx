@@ -96,6 +96,17 @@ function FormulationRoom() {
             shadowPrices: [], nutrientsMenu: [], ingredientsMenu: [],
             nutrientRatioConstraints: [],
           }),
+          percentFormulation: new LiveObject({
+            code: '',
+            name: '',
+            description: '',
+            animal_group: '',
+            cost: 0,
+            weight: 0,
+            ingredients: [], 
+            nutrients: [],
+            shadowPrices: []
+          }),
         }}
       >
         <ClientSideSuspense fallback={<Loading />}>

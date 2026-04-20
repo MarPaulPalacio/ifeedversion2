@@ -306,17 +306,43 @@ function CarabaoIdentifySetup({
           <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-1">
             {/* Ask for multi configuration of carabaos */}
             <div className="form-control w-full">
-                  <input 
-                    type="checkbox"
-                    name="multipleCarabaos"
-                    checked={carabaoConfiguration.multipleCarabaos}
-                    disabled={isDisabled}
-                    onChange={handleCheckBoxChange}
-                    className='checkbox mb-2 mr-3'
-                  />
-                  <label className={`label whitespace-normal pb-5`}>
-                    <span className="label-text">Multiple Carabao Configuration? (Multiple Carabaos with Same Configuration)</span>
-                  </label>
+                  <div className="flex flex-col gap-4">
+
+                    {/* Option: Single Carabao */}
+                  <div className="flex items-center">
+                    <input 
+                      type="radio"
+                      name="carabaoCount"
+                      value="single"
+                      checked={carabaoConfiguration.multipleCarabaos === false}
+                      disabled={isDisabled}
+                      onChange={() => setCarabaoConfiguration((prev) => ({ ...prev, multipleCarabaos: false }))}
+                      className='radio mb-2 mr-3'
+                      id="single-carabao"
+                    />
+                    <label htmlFor="single-carabao" className="label whitespace-normal pb-2">
+                      <span className="label-text">Add Single Carabao</span>
+                    </label>
+                  </div>
+                  {/* Option: Multiple Carabaos */}
+                  <div className="flex items-center">
+                    <input 
+                      type="radio"
+                      name="carabaoCount"
+                      value="multiple"
+                      checked={carabaoConfiguration.multipleCarabaos === true}
+                      disabled={isDisabled}
+                      onChange={() => setCarabaoConfiguration((prev) => ({ ...prev, multipleCarabaos: true }))} // Assuming your handler can take the value
+                      className='radio mb-2 mr-3'
+                      id="multiple-carabao"
+                    />
+                    <label htmlFor="multiple-carabao" className="label whitespace-normal pb-2">
+                      <span className="label-text">Add Multiple Carabaos With Same Configuration</span>
+                    </label>
+                  </div>
+
+                  
+                </div>
 
                   
                   {carabaoConfiguration.multipleCarabaos ===true && (<>

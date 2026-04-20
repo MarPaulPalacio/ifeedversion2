@@ -22,11 +22,16 @@ function ViewFormulationEntry({ id }) {
   const self = useSelf()
   const updateMyPresence = useUpdateMyPresence()
 
+  // --- STANDARD FORMULATION STORAGE ---
   const formulationRealTime = useStorage((root) => root.formulation)
   const nutrientsMenu = useStorage((root) => root.formulation?.nutrientsMenu || [])
   const ingredientsMenu = useStorage((root) => root.formulation?.ingredientsMenu || [])
   const nutrientRatioConstraints = useStorage((root) => root.formulation?.nutrientRatioConstraints || [])
 
+  // --- PERCENT FORMULATION STORAGE ---
+  const percentFormulationRealTime = useStorage((root) => root.percentFormulation)
+
+  // --- STANDARD MUTATIONS ---
   const updateNutrientsMenu = useMutation(({ storage }, newMenu) => {
     storage.get('formulation').set('nutrientsMenu', newMenu)
   }, [])
@@ -37,7 +42,6 @@ function ViewFormulationEntry({ id }) {
     storage.get('formulation').set('nutrientRatioConstraints', newConstraints)
   }, [])
 
-  // special formulation based on animal group
   const [specialformulations, setSpecialFormulations] = useState([]);
 
   const updateWeight = useMutation(({ storage }, weight) => {
@@ -65,45 +69,92 @@ function ViewFormulationEntry({ id }) {
     storage.get('formulation').set('nutrients', nutrients)
   }, [])
 
-  // Update a specific ingredient's property
   const updateIngredientProperty = useMutation(
     ({ storage }, ingredientId, propertyName, propertyValue) => {
       const ingredients = storage.get('formulation').get('ingredients')
-      // Create a new array with the updated ingredient
       const updatedIngredients = ingredients.map((ingredient) =>
       ingredient.ingredient_id === ingredientId || ingredient._id === ingredientId
         ? { ...ingredient, [propertyName]: propertyValue }
         : ingredient
       );
-
-      // Update the entire ingredients array
       storage.get('formulation').set('ingredients', updatedIngredients)
     },
     []
   )
 
-  // Update a specific nutrient's property
   const updateNutrientProperty = useMutation(
     ({ storage }, nutrientId, propertyName, propertyValue) => {
       const nutrients = storage.get('formulation').get('nutrients')
-      console.log("Room Nutrients Here:", nutrients)
-      // Create a new array with the updated nutrient
       const updatedNutrients = nutrients.map((nutrient) =>
         nutrient.nutrient_id === nutrientId || nutrient._id === nutrientId
           ? { ...nutrient, [propertyName]: propertyValue }
           : nutrient
       )
-      // Update the entire nutrients array
       storage.get('formulation').set('nutrients', updatedNutrients)
-      console.log("After update:", storage.get('formulation').get('nutrients'))
     },
     []
   )
 
-  // Update shadow prices in real-time storage
   const updateShadowPrices = useMutation(({ storage }, shadowPrices) => {
     storage.get('formulation').set('shadowPrices', shadowPrices)
   }, [])
+
+  // --- PERCENT FORMULATION MUTATIONS ---
+  const updatePercentWeight = useMutation(({ storage }, weight) => {
+    storage.get('percentFormulation').set('weight', weight)
+  }, [])
+  const updatePercentCode = useMutation(({ storage }, code) => {
+    storage.get('percentFormulation').set('code', code)
+  }, [])
+  const updatePercentName = useMutation(({ storage }, name) => {
+    storage.get('percentFormulation').set('name', name)
+  }, [])
+  const updatePercentDescription = useMutation(({ storage }, description) => {
+    storage.get('percentFormulation').set('description', description)
+  }, [])
+  const updatePercentAnimalGroup = useMutation(({ storage }, animal_group) => {
+    storage.get('percentFormulation').set('animal_group', animal_group)
+  }, [])
+  const updatePercentCost = useMutation(({ storage }, cost) => {
+    storage.get('percentFormulation').set('cost', cost)
+  }, [])
+  const updatePercentIngredients = useMutation(({ storage }, ingredients) => {
+    storage.get('percentFormulation').set('ingredients', ingredients)
+  }, [])
+  const updatePercentNutrients = useMutation(({ storage }, nutrients) => {
+    storage.get('percentFormulation').set('nutrients', nutrients)
+  }, [])
+
+  const updatePercentIngredientProperty = useMutation(
+    ({ storage }, ingredientId, propertyName, propertyValue) => {
+      const ingredients = storage.get('percentFormulation').get('ingredients')
+      const updatedIngredients = ingredients.map((ingredient) =>
+      ingredient.ingredient_id === ingredientId || ingredient._id === ingredientId
+        ? { ...ingredient, [propertyName]: propertyValue }
+        : ingredient
+      );
+      storage.get('percentFormulation').set('ingredients', updatedIngredients)
+    },
+    []
+  )
+
+  const updatePercentNutrientProperty = useMutation(
+    ({ storage }, nutrientId, propertyName, propertyValue) => {
+      const nutrients = storage.get('percentFormulation').get('nutrients')
+      const updatedNutrients = nutrients.map((nutrient) =>
+        nutrient.nutrient_id === nutrientId || nutrient._id === nutrientId
+          ? { ...nutrient, [propertyName]: propertyValue }
+          : nutrient
+      )
+      storage.get('percentFormulation').set('nutrients', updatedNutrients)
+    },
+    []
+  )
+
+  const updatePercentShadowPrices = useMutation(({ storage }, shadowPrices) => {
+    storage.get('percentFormulation').set('shadowPrices', shadowPrices)
+  }, [])
+
 
   const [formulation, setFormulation] = useState({
     code: '',
@@ -119,13 +170,13 @@ function ViewFormulationEntry({ id }) {
   const [ownerId, setOwnerId] = useState(null)
   const [shouldRedirect, setShouldRedirect] = useState(false)
   const [userAccess, setUserAccess] = useState('')
-  // toast visibility
   const [showToast, setShowToast] = useState(false)
   const [message, setMessage] = useState('')
   const [toastAction, setToastAction] = useState('')
   const [isLoading, setIsLoading] = useState(true)
 
   const formulationRef = useRef(formulationRealTime)
+  const percentFormulationRef = useRef(percentFormulationRealTime)
 
   const hideToast = () => {
     setShowToast(false)
@@ -136,6 +187,10 @@ function ViewFormulationEntry({ id }) {
   useEffect(() => {
     formulationRef.current = formulationRealTime
   }, [formulationRealTime])
+
+  useEffect(() => {
+    percentFormulationRef.current = percentFormulationRealTime
+  }, [percentFormulationRealTime])
 
   useEffect(() => {
     if (user) {
@@ -163,6 +218,7 @@ function ViewFormulationEntry({ id }) {
 
       // update contents of liveblocks storage based on the database (when there are no other people editing yet)
       if (others.length === 0) {
+        // Init standard formulation
         updateCode(formulationData.code)
         updateName(formulationData.name)
         updateDescription(formulationData.description)
@@ -170,10 +226,17 @@ function ViewFormulationEntry({ id }) {
         updateCost(formulationData.cost)
         updateIngredients(formulationData.ingredients)
         updateNutrients(formulationData.nutrients)
+
+        // Init percent formulation with base data so it has a starting point
+        updatePercentCode(formulationData.code)
+        updatePercentName(formulationData.name)
+        updatePercentDescription(formulationData.description)
+        updatePercentAnimalGroup(formulationData.animal_group)
+        updatePercentCost(formulationData.cost)
+        updatePercentIngredients(formulationData.ingredients)
+        updatePercentNutrients(formulationData.nutrients)
         
-        // Ensure nutrientRatioConstraints have both name and ID fields (fix for data persistence issue when using the solver)
         let patchedNutrientRatioConstraints = (formulationData.nutrientRatioConstraints || []).map(constraint => {
-          // If IDs are missing, try to find them from the nutrients array
           if (!constraint.firstIngredientId || !constraint.secondIngredientId) {
             const first = (formulationData.nutrients || []).find(n => n.name === constraint.firstIngredient)
             const second = (formulationData.nutrients || []).find(n => n.name === constraint.secondIngredient)
@@ -189,7 +252,6 @@ function ViewFormulationEntry({ id }) {
         fetchspecialformulations(formulationData.animal_group)
       }
       
-      // set owner id
       const owner = formulationData?.collaborators?.find((collaborator) => collaborator.access === "owner")
       setOwnerId(owner)
       setIsLoading(false)
@@ -215,13 +277,14 @@ function ViewFormulationEntry({ id }) {
   const updateDatabase = async (isDirty = false) => {
 
     if (isDirty) {
-      setShowToast(true) // Show success toast
+      setShowToast(true) 
       setMessage('Changes not saved! Click "Optimize" before saving changes.')
       setToastAction('error')
       return
     }
 
     try {
+      // NOTE: Saving standard formulation to DB. If you need to save percentFormulation, you can access it via percentFormulationRef.current
       const currentFormulation = formulationRef.current
       const VITE_API_URL = import.meta.env.VITE_API_URL
       console.log(currentFormulation, "Current Formulation")
@@ -236,12 +299,12 @@ function ViewFormulationEntry({ id }) {
         nutrients: currentFormulation.nutrients,
         nutrientRatioConstraints: nutrientRatioConstraints,
       })
-      setShowToast(true) // Show success toast
+      setShowToast(true) 
       setMessage('Formulation saved to database!')
       setToastAction('success')
     } catch (error) {
       console.error('Error updating database:', error)
-      setShowToast(true) // Show success toast
+      setShowToast(true) 
       setMessage('Changes not saved! Tap to retry.')
       setToastAction('error')
     }
@@ -274,6 +337,8 @@ function ViewFormulationEntry({ id }) {
         self={self}
         others={others}
         updateMyPresence={updateMyPresence}
+        
+        // Standard formulation props
         formulationRealTime={formulationRealTime}
         updateWeight={updateWeight}
         updateCode={updateCode}
@@ -285,10 +350,26 @@ function ViewFormulationEntry({ id }) {
         updateNutrients={updateNutrients}
         updateIngredientProperty={updateIngredientProperty}
         updateNutrientProperty={updateNutrientProperty}
-        handleSave={updateDatabase}
-        specialformulations={specialformulations}
         updateShadowPrices={updateShadowPrices}
         shadowPrices={formulationRealTime?.shadowPrices || []}
+
+        // Percent formulation props
+        percentFormulationRealTime={percentFormulationRealTime}
+        updatePercentWeight={updatePercentWeight}
+        updatePercentCode={updatePercentCode}
+        updatePercentName={updatePercentName}
+        updatePercentDescription={updatePercentDescription}
+        updatePercentAnimalGroup={updatePercentAnimalGroup}
+        updatePercentCost={updatePercentCost}
+        updatePercentIngredients={updatePercentIngredients}
+        updatePercentNutrients={updatePercentNutrients}
+        updatePercentIngredientProperty={updatePercentIngredientProperty}
+        updatePercentNutrientProperty={updatePercentNutrientProperty}
+        updatePercentShadowPrices={updatePercentShadowPrices}
+        percentShadowPrices={percentFormulationRealTime?.shadowPrices || []}
+
+        handleSave={updateDatabase}
+        specialformulations={specialformulations}
         nutrientsMenu={nutrientsMenu}
         updateNutrientsMenu={updateNutrientsMenu}
         ingredientsMenu={ingredientsMenu}
@@ -296,7 +377,7 @@ function ViewFormulationEntry({ id }) {
         nutrientRatioConstraints={nutrientRatioConstraints}
         updateNutrientRatioConstraints={updateNutrientRatioConstraints}
       />
-      {/*  Toasts */}
+      {/* Toasts */}
       <Toast
         className="transition delay-150 ease-in-out"
         show={showToast}
