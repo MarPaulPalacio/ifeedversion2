@@ -101,41 +101,46 @@ const constraints = nutrients.map(nutrient => {
         (item.ingredient_id?.toString() === ingredient.ingredient_id)
       );
 
-      let dmDecimal = 1.0;
-      if (dmNutrientId) {
-        const dmEntry = ingData.nutrients.find(n => 
-          n.nutrient.toString() === dmNutrientId.toString()
-        );
-        const dmValue = dmEntry?.value || 100;
-        dmDecimal = dmValue;
-      }
+      // DM value from DB is a FRACTION (0.28 = 28% DM)
+      const dmEntry = ingData?.nutrients.find(n => 
+        n.nutrient?.toString() === dmNutrientId?.toString()
+      );
+      const dmValue = dmEntry?.value || 1.0;     // ← FRACTION
+      const dmDecimal = dmValue;                 // ← NO /100
 
+      // Other nutrients are also stored as FRACTION (0.55 = 55%)
       const nutrientEntry = ingData.nutrients.find(n => 
         (n.nutrient?.toString() === nutrient.nutrient_id) || (n.name === nutrient.name)
       );
-      const rawValue = nutrientEntry?.value || 0;
+      const rawValue = nutrientEntry?.value || 0;   // ← FRACTION
 
       let finalCoef;
       if (isDM) {
-        finalCoef = dmDecimal;
+        // grams of DM contributed by 1% of this ingredient
+        finalCoef = percentScale * dmDecimal;
       } else {
-        finalCoef = dmDecimal * rawValue;
+        // grams of nutrient contributed by 1% of this ingredient
+        finalCoef = percentScale * dmDecimal * rawValue;
       }
-
-
-      // finalCoef = finalCoef * percentScale;  
 
       return { name: ingredient.name, coef: finalCoef };
     }),
     
     bnds: {
       type: bndType,
-      lb: (nutrient.minimum || 0) / percentScale,   // ✅ divide bounds
-      ub: nutrient.maximum ? nutrient.maximum / percentScale : undefined
+      lb: nutrient.minimum || 0,          // grams
+      ub: nutrient.maximum ? nutrient.maximum : undefined
     }
   };
 });
 
+console.log("=== NUTRIENT COEFFICIENT CHECK (grams per 1%) ===");
+constraints
+  .filter(c => !c.name.includes("Group") && !c.name.includes("Total Mixture"))
+  .forEach(c => {
+    const sumCoef = c.vars.reduce((sum, v) => sum + v.coef, 0);
+    console.log(`${c.name.padEnd(25)} → ${sumCoef.toFixed(3)} g per 1%  (at 100% diet ≈ ${ (sumCoef * 100).toFixed(0) } g)`);
+  });
 //Define Groups for easier access in the future (e.g. for different handling of forage vs concentrate)
   const forageIngredients = ingredients.filter(ing => {
     const data = ingredientsData.find(d => d._id.toString() === ing.ingredient_id.toString());

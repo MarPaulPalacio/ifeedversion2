@@ -623,7 +623,7 @@ const handleIngredientClick = async (ingredient) => {
       // Temporary Fix
       // Function for obtaining value for as-fed amount (weight) of the feed
       // Convert ingredient min and max from kg to grams for API
-          const ingredientsInGrams = ingredients.map(ing => ({
+      let ingredientsInGrams = ingredients.map(ing => ({
             ...ing,
             minimum: ing.minimum * 1000,
             maximum: ing.maximum * 1000,
@@ -635,6 +635,15 @@ const handleIngredientClick = async (ingredient) => {
       if (weight ===0){
         weightinGrams = ' '
       } 
+      if (ispercentcompute){
+        ingredientsInGrams = ingredients.map(ing => ({
+            ...ing,
+            minimum: ing.minimum,
+            maximum: ing.maximum,
+
+          }));
+      }
+          
       
       console.log(weightinGrams, "weightingrams")
       console.log("Nutrient Ratio Constraints", ingredients[0].ingredient_id)
