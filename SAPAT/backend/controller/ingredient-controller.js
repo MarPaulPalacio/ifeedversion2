@@ -44,7 +44,8 @@ const createIngredient = async (req, res) => {
 
 const getAllIngredients = async (req, res) => {
   const { userId } = req.params;
-  const { skip=0, limit=8 } = req.query;
+  const skip = parseInt(req.query.skip) || 0;
+  const limit = parseInt(req.query.limit) || 8;
 
   try {
     // user-created ingredients

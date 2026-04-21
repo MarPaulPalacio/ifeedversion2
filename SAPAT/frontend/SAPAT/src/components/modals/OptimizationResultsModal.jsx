@@ -87,7 +87,7 @@ const OptimizationResultsModal = ({
     const n = nutrientList.find(nut => nut.name?.toLowerCase().includes(targetName.toLowerCase()));
 
     if (ispercentcompute){
-      return n ? Number(n.value * totalweight *10|| 0) : 0;
+      return n ? Number(n.value|| 0) : 0;
     }
     return n ? Number(n.value || 0) : 0;
   };

@@ -888,3 +888,72 @@ export {
   simplex,
   pso
 };
+
+
+const diagnoseInfeasibility = (constraints, ingredientsData, currentIngredients) => {
+    const diagnostics = [];
+
+    constraints.forEach(c => {
+        // 1. SKIP Group/Ratio constraints for the nutrient-specific check
+        if (c.name.includes("Group") || c.name.includes("Ratio") || c.name.includes("Total")) return;
+
+        // 2. MIRROR the solver's math (including DM scaling)
+        const currentMax = c.vars.reduce((sum, v) => {
+            const ingInFormulation = currentIngredients.find(i => i.name === v.name);
+            // Use the same logic as variableBounds
+            const maxAllowed = ingInFormulation?.maximum || 100; 
+            return sum + (v.coef * maxAllowed);
+        }, 0);
+
+        if (currentMax < c.bnds.lb) {
+            const gap = c.bnds.lb - currentMax;
+            
+            // 3. ROBUST LOOKUP: Search Master List using loose name matching
+            const suggestions = ingredientsData
+                .map(ing => {
+                    const nEntry = ing.nutrients.find(n => 
+                        n.name?.toLowerCase() === c.name.toLowerCase() ||
+                        c.name.toLowerCase().includes(n.name?.toLowerCase())
+                    );
+                    return { name: ing.name, power: nEntry?.value || 0 };
+                })
+                .filter(ing => ing.power > 0)
+                .sort((a, b) => b.power - a.power)
+                .slice(0, 3);
+
+            diagnostics.push({
+                nutrient: c.name,
+                issue: "Shortage",
+                gap: gap.toFixed(2),
+                recommendation: suggestions.length > 0 
+                    ? `Increase '${c.name}' by adding: ${suggestions.map(s => s.name).join(', ')}`
+                    : `No ingredients in your database have a high enough concentration of ${c.name}.`
+            });
+        }
+    });
+    return diagnostics;
+};
+const smartDiagnosis = (constraints, variableBounds) => {
+    let structuralIssues = [];
+
+    // Check A: Total Weight Capability
+    const absoluteMaxWeight = variableBounds.reduce((sum, v) => sum + v.ub, 0);
+    if (absoluteMaxWeight < 100) {
+        structuralIssues.push("Your total 'Maximum' limits for all ingredients only add up to " + absoluteMaxWeight + "%. The solver cannot reach 100%.");
+    }
+
+    // Check B: The Forage/Byproduct Bottleneck
+    const forageConstraint = constraints.find(c => c.name.includes("Grasses & Legumes"));
+    if (forageConstraint) {
+        const maxForagePossible = forageConstraint.vars.reduce((sum, v) => {
+            const vBound = variableBounds.find(vb => vb.name === v.name);
+            return sum + (v.coef * (vBound?.ub || 0));
+        }, 0);
+
+        if (maxForagePossible < forageConstraint.bnds.lb) {
+            structuralIssues.push(`The rule '60-100% Forage' is impossible because your selected forages only allow a maximum of ${maxForagePossible}%.`);
+        }
+    }
+
+    return structuralIssues;
+};

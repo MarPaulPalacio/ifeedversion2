@@ -30,7 +30,7 @@ import Progress from '../../components/modals/formulations/Progress.jsx'
 import EditFormulationModal from '../../components/modals/formulations/EditFormulationModal.jsx';
 import ManualFormulation from '../../components/modals/ManualFormulation.jsx';
 import IngredientSubstituteModal from '../../components/modals/formulations/SubstituteModal.jsx';
-
+import InfeasibilityModal from '../../components/modals/formulations/InfeasibilityModal.jsx';
 import { set } from 'lodash';
 const COLORS = ['#DC2626', '#D97706', '#059669', '#7C3AED', '#DB2777']
 
@@ -197,6 +197,11 @@ const toggleTab = (tab) => {
 
   const [ispercentcompute, setispercentcompute] = useState(false)
   const [ispercentcomputeLast, setispercentcomputeLast] = useState(false)
+
+  // For infeasibility diagnosis
+  const [infeasibilityModal, setInfeasibilityModal] = useState({ isOpen: false, data: null });
+
+  const [recentFormulation, setRecentFormulation] = useState('None Yet')
 
 const handleIngredientClick = async (ingredient) => {
   setIsSubModalOpen(true);
@@ -764,12 +769,13 @@ const handleIngredientClick = async (ingredient) => {
       setIsDirty(false)
       setMessage(`Formulation Creator`)
       setispercentcomputeLast(ispercentcompute)
+      setRecentFormulation('Success')
     } catch (err) {
-
+      setRecentFormulation('Fail')
       if (err.response?.data?.status === 'No optimal solution') {
-        console.log("error response from optimization API:", err.response.data.diagnostics, err.response.data.possibleFixes);
-        console.log("Smart Diagnosis", err.response.data.smartDiagnosis)
-        console.log("Possible Fixes", err.response.data.structuralBottlenecks, err.response.data.nutrientShortages, err.response.data.advice)
+        console.log("error response from optimization API:", err.response.data.structuralIssues, err.response.data.nutrientIssues);
+        console.log("Smart Diagnosis", err.response.data.priorityAdvice)
+        console.log("Possible Fixes", err.response.data.ingredientSuggestions, err.response.data.smartIngredientSuggestions)
         // toast instructions
         setShowToast(true)
         setMessage(`No feasible formula found. Please adjust your constraints.`)
@@ -782,7 +788,21 @@ const handleIngredientClick = async (ingredient) => {
           const nutrientId = nutrients.find(n => n.name === ing.name)?.nutrient_id;
           updateNutrientProperty(nutrientId, 'value', 0)
         })
+        const d = err.response.data;
+
+        setInfeasibilityModal({
+          isOpen: true,
+          data: {
+            priorityAdvice: d.priorityAdvice,
+            suggestion: d.suggestion,
+            structuralIssues: d.structuralIssues || [],
+            nutrientIssues: d.nutrientIssues || [],
+            smartIngredientSuggestions: d.smartIngredientSuggestions || [],
+          }
+        });
       }
+
+
     }
   }
 
@@ -1679,16 +1699,26 @@ const handleIngredientClick = async (ingredient) => {
                   setIsCustomizationModalOpen={setIsCustomizationModalOpen}
             />
 
-          {optimizationResults && (
-    <div className="hidden lg:flex items-center gap-2">
-      <button 
-        className="btn border-green-200 bg-green-50 hover:bg-green-100 btn-sm gap-2 rounded-xl text-xs px-3 font-bold text-green-700 transition-all" 
-        onClick={() => setIsResultsModalOpen(true)}
-      >
-        <RiHistoryLine className="animate-pulse" /> Latest Results
-      </button>
-    </div>
-  )}
+          {recentFormulation === 'Success' && (
+            <div className="hidden lg:flex items-center gap-2">
+              <button 
+                className="btn border-green-200 bg-green-50 hover:bg-green-100 btn-sm gap-2 rounded-xl text-xs px-3 font-bold text-green-700 transition-all" 
+                onClick={() => setIsResultsModalOpen(true)}
+              >
+                <RiHistoryLine className="animate-pulse" /> Latest Results
+              </button>
+            </div>
+          )}
+          {recentFormulation === 'Fail' && (
+            <div className="hidden lg:flex items-center gap-2">
+              <button 
+                className="btn border-red-200 bg-red-50 hover:bg-red-100 btn-sm gap-2 rounded-xl text-xs px-3 font-bold text-red-700 transition-all" 
+                onClick={() => setInfeasibilityModal(prev => ({ ...prev, isOpen: true }))}
+              >
+                <RiHistoryLine className="animate-pulse" /> Latest Results
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <div className="dropdown dropdown-bottom dropdown-end lg:hidden">
@@ -2139,7 +2169,7 @@ const handleIngredientClick = async (ingredient) => {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
 
             
-            <div className={`overflow-hidden rounded-xl border border-gray-200 bg-white ${constraintMode === 'percent' ? 'md:col-span-2' : 'md:col-span-3'}`}>
+            <div className={`overflow-hidden rounded-xl border border-gray-200 bg-white ${constraintMode === 'percent' ? 'sm:lg:col-span-5 lg:col-span-2' : 'sm:col-span-5 lg:col-span-3'}`}>
   <div className="p-4">
     <div className="mb-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
       <h3 className="text-sm font-semibold">All Ingredients (kg)</h3>
@@ -2364,7 +2394,7 @@ const handleIngredientClick = async (ingredient) => {
             {/* NUtrients section */}
           {constraintMode !== 'percent' &&(
             
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white sm:mt-0 mt-4 md:col-span-2">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white sm:mt-0 mt-4 sm:col-span-5 lg:col-span-2">
               <div className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -2377,13 +2407,13 @@ const handleIngredientClick = async (ingredient) => {
                         onClick={() => setIsPCCModalOpen(true)}
                         className="btn btn-ghost btn-xs text-blue-600 hover:bg-blue-50 flex items-center gap-1"
                       >
-                        <RiBookLine /> Reference: <div className='md:block hidden'> PCC Book</div>
+                        <RiBookLine /> Reference: <div className='lg:block hidden'> PCC Book</div>
                       </button>
                       <button 
                         onClick={() => resetFormulationToInitialState()}
                         className="btn btn-ghost btn-xs text-red-600 hover:bg-blue-50 flex items-center gap-1"
                       >
-                        <RiBookLine /> Reset <div className='md:block hidden'> to PCC Reference</div>
+                        <RiBookLine /> Reset <div className='lg:block hidden'> to PCC Reference</div>
                       </button>
                     </>
                     )}
@@ -2778,6 +2808,11 @@ const handleIngredientClick = async (ingredient) => {
         onClose={() => setIsSubModalOpen(false)} 
         modalData={modalData}
         substitutesLoading={substitutesLoading}
+      />
+      <InfeasibilityModal
+        isOpen={infeasibilityModal.isOpen}
+        onClose={() => setInfeasibilityModal(prev => ({ ...prev, isOpen: false }))}
+        diagnosisData={infeasibilityModal.data}
       />
       
     </div>
