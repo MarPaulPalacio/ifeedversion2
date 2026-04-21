@@ -2233,10 +2233,12 @@ const handleIngredientClick = async (ingredient) => {
       <tbody>
         {
         (ispercentcompute ? percentingredients : ingredients).map((ingredient, index) => (
-          <tr key={index} className="hover:bg-base-200/50 transition-colors">
-            <td className="max-w-[120px] truncate md:max-w-none font-medium">
+          <tr key={index} className="hover:bg-base-200/50 transition-colors ">
+            <td className="text-gray-700 hover:bg-green-button items-center rounded text-sm font-medium hover:text-white cursor-pointer"
+            onClick={() => handleIngredientClick(ingredient)}>
               {ingredient.name}
             </td>
+            
 
             {/* Dynamic Inputs */}
             {constraintMode !== 'none' && (

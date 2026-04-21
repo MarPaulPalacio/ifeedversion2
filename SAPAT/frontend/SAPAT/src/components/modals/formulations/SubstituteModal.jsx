@@ -40,8 +40,6 @@ function IngredientSubstituteModal({ isOpen, onClose, modalData, substitutesLoad
                   <div>
                     <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">Ingredient Information</h3>
 
-                    
-
                     <div className="bg-gray-50/80 p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm shadow-inner">
                       <div>
                         <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Group</span>

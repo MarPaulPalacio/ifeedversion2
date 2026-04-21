@@ -34,6 +34,8 @@ import {
 import { simplex} from './controller/optimize-controller.js'
 import {handleLiveblocksAuth, handleSyncMasterToChildren} from './config/liveblocks-auth.js';
 import { suggestSubstitute } from './controller/substitution-ing.js';
+import { getGeminiResponse } from './config/gemini.js';
+import { get } from 'http';
 
 const handleRoutes = (app) => {
   // Check if user is authenticated middleware
@@ -279,6 +281,7 @@ const handleRoutes = (app) => {
 
   app.post('/suggest-substitute', suggestSubstitute);
 
+  app.post('/gemini', getGeminiResponse);
 };
 
 export default handleRoutes;

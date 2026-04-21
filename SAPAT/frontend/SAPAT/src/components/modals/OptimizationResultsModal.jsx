@@ -1,5 +1,5 @@
 import { useEffect, useState, React } from 'react';
-import { RiCloseLine, RiArrowRightSLine, RiLayoutGridLine, RiTableLine } from 'react-icons/ri';
+import { RiCloseLine, RiArrowRightSLine, RiLayoutGridLine, RiTableLine, RiRobotLine } from 'react-icons/ri';
 import Info from '../icons/Info.jsx';
 
 const OptimizationResultsModal = ({ 
@@ -13,11 +13,35 @@ const OptimizationResultsModal = ({
 }) => {
   const [detailedIngredients, setDetailedIngredients] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  // Toggle between 'simple' (Breakdown) and 'detailed' (Nutrient Table)
+  const [isAiLoading, setIsAiLoading] = useState(false); // New state for AI
   const [viewMode, setViewMode] = useState('simple'); 
+  const [aiData, setAiData] = useState('');
+  
+  // --- MOVED HELPER FUNCTIONS UP ---
+  // These need to be declared before the useEffect so they can be used to generate the AI prompt
+  const formatNum = (val, decimals = 2) => Number(val || 0).toFixed(decimals);
 
+  const getAchievedTotal = (nutrientList, targetName, totalweight) => {
+    if (!nutrientList || !Array.isArray(nutrientList)) return 0;
+    const n = nutrientList.find(nut => nut.name?.toLowerCase().includes(targetName.toLowerCase()));
+
+    if (ispercentcompute){
+      return n ? Number(n.value|| 0) : 0;
+    }
+    return n ? Number(n.value || 0) : 0;
+  };
+
+  const getExpectedTarget = (nutrientList, targetName) => {
+    if (!nutrientList || !Array.isArray(nutrientList)) return 0;
+    const n = nutrientList.find(nut => nut.name?.toLowerCase().includes(targetName.toLowerCase()));
+    return n ? (Number(n.minimum || 0) + Number(n.maximum || 0)) / 2 : 0;
+  };
+  // ---------------------------------
   
   useEffect(() => {
+
+    if (!isOpen || !results) return;
+
     const fetchIngredientDetails = async () => {
       if (!isOpen || !results?.ingredients) return;
       
@@ -43,11 +67,58 @@ const OptimizationResultsModal = ({
     };
 
     fetchIngredientDetails();
+
   }, [isOpen, results, formulation]);
 
-  if (!isOpen || !results) return null;
+  useEffect(() => {
+    const fetchAIAnswer = async () => {
+      if (!isOpen || !results) return;
+      setIsAiLoading(true);
+      try {
+        // Create a readable summary for the AI (Ingredients)
+        const ingredientSummary = results.ingredients
+          .map(ing => `${ing.name}: ${ing.value}${ispercentcompute ? '%' : 'g'}`)
+          .join(', ');
 
-  const formatNum = (val, decimals = 2) => Number(val || 0).toFixed(decimals);
+        // Create a readable summary for the AI (Nutrients Achieved vs Expected)
+        const nutrientSummary = formulation?.nutrients
+          ?.map(nut => {
+            const achieved = formatNum(getAchievedTotal(results.nutrients, nut.name, results.totalWeight), 2);
+            const expected = formatNum(getExpectedTarget(formulation.nutrients, nut.name), 2);
+            return `${nut.name}: Achieved ${achieved}, Expected Range - ${expected*0.8}-${expected*1.2}`;
+          }).join('; ') || 'None';
+
+        // Extract Formulation Details conditionally
+        const animalGroup = formulation?.animal_group ? `Animal Group: ${formulation.animal_group}.` : '';
+        const desc = formulation?.description ? `Description: ${formulation.description}.` : '';
+        const pregnant = formulation?.pregnant_phase ? `Pregnant Phase: ${formulation.pregnant_phase}.` : '';
+        const lactating = formulation?.lactating_phase ? `Lactating Phase: ${formulation.lactating_phase}.` : '';
+
+        // Construct the final comprehensive prompt
+        const promptString = `Analyze this feed formulation. ${animalGroup} ${desc} ${pregnant} ${lactating} Ingredients: ${ingredientSummary}. Total Weight: ${results.totalWeight}kg. Nutrients Breakdown: ${nutrientSummary}. 
+        Is this balanced? Tell me if the ingredient mix is good. Provide a short 3-sentence expert summary with both positive and negative aspects.`.trim().replace(/\s+/g, ' ');
+
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/gemini`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            question: promptString 
+          })
+        });
+
+        const data = await response.json();
+        setAiData(data.answer);
+      } catch (error) {
+        console.error("AI Fetch Error:", error);
+        setAiData("Could not load AI insights at this time.");
+      } finally {
+        setIsAiLoading(false);
+      }
+    };
+    fetchAIAnswer();
+  }, [isOpen, results, formulation, ispercentcompute]);
+
+  if (!isOpen || !results) return null;
 
   /**
    * Logic: (Weight * DM%) * Nutrient%
@@ -80,23 +151,10 @@ const OptimizationResultsModal = ({
     return dryMatterKg * Number(currentNutrientEntry.value || 0) * 1000;
   };
 
-  const getAchievedTotal = (nutrientList, targetName, totalweight) => {
-    if (!nutrientList || !Array.isArray(nutrientList)) return 0;
-   
-    
-    const n = nutrientList.find(nut => nut.name?.toLowerCase().includes(targetName.toLowerCase()));
-
-    if (ispercentcompute){
-      return n ? Number(n.value|| 0) : 0;
-    }
-    return n ? Number(n.value || 0) : 0;
-  };
-
-  const getExpectedTarget = (nutrientList, targetName) => {
-    if (!nutrientList || !Array.isArray(nutrientList)) return 0;
-    const n = nutrientList.find(nut => nut.name?.toLowerCase().includes(targetName.toLowerCase()));
-    return n ? (Number(n.minimum || 0) + Number(n.maximum || 0)) / 2 : 0;
-  };
+  // --- ADDED SORTING LOGIC HERE ---
+  // Create a new sorted array descending by value
+  const sortedIngredients = [...results.ingredients].sort((a, b) => Number(b.value) - Number(a.value));
+  // --------------------------------
 
   return (
     <dialog className={`modal ${isOpen ? 'modal-open' : ''} z-[999] `}>
@@ -138,33 +196,39 @@ const OptimizationResultsModal = ({
         </div>
 
         {/* VIEW TOGGLE */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
           <div className="flex items-center gap-2 text-xs text-gray-500 italic">
             <Info className="shrink-0" />
             <span>{isLoading ? 'Loading data...' : 'Optimization complete (Ingredients with no value is removed).'}</span>
           </div>
-          <div className="flex bg-gray-100 p-1 rounded-xl">
+          <div className="flex bg-gray-100 p-1 rounded-xl overflow-x-auto no-scrollbar">
             <button 
               onClick={() => setViewMode('simple')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${viewMode === 'simple' ? 'bg-white shadow-sm text-deepbrown' : 'text-gray-400'}`}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${viewMode === 'simple' ? 'bg-white shadow-sm text-deepbrown' : 'text-gray-400 hover:text-gray-600'}`}
             >
               <RiLayoutGridLine /> BREAKDOWN
             </button>
             <button 
               onClick={() => setViewMode('detailed')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${viewMode === 'detailed' ? 'bg-white shadow-sm text-deepbrown' : 'text-gray-400'}`}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${viewMode === 'detailed' ? 'bg-white shadow-sm text-deepbrown' : 'text-gray-400 hover:text-gray-600'}`}
             >
               <RiTableLine /> NUTRIENTS
+            </button>
+            <button 
+              onClick={() => setViewMode('ai')}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${viewMode === 'ai' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <RiRobotLine /> AI INSIGHT
             </button>
           </div>
         </div>
 
         <div className="mb-6">
-          <div className="max-h-64 overflow-auto rounded-2xl border border-gray-100 shadow-sm no-scrollbar">
+          <div className="max-h-64 overflow-auto rounded-2xl border border-gray-100 shadow-sm no-scrollbar bg-gray-50">
             
-            {viewMode === 'simple' ? (
+            {viewMode === 'simple' && (
               /* --- VERSION 1: SIMPLE INGREDIENT LIST --- */
-              <table className="table table-xs md:table-sm w-full">
+              <table className="table table-xs md:table-sm w-full bg-white">
                 <thead className="sticky top-0 bg-gray-50 text-gray-500 z-10">
                   <tr className="uppercase text-[10px]">
                     <th className="py-3 px-4 text-left">Ingredient Name</th>
@@ -172,7 +236,8 @@ const OptimizationResultsModal = ({
                   </tr>
                 </thead>
                 <tbody className="text-[11px] md:text-sm">
-                  {results.ingredients.map((ing, idx) => (
+                  {/* --- CHANGED TO sortedIngredients --- */}
+                  {sortedIngredients.map((ing, idx) => (
                     <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                       <td className="py-3 px-4 text-gray-700 font-medium">{ing.name}</td>
                       <td className="text-right py-3 px-4 font-mono font-bold text-deepbrown">
@@ -182,9 +247,11 @@ const OptimizationResultsModal = ({
                   ))}
                 </tbody>
               </table>
-            ) : (
+            )}
+
+            {viewMode === 'detailed' && (
               /* --- VERSION 2: DETAILED NUTRIENT TABLE --- */
-              <table className="table table-xs md:table-sm w-full text-center">
+              <table className="table table-xs md:table-sm w-full text-center bg-white">
                 <thead className="sticky top-0 bg-gray-50 text-gray-500 z-10 border-b">
                   <tr className="uppercase text-[9px] md:text-[10px]">
                     <th className="text-left py-3 px-4 sticky left-0 bg-gray-50 z-20 shadow-sm">Ingredient</th>
@@ -211,7 +278,8 @@ const OptimizationResultsModal = ({
                   </tr>
                 </thead>
                 <tbody className="text-[11px] md:text-sm">
-                  {results.ingredients.filter(ing => ing.value !== 0).map((ing, idx) => {
+                  {/* --- CHANGED TO sortedIngredients --- */}
+                  {sortedIngredients.filter(ing => ing.value !== 0).map((ing, idx) => {
                     const ingredientData = detailedIngredients.find(
                       (item) => ((item._id === ing.ingredient_id) || (item.name === ing.name))
                     );
@@ -314,6 +382,26 @@ const OptimizationResultsModal = ({
                   </tr>
                 </tbody>
               </table>
+            )}
+
+            {viewMode === 'ai' && (
+              /* --- VERSION 3: AI INSIGHTS --- */
+              <div className="bg-blue-50 h-full min-h-[12rem] p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <RiRobotLine className="text-blue-600 h-6 w-6" />
+                  <span className="text-sm font-bold text-blue-700 uppercase tracking-wider">AI Nutritionist Insight</span>
+                </div>
+                {isAiLoading ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-8">
+                    <span className="loading loading-spinner loading-md text-blue-500"></span>
+                    <p className="text-sm text-blue-500 font-medium animate-pulse">Analyzing formulation...</p>
+                  </div>
+                ) : (
+                  <p className="text-[13px] md:text-sm text-blue-900 leading-relaxed font-medium">
+                    {aiData || "No insights available for this formulation."}
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>
