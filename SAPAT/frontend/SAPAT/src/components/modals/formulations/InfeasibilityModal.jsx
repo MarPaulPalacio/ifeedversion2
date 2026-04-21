@@ -1,18 +1,25 @@
 import React from 'react';
 import { RiCloseLine } from 'react-icons/ri';
+// Adjust this import based on your translation library
+import { useTranslation } from 'react-i18next';
 
 function InfeasibilityModal({ isOpen, onClose, diagnosisData }) {
-  if (!isOpen || !diagnosisData) return null;
+    const { t } = useTranslation();
+
+    if (!isOpen || !diagnosisData) return null;``
+
     const handleSubstituteClick = (ingredientName) => {
         const searchQuery = encodeURIComponent(`${ingredientName} on carabao feed`);
         window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
     };
+
     const {
         priorityAdvice,
         suggestion,
         structuralIssues = [],
         nutrientIssues = [],
         smartIngredientSuggestions = [],
+        ispercent
     } = diagnosisData;
 
     return (
@@ -22,6 +29,7 @@ function InfeasibilityModal({ isOpen, onClose, diagnosisData }) {
             <button
             onClick={onClose}
             className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 p-2 text-gray-500 transition-colors bg-white/80 backdrop-blur-md rounded-full hover:bg-gray-100 hover:text-black"
+            aria-label={t("Close")}
             >
             <RiCloseLine className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
@@ -36,9 +44,9 @@ function InfeasibilityModal({ isOpen, onClose, diagnosisData }) {
                     <line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800">No feasible formula found</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{t("No feasible formula found")}</h2>
             </div>
-            <p className="text-sm text-gray-500 ml-11">Your current constraints cannot produce a valid diet. Review the issues below.</p>
+            <p className="text-sm text-gray-500 ml-11">{t("Your current constraints cannot produce a valid diet. Review the issues below.")}</p>
             </div>
 
             {/* Scrollable body */}
@@ -47,31 +55,31 @@ function InfeasibilityModal({ isOpen, onClose, diagnosisData }) {
             {/* Priority advice banner */}
             {priorityAdvice && (
                 <div className="bg-red-50 border border-red-200 rounded-xl sm:rounded-2xl p-4">
-                <p className="text-xs font-semibold text-red-800 uppercase tracking-wider mb-1">Priority advice</p>
-                <p className="text-sm text-red-900 mb-1">{priorityAdvice}</p>
-                {suggestion && <p className="text-xs text-red-700">{suggestion}</p>}
+                <p className="text-xs font-semibold text-red-800 uppercase tracking-wider mb-1">{t("Priority advice")}</p>
+                <p className="text-sm text-red-900 mb-1">{t(priorityAdvice)}</p>
+                {suggestion && <p className="text-xs text-red-700">{t(suggestion)}</p>}
                 </div>
             )}
 
             {/* Structural issues */}
             {structuralIssues.length > 0 && (
                 <div>
-                <h3 className="text-base font-bold text-gray-800 mb-3">Structural issues</h3>
+                <h3 className="text-base font-bold text-gray-800 mb-3">{t("Structural issues")}</h3>
                 <div className="flex flex-col gap-2">
                     {structuralIssues.map((issue, idx) => (
                     <div key={idx} className="bg-gray-50/80 border border-gray-100 rounded-xl p-3 sm:p-4">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="text-[11px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                            {issue.type?.replace(/_/g, ' ')}
+                            {issue.type ? t(issue.type.replace(/_/g, ' ')) : ''}
                         </span>
                         {issue.severity === 'critical' && (
                             <span className="text-[11px] font-semibold bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
-                            critical
+                            {t("critical")}
                             </span>
                         )}
                         </div>
-                        <p className="text-sm text-gray-800 mb-1">{issue.message}</p>
-                        <p className="text-xs text-gray-500">{issue.recommendation}</p>
+                        <p className="text-sm text-gray-800 mb-1">{t(issue.message)}</p>
+                        <p className="text-xs text-gray-500">{t(issue.recommendation)}</p>
                     </div>
                     ))}
                 </div>
@@ -81,7 +89,7 @@ function InfeasibilityModal({ isOpen, onClose, diagnosisData }) {
             {/* Nutrient shortages */}
             {nutrientIssues.length > 0 && (
                 <div>
-                <h3 className="text-base font-bold text-gray-800 mb-3">Nutrient shortages</h3>
+                <h3 className="text-base font-bold text-gray-800 mb-3">{t("Nutrient shortages")}</h3>
                 <div className="flex flex-col gap-2">
                     {nutrientIssues.map((gap, idx) => {
                     const pct = gap.required > 0
@@ -90,19 +98,19 @@ function InfeasibilityModal({ isOpen, onClose, diagnosisData }) {
                     return (
                         <div key={idx} className="bg-gray-50/80 border border-gray-100 rounded-xl p-3 sm:p-4">
                         <div className="flex justify-between items-start mb-2 gap-2 flex-wrap">
-                            <span className="text-sm font-semibold text-gray-800">{gap.nutrient}</span>
+                            <span className="text-sm font-semibold text-gray-800">{t(gap.nutrient)}</span>
                             <span className="text-[11px] font-semibold bg-red-100 text-red-800 px-2 py-0.5 rounded-full whitespace-nowrap">
-                            shortage: {gap.shortage?.toLocaleString()}g
+                            {t("shortage:")} {gap.shortage?.toLocaleString()}g
                             </span>
                         </div>
                         <div className="flex gap-4 mb-3 text-xs">
                             <div>
-                            <p className="text-gray-400">Required</p>
-                            <p className="font-semibold text-gray-700">{gap.required?.toLocaleString()}g</p>
+                            <p className="text-gray-400">{t("Required")}</p>
+                            <p className="font-semibold text-gray-700">{gap.required?.toLocaleString()} {ispercent ? '%' : 'g'}</p>
                             </div>
                             <div>
-                            <p className="text-gray-400">Max possible</p>
-                            <p className="font-semibold text-gray-700">{gap.maxPossible?.toLocaleString()}g</p>
+                            <p className="text-gray-400">{t("Max possible")}</p>
+                            <p className="font-semibold text-gray-700">{gap.maxPossible?.toLocaleString()} {ispercent ? '%' : 'g'}</p>
                             </div>
                         </div>
                         <div className="bg-white rounded-full h-1.5 overflow-hidden mb-1">
@@ -111,7 +119,7 @@ function InfeasibilityModal({ isOpen, onClose, diagnosisData }) {
                             style={{ width: `${pct}%` }}
                             />
                         </div>
-                        <p className="text-[11px] text-gray-400">{pct}% of requirement achievable</p>
+                        <p className="text-[11px] text-gray-400">{pct}% {t("of requirement achievable")}</p>
                         </div>
                     );
                     })}
@@ -122,34 +130,34 @@ function InfeasibilityModal({ isOpen, onClose, diagnosisData }) {
             {/* Ingredient suggestions */}
             {smartIngredientSuggestions.length > 0 && (
                 <div>
-                <h3 className="text-base font-bold text-gray-800 mb-1">Suggested ingredients (Press ingredient to search in internet)</h3>
+                <h3 className="text-base font-bold text-gray-800 mb-1">{t("Suggested ingredients (Press ingredient to search in internet)")}</h3>
                 <p className="text-xs text-gray-400 italic mb-3">
-                    If the constraints cannot be modified further, here are suggested ingredients to fill the shortage — review their nutritional profiles before adding them to your formulation.
+                    {t("If the constraints cannot be modified further, here are suggested ingredients to fill the shortage — review their nutritional profiles before adding them to your formulation.")}
                 </p>
                 <div className="flex flex-col gap-3">
                     {smartIngredientSuggestions.map((sug, idx) => (
                     <div key={idx} className="border border-gray-100 rounded-xl overflow-hidden">
                         <div className="bg-amber-50/60 px-4 py-2.5 border-b border-gray-100 flex justify-between items-center flex-wrap gap-1">
                         <span className="text-xs font-semibold text-amber-800">
-                            For {sug.nutrient}
+                            {t("For")} {t(sug.nutrient)}
                         </span>
-                        <span className="text-[11px] text-gray-400">shortage: {sug.shortage?.toLocaleString()}g</span>
+                        <span className="text-[11px] text-gray-400">{t("shortage:")} {sug.shortage?.toLocaleString()}g</span>
                         </div>
                         <div className="overflow-x-auto">
                         <table className="min-w-full text-xs text-left">
                             <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
                             <tr>
-                                <th className="px-4 py-2">Ingredient</th>
-                                <th className="px-4 py-2">Group</th>
-                                <th className="px-4 py-2 text-right">{sug.nutrient.split(' ').map(w => w[0]).join('')}%</th>
-                                <th className="px-4 py-2 text-right">Price</th>
+                                <th className="px-4 py-2">{t("Ingredient")}</th>
+                                <th className="px-4 py-2">{t("Group")}</th>
+                                <th className="px-4 py-2 text-right">{t(sug.nutrient).split(' ').map(w => w[0]).join('')}%</th>
+                                <th className="px-4 py-2 text-right">{t("Price")}</th>
                             </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 ">
                             {sug.recommended?.map((ing, i) => (
-                                <tr key={i} className="hover:bg-amber-100/50 transition-colors cursor-pointer" onClick={()=>handleSubstituteClick(ing.name)}>
-                                <td className="px-4 py-2.5 font-medium text-gray-800">{ing.name}</td>
-                                <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{ing.group}</td>
+                                <tr key={i} className="hover:bg-amber-100/50 transition-colors cursor-pointer" onClick={() => handleSubstituteClick(ing.name)}>
+                                <td className="px-4 py-2.5 font-medium text-gray-800">{t(ing.name)}</td>
+                                <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{t(ing.group)}</td>
                                 <td className="px-4 py-2.5 text-right text-gray-700">{ing.nutrientPercentage ?? ((ing.nutrientContent * 100).toFixed(1))}%</td>
                                 <td className="px-4 py-2.5 text-right font-medium text-gray-700">₱{ing.price}</td>
                                 </tr>
@@ -171,7 +179,7 @@ function InfeasibilityModal({ isOpen, onClose, diagnosisData }) {
                 onClick={onClose}
                 className="px-5 py-2 sm:px-6 sm:py-2.5 text-sm sm:text-base font-semibold text-white transition-all rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 shadow-lg shadow-amber-200"
             >
-                Close
+                {t("Close")}
             </button>
             </div>
         </div>

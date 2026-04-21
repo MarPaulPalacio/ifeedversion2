@@ -294,7 +294,7 @@ function Formulations() {
         <div className="flex items-center gap-2 shrink-0">
           <div className="flex flex-col items-center">
             <h1 className="text-deepbrown text-xs font-bold md:text-sm uppercase tracking-wider">
-              Select/Create
+              {t('Select/Create')}
             </h1>
             {/* Visual underline signifier for active state */}
             <div className="h-1 w-full bg-deepbrown rounded-full mt-0.5 animate-pulse" />
@@ -304,7 +304,7 @@ function Formulations() {
 
         <div className="flex items-center gap-2 shrink-0">
           <h1 className="text-gray-300 text-xs font-bold md:text-sm uppercase tracking-wider">
-            Formulate
+            {t('Formulate')}
           </h1>
           <RiArrowRightSLine className="text-gray-300 h-5 w-5" />
         </div>
@@ -312,7 +312,7 @@ function Formulations() {
         {/* STEP 3 */}
         <div className="flex items-center gap-2 shrink-0">
           <h1 className="text-gray-300 text-xs font-bold md:text-sm uppercase tracking-wider">
-            Generate
+            {t('Generate')}
           </h1>
         </div>
       </div>

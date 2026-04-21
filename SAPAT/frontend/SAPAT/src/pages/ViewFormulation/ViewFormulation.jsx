@@ -4,8 +4,7 @@ import {
   RiArrowDownSLine, RiInformationLine, RiBarChartLine , RiMenuUnfoldLine, RiMenuFoldLine, RiArrowRightSLine, RiBookLine,
   RiHistoryLine
 } from 'react-icons/ri';
-
-
+import { useTranslation } from 'react-i18next'
 import OptimizationResultsModal from '../../components/modals/OptimizationResultsModal.jsx';
 import OptimizeFAB from '../../components/buttons/OptimizeFAB.jsx';
 import { motion, AnimatePresence } from 'framer-motion'
@@ -32,6 +31,7 @@ import ManualFormulation from '../../components/modals/ManualFormulation.jsx';
 import IngredientSubstituteModal from '../../components/modals/formulations/SubstituteModal.jsx';
 import InfeasibilityModal from '../../components/modals/formulations/InfeasibilityModal.jsx';
 import { set } from 'lodash';
+
 const COLORS = ['#DC2626', '#D97706', '#059669', '#7C3AED', '#DB2777']
 
 function ViewFormulation({
@@ -79,29 +79,23 @@ function ViewFormulation({
   percentShadowPrices
 }) {
   const VITE_API_URL = import.meta.env.VITE_API_URL
-
-  
-
+  const { t, i18n } = useTranslation();
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   
   const [collaborators, setCollaborators] = useState([])
   const [newCollaborator, setNewCollaborator] = useState({})
-
   const [isShareFormulationModalOpen, setIsShareFormulationModalOpen] =
     useState(false)
   const [isAddCollaboratorModalOpen, setIsAddCollaboratorModalOpen] =
     useState(false)
   const [isLoading, setIsLoading] = useState(true)
-
   // toast visibility
   const [showToast, setShowToast] = useState(false)
   const [message, setMessage] = useState('')
   const [toastAction, setToastAction] = useState('')
-
   // all available ingredients and nutrients of the owner
   const [listOfIngredients, setListOfIngredients] = useState([])
   const [listOfNutrients, setListOfNutrients] = useState([])
-
   // choosing ingredients and nutrients to create feeds
   const [isChooseIngredientsModalOpen, setIsChooseIngredientsModalOpen] =
     useState(false)
@@ -109,32 +103,17 @@ function ViewFormulation({
     useState(false)
   const [isChooseNutrientRatiosModalOpen, setIsChooseNutrientRatiosModalOpen] =
     useState(false)
-
-
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const [isPCCModalOpen, setIsPCCModalOpen] = useState(false)
   const [showAllDetails, setShowAllDetails] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
   const [constraintMode, setConstraintMode] =useState('none')
-
   const [optimizationResults, setOptimizationResults] = useState(null);
-const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
-const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false)
+  const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false)
 
-
-const handleEditResult = (updatedFormulation, action, message) => {
+  const handleEditResult = (updatedFormulation, action, message) => {
     setIsEditModalOpen(false)
-    // setFormulations((prevFormulations) => {
-    //   const index = prevFormulations.findIndex(
-    //     (formulation) => formulation._id === updatedFormulation._id
-    //   )
-    //   const updated = [...prevFormulations]
-    //   const formulationAccess = updated[index].access
-    //   updated[index] = { ...updatedFormulation, access: formulationAccess }
-    //   return updated
-    // })
-    // toast instructions
     setShowToast(true)
     setMessage(message)
     setToastAction(action)
@@ -142,7 +121,6 @@ const handleEditResult = (updatedFormulation, action, message) => {
 
   const [isLargeOrSmaller, setIsLargeOrSmaller] = useState(false);
   useEffect(() => {
-    // Check if screen is 'Large' (1024px) or smaller
     const checkSize = () => setIsLargeOrSmaller(window.innerWidth <= 1024);
     checkSize();
     window.addEventListener('resize', checkSize);
@@ -150,43 +128,25 @@ const handleEditResult = (updatedFormulation, action, message) => {
     return () => window.removeEventListener('resize', checkSize);
   }, []);
 
+  const [activeTab, setActiveTab] = useState(null);
 
+  const toggleTab = (tab) => {
+    if (activeTab === tab) {
+      setActiveTab(null);
+    } else {
+      setActiveTab(tab);
+    }
+  };
 
-
-  const [activeTab, setActiveTab] = useState(null); // 'tools' or 'details' or null
-
-// Helper to handle mutual exclusivity
-const toggleTab = (tab) => {
-  if (activeTab === tab) {
-    setActiveTab(null);
-  } else {
-    setActiveTab(tab);
-  }
-};
-
-    // chosen ingredients and nutrients
   const [selectedIngredients, setSelectedIngredients] = useState([])
   const [selectedNutrients, setSelectedNutrients] = useState([])
-
-  // Shadow prices (for simplex optimization)
-  const [shadowPricingTabOpen, setShadowPricingTabOpen ]= useState(false);
-
-  // un-updated ingredient/nutrient values (when user enters new min/max that has not been optimized yet)
+  const [shadowPricingTabOpen, setShadowPricingTabOpen] = useState(false);
   const [isDirty, setIsDirty] = useState(false)
-
-
   const [filterIngredientCode, setFilterIngredientCode] = useState('')
-
-  // Used for showing ingredients and the type of ingredient e.g. roughage, vitamins or concentrate
-  // const [groupFilter, setGroupFilter] = useState([])
   const isDisabled = userAccess === 'view'
-
-
   const [showRoughageLimits, setShowRoughageLimits] = useState(true);
   const [showConcentrateLimits, setShowConcentrateLimits] = useState(true);
   const [showVitaminLimits, setShowVitaminLimits] = useState(true);
-
-  // for ingredient information:
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [substitutesLoading, setSubstitutesLoading] = useState(false);
   const [modalData, setModalData] = useState({
@@ -194,57 +154,41 @@ const toggleTab = (tab) => {
     details: null,
     substitutes: []
   });
-
   const [ispercentcompute, setispercentcompute] = useState(false)
   const [ispercentcomputeLast, setispercentcomputeLast] = useState(false)
-
-  // For infeasibility diagnosis
   const [infeasibilityModal, setInfeasibilityModal] = useState({ isOpen: false, data: null });
-
   const [recentFormulation, setRecentFormulation] = useState('None Yet')
 
-const handleIngredientClick = async (ingredient) => {
-  setIsSubModalOpen(true);
-  setSubstitutesLoading(true);
-  
-  // Safely grab the ID whether it's named _id or ingredient_id in this specific map
-  const targetId = ingredient.ingredient_id || ingredient._id;
-
-  // Set an initial skeleton so the modal opens immediately with the name
-  setModalData({ name: ingredient.name, details: null, substitutes: [] });
-
-  try {
-    // 1. Fetch Ingredient Details (Your GET route)
-    // NOTE: Make sure `currentUserId` matches whatever variable holds the user's ID in your frontend
-    const detailsRes = await fetch(`${import.meta.env.VITE_API_URL}/ingredient/${targetId}/${owner?.userId}`);
-    const detailsData = await detailsRes.json();
-    const nutrients = formulationRealTime?.nutrients || []
-    // 2. Fetch K-Means Substitutes (Your POST route)
-    // NOTE: Make sure `selectedNutrients` matches the array of nutrients you are optimizing for
-    const subRes = await fetch(`${import.meta.env.VITE_API_URL}/suggest-substitute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: owner?.userId, 
-        targetIngredientId: targetId,
-        nutrients
-      })
-    });
-    const subData = await subRes.json();
-
-    // Update the state with the newly fetched data
-    setModalData({
-      name: ingredient.name,
-      details: detailsData.ingredients,
-      substitutes: subData.substitutes || []
-    });
-
-  } catch (error) {
-    console.error("Error fetching ingredient data:", error);
-  } finally {
-    setSubstitutesLoading(false);
-  }
-};
+  const handleIngredientClick = async (ingredient) => {
+    setIsSubModalOpen(true);
+    setSubstitutesLoading(true);
+    const targetId = ingredient.ingredient_id || ingredient._id;
+    setModalData({ name: ingredient.name, details: null, substitutes: [] });
+    try {
+      const detailsRes = await fetch(`${import.meta.env.VITE_API_URL}/ingredient/${targetId}/${owner?.userId}`);
+      const detailsData = await detailsRes.json();
+      const nutrients = formulationRealTime?.nutrients || []
+      const subRes = await fetch(`${import.meta.env.VITE_API_URL}/suggest-substitute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: owner?.userId, 
+          targetIngredientId: targetId,
+          nutrients
+        })
+      });
+      const subData = await subRes.json();
+      setModalData({
+        name: ingredient.name,
+        details: detailsData.ingredients,
+        substitutes: subData.substitutes || []
+      });
+    } catch (error) {
+      console.error("Error fetching ingredient data:", error);
+    } finally {
+      setSubstitutesLoading(false);
+    }
+  };
 
   const [showLimits, setShowLimits] = useState(false)
   
@@ -252,7 +196,6 @@ const handleIngredientClick = async (ingredient) => {
     if (formulation) {
       setSelectedIngredients(formulation.ingredients || [])
       setSelectedNutrients(formulation.nutrients || [])
-      
     }
   }, [formulation])
 
@@ -260,13 +203,9 @@ const handleIngredientClick = async (ingredient) => {
     console.log("FORMULATION HERE", formulation)
   }, [])
 
-  // useEffect(() => {
-  //   updateWeight(formulation.dmintake || 0)
-  // }, [])
-
   useEffect(() => {
     if (formulation) {
-      showNutrientsMissingBasedonIngredientsPresent ();
+      showNutrientsMissingBasedonIngredientsPresent();
     }
   }, [formulation, selectedIngredients])
 
@@ -276,7 +215,6 @@ const handleIngredientClick = async (ingredient) => {
       try {
         if (owner && formulation) {
           await Promise.all([fetchIngredients(), fetchNutrients()]);
-
         }
       } catch (error) {
         console.log(error)
@@ -284,9 +222,7 @@ const handleIngredientClick = async (ingredient) => {
         setIsLoading(false);
       }
     };
-
     loadData();
-    
   }, [formulation]);
 
   useEffect(() => {
@@ -299,13 +235,11 @@ const handleIngredientClick = async (ingredient) => {
     isDirty && updateCost(0)
   }, [isDirty])
 
-
-  // Sync on saving using 'ctrl + s'
   useEffect(() => {
     const handleKeyPress = (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key === 's') {
-        event.preventDefault() // Prevent the default browser save action
-        handleSave(isDirty) // Call database update function
+        event.preventDefault()
+        handleSave(isDirty)
       }
     }
     window.addEventListener('keydown', handleKeyPress)
@@ -314,67 +248,55 @@ const handleIngredientClick = async (ingredient) => {
     }
   }, [isDirty])
 
-  // Function to organize ingredients for Ingredients Menu
   const organizeIngredients = (fetchedData, phase) => {
-      setListOfIngredients(fetchedData)
-      
-      const arr2Ids = new Set(
-        phase === 'Custom' ?
-          formulation.ingredients.map((item) => item.ingredient_id)
-          : specialformulations.find((sf) => sf.name === phase)?.ingredients.map((item) => item.ingredient_id)
+    setListOfIngredients(fetchedData)
+    const arr2Ids = new Set(
+      phase === 'Custom' ?
+        formulation.ingredients.map((item) => item.ingredient_id)
+        : specialformulations.find((sf) => sf.name === phase)?.ingredients.map((item) => item.ingredient_id)
+    )
+    const unusedIngredients = fetchedData.filter(
+      (item) => !arr2Ids.has(item.ingredient_id || item._id)
+    )
+    updateIngredientsMenu(unusedIngredients)
+    const listOfIngredientsIds = new Set(
+      fetchedData.map((item) => item.ingredient_id || item._id)
+    )
+    const nonExistingIngredients = formulation.ingredients.filter(
+      (item) => !listOfIngredientsIds.has(item.ingredient_id)
+    )
+    const nonExistingIngredientsIds = new Set(nonExistingIngredients.map((item) => item.ingredient_id))
+    updateIngredients(
+      ingredients.filter(
+        (item) => !nonExistingIngredientsIds.has(item.ingredient_id)
       )
-
-      // don't include already added ingredients to the ingredients menu
-      const unusedIngredients = fetchedData.filter(
-        (item) => !arr2Ids.has(item.ingredient_id || item._id)
-      )
-      updateIngredientsMenu(unusedIngredients)
-
-      // ingredients in the user's workspace
-      const listOfIngredientsIds = new Set(
-        fetchedData.map((item) => item.ingredient_id || item._id)
-      )
-      // remove ingredients in the formulation that are already deleted in the user's workspace
-      const nonExistingIngredients = formulation.ingredients.filter(
-        (item) => !listOfIngredientsIds.has(item.ingredient_id)
-      )
-      const nonExistingIngredientsIds = new Set(nonExistingIngredients.map((item) => item.ingredient_id))
-      updateIngredients(
-        ingredients.filter(
-          (item) => !nonExistingIngredientsIds.has(item.ingredient_id)
-        )
-      )
+    )
   }
 
   const organizeNutrients = (fetchedData, phase) => {
-
-    // nutrients already in the formulation
-      const arr2Ids = new Set(
-        phase === 'Custom' ?
-          formulation.nutrients.map((item) => item.nutrient_id)
-          : specialformulations.find((sf) => sf.name === phase)?.nutrients.map((item) => item.nutrient_id)
+    const arr2Ids = new Set(
+      phase === 'Custom' ?
+        formulation.nutrients.map((item) => item.nutrient_id)
+        : specialformulations.find((sf) => sf.name === phase)?.nutrients.map((item) => item.nutrient_id)
+    )
+    const unusedNutrients = fetchedData.filter(
+      (item) => !arr2Ids.has(item.nutrient_id || item._id)
+    )
+    updateNutrientsMenu(unusedNutrients)
+    const listOfNutrientsIds = new Set(
+      fetchedData.map((item) => item.nutrient_id || item._id)
+    )
+    const nonExistingNutrients = formulation.nutrients.filter(
+      (item) => !listOfNutrientsIds.has(item.nutrient_id)
+    )
+    const nonExistingNutrientsIds = new Set(nonExistingNutrients.map((item) => item.nutrient_id))
+    updateNutrients(
+      nutrients.filter(
+        (item) => !nonExistingNutrientsIds.has(item.nutrient_id)
       )
-      // don't include already added nutrients to the nutrients menu
-      const unusedNutrients = fetchedData.filter(
-        (item) => !arr2Ids.has(item.nutrient_id || item._id)
-      )
-      updateNutrientsMenu(unusedNutrients)
-
-      // nutrients in the user's workspace
-      const listOfNutrientsIds = new Set(
-        fetchedData.map((item) => item.nutrient_id || item._id)
-      )
-      // remove nutrients in the formulation that are already deleted in the user's workspace
-      const nonExistingNutrients = formulation.nutrients.filter(
-        (item) => !listOfNutrientsIds.has(item.nutrient_id)
-      )
-      const nonExistingNutrientsIds = new Set(nonExistingNutrients.map((item) => item.nutrient_id))
-      updateNutrients(
-        nutrients.filter(
-          (item) => !nonExistingNutrientsIds.has(item.nutrient_id)
-        )
-      )
+    )
   }
+
   const fetchIngredients = async () => {
     try {
       const res = await axios.get(
@@ -382,12 +304,10 @@ const handleIngredientClick = async (ingredient) => {
       )
       const fetchedData = res.data.ingredients
       organizeIngredients(fetchedData, 'Custom')
-      
     } catch (err) {
       console.log(err)
     }
   }
-
 
   const fetchNutrients = async () => {
     try {
@@ -405,7 +325,6 @@ const handleIngredientClick = async (ingredient) => {
   const fetchCollaboratorData = async () => {
     try {
       if (!formulation.collaborators) return
-      // get details of collaborators
       const collaboratorPromises = formulation.collaborators.map(
         async (collaborator) => {
           const res = await axios.get(
@@ -417,7 +336,6 @@ const handleIngredientClick = async (ingredient) => {
           }
         }
       )
-      // wait for all requests to complete
       const collaboratorsData = await Promise.all(collaboratorPromises)
       setCollaborators(collaboratorsData)
     } catch (err) {
@@ -436,14 +354,13 @@ const handleIngredientClick = async (ingredient) => {
       setIsShareFormulationModalOpen(true)
     } else {
       setShowToast(true)
-      setMessage('Only the owner can share the formulation.')
+      setMessage(t('Only the owner can share the formulation.'))
       setToastAction('error')
     }
   }
 
   const goToConfirmationModal = (type, collaborator, message) => {
     if (type === 'error') {
-      // toast instructions
       setShowToast(true)
       setMessage(message)
       setToastAction('error')
@@ -460,16 +377,11 @@ const handleIngredientClick = async (ingredient) => {
   const [detailedIngredients, setDetailedIngredients] = useState('')
   const [isManualFormulationOpen, setIsManualFormulationOpen] = useState(false)
 
-
   const handleManualOptimize = async () => {
-
-    // Get Necessary Formulations
     const nutrients = formulationRealTime?.nutrients || [];
     const ingredients = formulationRealTime?.ingredients || [];
-    const dmIntake = formulationRealTime?.dmintake || 0; // The target DM intake
-
+    const dmIntake = formulationRealTime?.dmintake || 0;
     setIsLoading(true);
-    
     try {
       const ids = ingredients.map((ing) => ing.ingredient_id || ing._id);
       const response = await fetch(`${import.meta.env.VITE_API_URL}/ingredient/idarray`, {
@@ -477,118 +389,60 @@ const handleIngredientClick = async (ingredient) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
       });
-
-     
-
       const data = await response.json();
       if (data.message === "success") {
         const detailed = data.ingredients;
         setDetailedIngredients(detailed);
-        // --- START OF MANUAL CALCULATION LOGIC ---
-
-        // 1. Map ingredients to their DM values and calculate initial As-Fed
-        // Formula: (ratio / DM_value) * 100
         const dmNutrientId = nutrients[nutrients.length - 1]?.nutrient_id || nutrients[nutrients.length - 1]?.id;
-        
-
-        
         const preparedData = ingredients.map((ing) => {
           const detail = detailed.find((d) => d._id === (ing.ingredient_id || ing._id));
           const dmValue = detail?.nutrients?.find((n) => n.nutrient === dmNutrientId)?.value || 0;
           const ratio = Number(ing.minimum || 0);
-          
           const asFed = dmValue > 0 ? (ratio / dmValue) * 100 : 0;
           return { ...ing, detail, dmValue, asFed };
         });
-
-        
-
-        
-
-        
-
         const totalAsFed = preparedData.reduce((sum, item) => sum + item.asFed, 0);
-
-        
-        // 2. Calculate AsFed100kg and TMR DM
-        // Formula: asFed100kg = (asFed / totalAsFed) * 100
-        // Formula: TMR_DM = (asFed100kg * dmValue) / 100
         const processedData = preparedData.map((item) => {
           const asFed100kg = totalAsFed > 0 ? (item.asFed / totalAsFed) * 100 : 0;
           const tmrDM = (asFed100kg * item.dmValue) / 100;
           return { ...item, asFed100kg, tmrDM };
         });
-
-        
-
-        
-
         const totalAsFed100kg = processedData.reduce((sum, item) => sum + item.asFed100kg, 0);
         const totalTMRDM = processedData.reduce((sum, item) => sum + item.tmrDM, 0);
-
-        
-        
-        
-        // 3. Calculate Final totalWeight
-        // Formula: ((dmIntake / 100) / totalTMRDM) * 100
         const calculatedTotalWeight = ((formulation.dmintake / 100) / totalTMRDM) * 100;
-        
-        
-
-        // 4. Calculate Final Ingredient values and Costs
-        // Formula: (asFed100kg / totalAsFed100kg) * totalWeight
         let calculatedTotalCost = 0;
         const optimizedIngredients = processedData.map((item) => {
           const finalValueKg = totalAsFed100kg > 0 
             ? (item.asFed100kg / totalAsFed100kg) * calculatedTotalWeight 
             : 0;
-          
           const ingredientPrice = Number(item.detail?.price || 0);
           calculatedTotalCost += ingredientPrice * finalValueKg;
-
           return {
             name: item.name,
             ingredient_id: item.ingredient_id || item._id,
-            value: finalValueKg, // Storing as grams for the Modal's display logic
+            value: finalValueKg,
           };
         });
-
-        
-        
-
-        // 5. Calculate Final Nutrients (Total Achieved)
-        // This maps the actual nutrient contribution based on the final weights
         const optimizedNutrients = nutrients.map((nut) => {
           const nutId = nut.nutrient_id || nut._id;
           const totalNutrientAchieved = processedData.reduce((sum, item, idx) => {
             const ingredientValueGrams = optimizedIngredients[idx].value;
             const nutEntry = item.detail?.nutrients?.find(n => n.nutrient === nutId);
             const nutValue = Number(nutEntry?.value || 0) / 100;
-            
-            // Contribution: (WeightKG * DM%) * Nutrient%
             const dryMatterKg = (ingredientValueGrams / 1000) * (item.dmValue / 100);
             return sum + (dryMatterKg * nutValue * 1000);
           }, 0);
-
           return {
             name: nut.name,
             value: totalNutrientAchieved
           };
         });
-
-        
-        console.log("CALCULATED TOTAL WEIGHT", optimizationResults, optimizedNutrients)
-        // --- FINAL STATE UPDATE ---
         setOptimizationResults({
           ingredients: optimizedIngredients,
           nutrients: optimizedNutrients,
           totalWeight: calculatedTotalWeight,
           totalCost: calculatedTotalCost, 
         });
-
-
-
-        console.log("FORMULATION INFO", optimizedIngredients, optimizedNutrients, calculatedTotalWeight, calculatedTotalCost)
       }
     } catch (error) {
       console.error("Error calculating manual formulation:", error);
@@ -597,47 +451,24 @@ const handleIngredientClick = async (ingredient) => {
       setIsManualFormulationOpen(true);
     }
   };
-  const handleOptimize = async (
-    // ingredients,
-    // nutrients,
-    // weight,
-    type
-  ) => {
-    try {
 
-      // UNCOMMENT/DELETE IF NOT NEEDED
-      
-      
+  const handleOptimize = async (type) => {
+    try {
       let weight = formulationRealTime?.weight || []
       let nutrients = formulationRealTime?.nutrients || []
       let ingredients = formulationRealTime?.ingredients || []  
-
-
       if (ispercentcompute){
         weight = percentFormulationRealTime?.weight || []
         nutrients = percentFormulationRealTime?.nutrients || []
         ingredients = percentFormulationRealTime?.ingredients || []
       }
-      console.log("DEBUG HERE: FRONTEND SENING OF DATA TO SOLVER!")
-      console.log("Ingredients", ingredients)
-      console.log("Nutrients", nutrients)
-      console.log("Weight", weight)
-      console.log("Nutrient Ratios", formulation)
-      console.log("FORMULATIONREALTIME", percentFormulationRealTime)
-      console.log("Selected Nutrients", selectedNutrients)
-      // Temporary Fix
-      // Function for obtaining value for as-fed amount (weight) of the feed
-      // Convert ingredient min and max from kg to grams for API
       let ingredientsInGrams = ingredients.map(ing => ({
             ...ing,
             minimum: ing.minimum * 1000,
             maximum: ing.maximum * 1000,
-
           }));
-      
-
       let weightinGrams = weight * 1000
-      if (weight ===0){
+      if (weight === 0){
         weightinGrams = ' '
       } 
       if (ispercentcompute){
@@ -645,23 +476,8 @@ const handleIngredientClick = async (ingredient) => {
             ...ing,
             minimum: ing.minimum,
             maximum: ing.maximum,
-
           }));
       }
-          
-      
-      console.log(weightinGrams, "weightingrams")
-      console.log("Nutrient Ratio Constraints", ingredients[0].ingredient_id)
-      // const res2 = await axios.post(`${VITE_API_URL}/suggest-substitute`, {
-      //   userId: owner?.userId,
-      //   targetIngredientId: "69bfd202c9683bf137627347",
-      //   nutrients
-      // })
-      
-
-      
-      console.log("Ingredients in grams:", ingredientsInGrams)
-
       const res = await axios.post(`${VITE_API_URL}/optimize/simplex`, {
         userId: owner?.userId,
         ingredients: ingredientsInGrams,
@@ -670,24 +486,15 @@ const handleIngredientClick = async (ingredient) => {
         nutrientRatioConstraints,
         type: ispercentcompute ? 'percent' : 'absolute'
       })
-
-      console.log("Here is the resdata", res.data) // View Optimization results
       const optimizedCost = res.data.optimizedCost
       const optimizedIngredients = res.data.optimizedIngredients
       const optimizedNutrients = res.data.optimizedNutrients
-
-      
       const shadowPricesResult = res.data.shadowPrices
       const amountFed = parseFloat(res.data.weight/1000).toFixed(2)
       const rawTotalWeight = res.data.weight || 0;
-
-      console.log("OPTIMIZATION RESULT - AMOUNT FED:", res.data)
-      console.log("OPTIMIZATION RESULT:", optimizedIngredients, optimizedNutrients)
-      
       if (ispercentcompute){
         updatePercentShadowPrices(shadowPricesResult || []);
         updatePercentCost(optimizedCost);
-        
         optimizedIngredients.forEach((ing) => {
           const originalIng = ingredients.find(i => i.name === ing.name);
           if (originalIng) {
@@ -695,52 +502,22 @@ const handleIngredientClick = async (ingredient) => {
               if (rawTotalWeight > 0) {
                 percentValue = (ing.value / rawTotalWeight) * 100;
               }
-              
-              console.log("VALUE OF", ing.name, "is", ing.value)
-              updatePercentIngredientProperty(originalIng.ingredient_id, 'value', Number(ing.value.toFixed(2))); // Optional: toFixed cleans up long decimals
+              updatePercentIngredientProperty(originalIng.ingredient_id, 'value', Number(ing.value.toFixed(2)));
           }
         });
-
         optimizedNutrients.forEach((nut) => {
           const nutrientId = nutrients.find(n => n.name === nut.name)?.nutrient_id;
           if (nutrientId){
             updatePercentNutrientProperty(nutrientId, 'value', Number(nut.value))
           }
         })
-        
         updatePercentWeight(amountFed)
-      }
-
-      // if (ispercentcompute){
-      //   updatePercentShadowPrices(shadowPricesResult || []);
-      //   updatePercentCost(optimizedCost)
-      //   optimizedIngredients.forEach((ing) => {
-      //     const originalIng = ingredients.find(i => i.name === ing.name);
-      //     if (originalIng) {
-      //       // console.log(`Updating ingredient ${ing.name} with value ${ing.value}`); // Debug log
-      //         // Ensure you use the exact ID used in your state management
-      //         updatePercentIngredientProperty(originalIng.ingredient_id, 'value', Number(ing.value));
-      //     }
-      //   });
-      //   optimizedNutrients.forEach((nut) => {
-      //     const nutrientId = nutrients.find(n => n.name === nut.name)?.nutrient_id;
-      //     if (nutrientId){
-      //       updatePercentNutrientProperty(nutrientId, 'value', Number(nut.value))
-      //     }
-      //   })
-      //   updatePercentWeight(amountFed)
-
-      // }
-       else {
-        // Update shadow prices in real-time storage
+      } else {
         updateShadowPrices(shadowPricesResult || []);
-
         updateCost(optimizedCost/1000)
         optimizedIngredients.forEach((ing) => {
             const originalIng = ingredients.find(i => i.name === ing.name);
             if (originalIng) {
-              // console.log(`Updating ingredient ${ing.name} with value ${ing.value}`); // Debug log
-                // Ensure you use the exact ID used in your state management
                 updateIngredientProperty(originalIng.ingredient_id, 'value', Number(ing.value)/1000);
             }
         });
@@ -752,33 +529,22 @@ const handleIngredientClick = async (ingredient) => {
         })
         updateWeight(amountFed)
       }
-      
       setOptimizationResults({
         ingredients: optimizedIngredients,
         nutrients: optimizedNutrients,
         totalWeight: amountFed,
         totalCost: optimizedCost / 1000,
-        
       });
-
-      console.log("Optimization Results:", optimizedNutrients, optimizedIngredients)
-
-      // 2. Open the results modal
       setIsResultsModalOpen(true);
-      
       setIsDirty(false)
-      setMessage(`Formulation Creator`)
+      setMessage(t('Formulation Creator'))
       setispercentcomputeLast(ispercentcompute)
       setRecentFormulation('Success')
     } catch (err) {
       setRecentFormulation('Fail')
       if (err.response?.data?.status === 'No optimal solution') {
-        console.log("error response from optimization API:", err.response.data.structuralIssues, err.response.data.nutrientIssues);
-        console.log("Smart Diagnosis", err.response.data.priorityAdvice)
-        console.log("Possible Fixes", err.response.data.ingredientSuggestions, err.response.data.smartIngredientSuggestions)
-        // toast instructions
         setShowToast(true)
-        setMessage(`No feasible formula found. Please adjust your constraints.`)
+        setMessage(t('No feasible formula found. Please adjust your constraints.'))
         setToastAction('error')
         ingredients.map((ing, index) => {
           const ingredientId = ingredients.find(i => i.name === ing.name)?.ingredient_id;
@@ -789,7 +555,6 @@ const handleIngredientClick = async (ingredient) => {
           updateNutrientProperty(nutrientId, 'value', 0)
         })
         const d = err.response.data;
-
         setInfeasibilityModal({
           isOpen: true,
           data: {
@@ -798,11 +563,10 @@ const handleIngredientClick = async (ingredient) => {
             structuralIssues: d.structuralIssues || [],
             nutrientIssues: d.nutrientIssues || [],
             smartIngredientSuggestions: d.smartIngredientSuggestions || [],
+            ispercent: ispercentcomputeLast
           }
         });
       }
-
-
     }
   }
 
@@ -817,7 +581,6 @@ const handleIngredientClick = async (ingredient) => {
           displayName: newCollaborator.newDisplayName,
         }
       )
-      
       const newCollaboratorData = {
         _id: newCollaborator.newId,
         email: newCollaborator.newEmail,
@@ -827,7 +590,7 @@ const handleIngredientClick = async (ingredient) => {
       }
       setCollaborators([...collaborators, newCollaboratorData])
       setShowToast(true)
-      setMessage('Collaborator added successfully')
+      setMessage(t('Collaborator added successfully'))
       setToastAction('success')
     } catch (err) {
       console.log(err)
@@ -837,7 +600,7 @@ const handleIngredientClick = async (ingredient) => {
   const handleUpdateCollaborator = (updatedCollaborators) => {
     setCollaborators(updatedCollaborators)
     setShowToast(true)
-    setMessage('Collaborator updated successfully')
+    setMessage(t('Collaborator updated successfully'))
     setToastAction('success')
   }
 
@@ -852,7 +615,7 @@ const handleIngredientClick = async (ingredient) => {
         )
       )
       setShowToast(true)
-      setMessage('Collaborator deleted successfully')
+      setMessage(t('Collaborator deleted successfully'))
       setToastAction('success')
     } catch (err) {
       console.log(err)
@@ -861,7 +624,7 @@ const handleIngredientClick = async (ingredient) => {
 
   const handleAddIngredients = async (ingredientsToAdd) => {
     try {
-       const ingredientsWithGroup = ingredientsToAdd.map((ingredient) => {
+      const ingredientsWithGroup = ingredientsToAdd.map((ingredient) => {
         const matched = ingredientsMenu.find(
           (item) =>
             item._id === ingredient.ingredient_id ||
@@ -869,24 +632,18 @@ const handleIngredientClick = async (ingredient) => {
         );
         return {
           ...ingredient,
-          group: matched?.group || "", // add group if found
+          group: matched?.group || "",
         };
       });
-
       const res = await axios.put(
         `${VITE_API_URL}/formulation/ingredients/${id}`,
-        { ingredients: ingredientsWithGroup } // send ingredients with group
+        { ingredients: ingredientsWithGroup }
       );
-      
       const newIngredients = res.data.addedIngredients
-      
       const formattedIngredients = newIngredients.map((ingredient) => {
-        // at initial add, all values are zero
         const menuIngredient = ingredientsMenu.find(
           (item) => item.ingredient_id === ingredient.ingredient_id || item._id === ingredient.ingredient_id
         );
-        
-        
         return {
           ...ingredient,
           minimum: 0,
@@ -895,7 +652,6 @@ const handleIngredientClick = async (ingredient) => {
           group: menuIngredient?.group || ''
         }
       })
-
       setSelectedIngredients([...selectedIngredients, ...formattedIngredients])
       const arr2Ids = new Set(
         formattedIngredients.map((item) => item.ingredient_id)
@@ -906,15 +662,13 @@ const handleIngredientClick = async (ingredient) => {
       updatePercentIngredients([...selectedIngredients, ...formattedIngredients])
       setIsChooseIngredientsModalOpen(false)
       setIsDirty(false)
-      // toast instructions
       setShowToast(true)
-      setMessage('Ingredients added successfully')
+      setMessage(t('Ingredients added successfully'))
       setToastAction('success')
     } catch (err) {
       console.log(err)
-      // toast instructions
       setShowToast(true)
-      setMessage('Error adding ingredients')
+      setMessage(t('Error adding ingredients'))
       setToastAction('error')
     }
   }
@@ -925,9 +679,7 @@ const handleIngredientClick = async (ingredient) => {
         `${VITE_API_URL}/formulation/nutrients/${id}`,
         { nutrients: nutrientsToAdd }
       )
-      
       const newNutrients = res.data.addedNutrients
-      // at initial add, all values are zero
       const formattedNutrients = newNutrients.map((nutrient) => {
         return {
           ...nutrient,
@@ -937,9 +689,6 @@ const handleIngredientClick = async (ingredient) => {
         }
       })
       setSelectedNutrients([...selectedNutrients, ...formattedNutrients])
-      console.log(formattedNutrients, 
-        "Formated nutrei"
-      )
       const arr2Ids = new Set(
         formattedNutrients.map((item) => item.nutrient_id)
       )
@@ -948,15 +697,13 @@ const handleIngredientClick = async (ingredient) => {
       updateNutrients([...selectedNutrients, ...formattedNutrients])
       setIsChooseNutrientsModalOpen(false)
       setIsDirty(false)
-      // toast instructions
       setShowToast(true)
-      setMessage('Nutrients added successfully')
+      setMessage(t('Nutrients added successfully'))
       setToastAction('success')
     } catch (err) {
       console.log(err)
-      // toast instructions
       setShowToast(true)
-      setMessage('Error adding nutrients')
+      setMessage(t('Error adding nutrients'))
       setToastAction('error')
     }
   }
@@ -966,7 +713,6 @@ const handleIngredientClick = async (ingredient) => {
       await axios.delete(
         `${VITE_API_URL}/formulation/ingredients/${id}/${ingredientToRemove.ingredient_id}`
       )
-      // remove ingredientToRemove from selected ingredients
       setSelectedIngredients(
         selectedIngredients.filter(
           (item) => item.ingredient_id !== ingredientToRemove.ingredient_id
@@ -977,13 +723,11 @@ const handleIngredientClick = async (ingredient) => {
           (item) => item.ingredient_id !== ingredientToRemove.ingredient_id
         )
       )
-
       updatePercentIngredients(
         percentingredients.filter(
           (item) => item.ingredient_id !== ingredientToRemove.ingredient_id
         )
       )
-      // add ingredientToRemove to ingredients menu
       const removedIngredient = listOfIngredients.find((item) =>
         item.ingredient_id
           ? item.ingredient_id === ingredientToRemove.ingredient_id
@@ -994,15 +738,13 @@ const handleIngredientClick = async (ingredient) => {
       }
       updateCost(0)
       setIsDirty(false)
-      // toast instructions
       setShowToast(true)
-      setMessage('Ingredient removed successfully')
+      setMessage(t('Ingredient removed successfully'))
       setToastAction('success')
     } catch (err) {
       console.log(err)
-      // toast instructions
       setShowToast(true)
-      setMessage('Error removing ingredient')
+      setMessage(t('Error removing ingredient'))
       setToastAction('error')
     }
   }
@@ -1012,7 +754,6 @@ const handleIngredientClick = async (ingredient) => {
       await axios.delete(
         `${VITE_API_URL}/formulation/nutrients/${id}/${nutrientToRemove.nutrient_id}`
       )
-      // remove nutrientToRemove from selected nutrients
       setSelectedNutrients(
         selectedNutrients.filter(
           (item) => item.nutrient_id !== nutrientToRemove.nutrient_id
@@ -1023,7 +764,6 @@ const handleIngredientClick = async (ingredient) => {
           (item) => item.nutrient_id !== nutrientToRemove.nutrient_id
         )
       )
-      // add nutrientToRemove to nutrients menu
       const removedNutrient = listOfNutrients.find((item) =>
         item.nutrient_id
           ? item.nutrient_id === nutrientToRemove.nutrient_id
@@ -1032,7 +772,6 @@ const handleIngredientClick = async (ingredient) => {
       if (removedNutrient) {
         updateNutrientsMenu([removedNutrient, ...nutrientsMenu])
       }
-      // Remove any nutrient ratio constraints that has this particular nutrient (real-time update)
       const filteredConstraints = (nutrientRatioConstraints || []).filter(
         (constraint) =>
           constraint.firstIngredientId !== nutrientToRemove.nutrient_id &&
@@ -1043,22 +782,19 @@ const handleIngredientClick = async (ingredient) => {
       }
       updateCost(0)
       setIsDirty(false)
-      // toast instructions
       setShowToast(true)
-      setMessage('Nutrient removed successfully')
+      setMessage(t('Nutrient removed successfully'))
       setToastAction('success')
     } catch (err) {
       console.log(err)
-      // toast instructions
       setShowToast(true)
-      setMessage('Error removing nutrient')
+      setMessage(t('Error removing nutrient'))
       setToastAction('error')
     }
   }
 
   const handleIngredientMinimumChange = (index, value) => {
-
-    if (ispercentcompute ===false){
+    if (ispercentcompute === false){
       value === 'N/A' || value === ''
         ? updateIngredientProperty(index, 'minimum', 0)
         : updateIngredientProperty(index, 'minimum', value)
@@ -1067,11 +803,10 @@ const handleIngredientClick = async (ingredient) => {
         ? updatePercentIngredientProperty(index, 'minimum', 0)
         : updatePercentIngredientProperty(index, 'minimum', value)
     }
-    
   }
 
   const handleIngredientMaximumChange = (index, value) => {
-    if (ispercentcompute ===false){
+    if (ispercentcompute === false){
       value === 'N/A' || value === ''
         ? updateIngredientProperty(index, 'maximum', 0)
         : updateIngredientProperty(index, 'maximum', value)
@@ -1083,31 +818,35 @@ const handleIngredientClick = async (ingredient) => {
   }
 
   const handleNutrientMinimumChange = (index, value) => {
-    value === 'N/A' || value === ''
+    if (ispercentcompute === false){
+      value === 'N/A' || value === ''
       ? updateNutrientProperty(index, 'minimum', 0)
       : updateNutrientProperty(index, 'minimum', value)
+    } else {
+      value === 'N/A' || value === ''
+      ? updatePercentNutrientProperty(index, 'minimum', 0)
+      : updatePercentNutrientProperty(index, 'minimum', value)
+    }
   }
 
   const handleNutrientMaximumChange = (index, value) => {
-    value === 'N/A' || value === ''
+    if (ispercentcompute === false){
+      value === 'N/A' || value === ''
       ? updateNutrientProperty(index, 'maximum', 0)
       : updateNutrientProperty(index, 'maximum', value)
+    } else {
+      value === 'N/A' || value === ''
+        ? updatePercentNutrientProperty(index, 'maximum', 0)
+        : updatePercentNutrientProperty(index, 'maximum', value)
+    }
   }
 
-  // Render function for Ingredients table rows
   const renderIngredientsTableRows = (group) => {
-    // 1. CHOOSE THE ACTIVE LIVEBLOCKS STORAGE BASED ON ispercentcompute
     const activeFormulation = ispercentcompute ? percentFormulationRealTime : formulationRealTime;
-    
-    // 2. GET THE INGREDIENTS FROM THE ACTIVE FORMULATION
     const currentIngredients = activeFormulation?.ingredients || [];
-
-    // Ingredients Filtering Roughage, or vitamins, or concentrate
     const groupFilter1 = ["grass", "legumes"]
     const groupFilter2 = ["agricultural by-products", "industrial by-products"]
     const groupFilter3 = ["vitamin-mineral"]
-
-    // 3. FILTER USING currentIngredients INSTEAD OF a static ingredients array
     const filtered = currentIngredients.filter(
       (ingredient) => {
         if (group === 'roughage') {
@@ -1121,20 +860,17 @@ const handleIngredientClick = async (ingredient) => {
         }
       }
     )
-
-    // Determine which state to check based on the group name
     const isLimitVisible = 
       group === 'roughage' ? showRoughageLimits : 
       group === 'concentrate' ? showConcentrateLimits : 
       group === 'vitamins' ? showVitaminLimits :
-      showVitaminLimits; // for 'vitamins'
+      showVitaminLimits;
 
     if (filtered.length > 0) {
       return (
       <>
       {filtered.map((ingredient, index) => (
         <tr key={index} className="hover:bg-base-200 transition-colors border-b border-gray-50">
-
           <td 
             className="text-gray-700 hover:bg-green-button items-center rounded text-sm font-medium hover:text-white cursor-pointer"
             onClick={() => handleIngredientClick(ingredient)}
@@ -1159,13 +895,9 @@ const handleIngredientClick = async (ingredient) => {
                       let processedValue = /^N\/A\d*/.test(inputValue)
                         ? inputValue.replace('N/A', '')
                         : inputValue;
-
                       if (ispercentcompute && processedValue !== '' && Number(processedValue) > 100) {
                         processedValue = '100';
                       }
-
-                      // Make sure your update handler (handleIngredientMinimumChange) 
-                      // knows to update the correct Liveblocks storage too!
                       handleIngredientMinimumChange(ingredient.ingredient_id, processedValue);
                       setIsDirty(false);
                     }
@@ -1187,11 +919,9 @@ const handleIngredientClick = async (ingredient) => {
                       let processedValue = /^N\/A\d*/.test(inputValue)
                         ? inputValue.replace('N/A', '')
                         : inputValue;
-
                       if (ispercentcompute && processedValue !== '' && Number(processedValue) > 100) {
                         processedValue = '100';
                       }
-
                       handleIngredientMaximumChange(ingredient.ingredient_id, processedValue);
                       setIsDirty(false);
                     }
@@ -1200,13 +930,11 @@ const handleIngredientClick = async (ingredient) => {
               </td>
             </>
           )}
-
           <td className="font-semibold text-gray-800">
             {ingredient 
               ? `${(ingredient.value || 0).toFixed(3)} ${ispercentcompute ? '%' : 'kg'}` 
               : `0.000 ${ispercentcompute ? '%' : 'kg'}`}
           </td>
-
           <td className="text-right">
             <button
               disabled={isDisabled}
@@ -1216,7 +944,6 @@ const handleIngredientClick = async (ingredient) => {
               <RiDeleteBinLine size={14} />
             </button>
           </td>
-          
         </tr>
       ))}
       </>
@@ -1224,11 +951,7 @@ const handleIngredientClick = async (ingredient) => {
     }
   }
 
-
-  // Render function for Nutrients table rows
-  
   const renderNutrientsTableRows = () => {
-    
     if (nutrients) {
       return nutrients.map((nutrient, index) => (
         <tr key={nutrient.nutrient_id} className="hover:bg-base-300">
@@ -1241,12 +964,10 @@ const handleIngredientClick = async (ingredient) => {
               value={nutrient.minimum !== 0 ? nutrient.minimum : 'N/A'}
               onChange={(e) => {
                 const inputValue = e.target.value
-                // in consideration for 'N/A' values which means 0
                 if (
                   /^N\/A(\d+|\.)/.test(inputValue) ||
                   /^\d*\.?\d{0,2}$/.test(inputValue)
                 ) {
-                  // to allow rewriting of input if user types a number after clicking on input with 'N/A'
                   const processedValue = /^N\/A\d*/.test(inputValue)
                     ? inputValue.replace('N/A', '')
                     : inputValue
@@ -1269,12 +990,10 @@ const handleIngredientClick = async (ingredient) => {
               value={nutrient.maximum !== 0 ? nutrient.maximum : 'N/A'}
               onChange={(e) => {
                 const inputValue = e.target.value
-                // in consideration for 'N/A' values which means 0
                 if (
                   /^N\/A(\d+|\.)/.test(inputValue) ||
                   /^\d*\.?\d{0,2}$/.test(inputValue)
                 ) {
-                  // to allow rewriting of input if user types a number after clicking on input with 'N/A'
                   const processedValue = /^N\/A\d*/.test(inputValue)
                     ? inputValue.replace('N/A', '')
                     : inputValue
@@ -1304,9 +1023,7 @@ const handleIngredientClick = async (ingredient) => {
     }
   }
 
-  // Render function for Nutrient Ratios table rows
   const renderNutrientRatiosTableRows = () => {
-    
     if (nutrientRatioConstraints) {
       return nutrientRatioConstraints.map((nutrient, index) => (
         <tr key={index} className="hover:bg-base-300">
@@ -1335,36 +1052,30 @@ const handleIngredientClick = async (ingredient) => {
       ))
     }
   }
-  const [phase, setPhase] = useState('Custom');
 
+  const [phase, setPhase] = useState('Custom');
   const ChangeFormulationByPhase = (phase) => {
-    
     setPhase(phase);
     if (phase === 'Custom') {
-      // Custom phase logic
       updateWeight(formulation.weight);
       updateCost(formulation.cost);
       organizeIngredients(listOfIngredients, phase)
       organizeNutrients(listOfNutrients, phase)
       updateIngredients(formulation.ingredients || []);
       updateNutrients(formulation.nutrients || []);
-      ;
     } else {
       const selectedPhase = specialformulations.find(sf => sf.name === phase);
       if (selectedPhase) {
-        // Update the formulation with the selected phase data
         updateWeight(selectedPhase.weight);
         updateCost(selectedPhase.cost);
         organizeIngredients(listOfIngredients, phase)
         organizeNutrients(listOfNutrients, phase)
         updateIngredients(selectedPhase.ingredients || []);
         updateNutrients(selectedPhase.nutrients || []);
-        ;
       }
     }
   }
 
-  // Dummy data for future testing (not used in UI)
   // eslint-disable-next-line no-unused-vars
   const dummyNutrientRatioConstraintSamples = {
     id: 1,
@@ -1399,13 +1110,14 @@ const handleIngredientClick = async (ingredient) => {
       },
     ]
   };
+
   const [nutrientRatioModifyType, setNutrientRatioModifyType] = useState('add');
-  const [editingNutrientRatioIndex, setEditingNutrientRatioIndex] = useState(null); // NEW: track which ratio is being edited
-  const [nutrientRatioToEdit, setNutrientRatioToEdit] = useState(null); // NEW: store the ratio being edited
+  const [editingNutrientRatioIndex, setEditingNutrientRatioIndex] = useState(null);
+  const [nutrientRatioToEdit, setNutrientRatioToEdit] = useState(null);
   const [missingNutrientsValue, setMissingNutrientsValue] = useState([]);
   const [advancedPressed, setAdvancedPressed] = useState(formulation.animal_group==="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)"? true: false);
   const [progressPressed, setProgressPressed] = useState(false);
-  // Handler to open modal for editing a nutrient ratio
+
   const handleEditNutrientRatio = (index) => {
     setEditingNutrientRatioIndex(index);
     setNutrientRatioToEdit(nutrientRatioConstraints[index]);
@@ -1413,7 +1125,6 @@ const handleIngredientClick = async (ingredient) => {
     setIsChooseNutrientRatiosModalOpen(true);
   };
 
-  // Handler to update a nutrient ratio in the list
   const handleUpdateNutrientRatio = (updatedRatio) => {
     const updatedConstraints = [...nutrientRatioConstraints];
     updatedConstraints[editingNutrientRatioIndex] = updatedRatio;
@@ -1422,54 +1133,38 @@ const handleIngredientClick = async (ingredient) => {
     setNutrientRatioToEdit(null);
   };
 
-  // Handler to delete a nutrient ratio
   const handleDeleteNutrientRatio = (index) => {
     const updatedConstraints = nutrientRatioConstraints.filter((_, i) => i !== index);
     updateNutrientRatioConstraints(updatedConstraints);
   };
 
-  // loading due to api calls
   if (isLoading || formulation.length === 0 || !owner) {
     return <Loading />
   }
-  // loading due to liveblocks storage
+
   if (!formulationRealTime) {
     return <Loading />
   }
 
-
   function showNutrientsMissingBasedonIngredientsPresent() {
-    console.log("SELECTED INGREDIENTS HERE: ", selectedIngredients)
-
     if (selectedIngredients.length === 0) {
       setMissingNutrientsValue((formulation.nutrients || []).map(n => n.name));
       return;
     }
-
-    // ✅ Extract IDs instead of names
     const ingredientIds = selectedIngredients.map(ing => ing.ingredient_id || ing._id);
-
-    console.log("ingredint", ingredientIds)
-
     axios.post(`${import.meta.env.VITE_API_URL}/ingredient/idarray`, {
       ids: ingredientIds
     })
       .then(res => res.data.ingredients)
       .then(ingredientswithnutri => {
-        console.log("Fetched Ingredients here:", ingredientswithnutri)
-
         if (!ingredientswithnutri || ingredientswithnutri.length === 0) {
           setMissingNutrientsValue((formulation.nutrients || []).map(n => n.name));
           return;
         }
-
-        // Initialize all nutrients to 0
         const allNutrientInFormulationId = (formulation.nutrients || []).reduce((acc, nutrient) => {
           acc[nutrient.nutrient_id] = 0;
           return acc;
         }, {});
-
-        // Sum nutrient values
         (formulation.nutrients || []).forEach(formulationnutrient => {
           ingredientswithnutri.forEach(ingredient => {
             (ingredient.nutrients || []).forEach(nutrient => {
@@ -1479,8 +1174,6 @@ const handleIngredientClick = async (ingredient) => {
             });
           });
         });
-
-        // Find missing nutrients
         const missingNutrients = Object.entries(allNutrientInFormulationId)
           .filter(([_, value]) => value === 0)
           .map(([nutrientId]) => {
@@ -1489,14 +1182,12 @@ const handleIngredientClick = async (ingredient) => {
             );
             return nutrientObj ? nutrientObj.name : `Nutrient ID: ${nutrientId}`;
           });
-
         setMissingNutrientsValue(missingNutrients);
       })
       .catch(err => {
         console.error("Error fetching ingredients by IDs:", err);
       });
   }
-
 
   const resetFormulationToInitialState = () => {
     nutrients.map((nutrient, index) => {
@@ -1531,7 +1222,6 @@ const handleIngredientClick = async (ingredient) => {
   const nutrients = formulationRealTime?.nutrients || []
   const ingredients = formulationRealTime?.ingredients || []  
 
-
   const {
     weight: percentweight,
     code: percentcode,
@@ -1543,29 +1233,24 @@ const handleIngredientClick = async (ingredient) => {
 
   const percentnutrients = percentFormulationRealTime?.nutrients || []
   const percentingredients = percentFormulationRealTime?.ingredients || []  
-
   
   return (
     <div className="flex h-full flex-col bg-gray-50 md:flex-row">
-
-
   
-
       {/* Main Content */}
       <div className="flex-1 p-4">
         <div className="space-y-2">
           {/* Header */}
           <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3">
-
         <h1 className="text-deepbrown text-xl font-bold md:text-2xl">
-        Feed Formulation (Single)
-      </h1>
-      <div className="flex flex-row items-center space-x-2 md:space-x-4 mb-4 overflow-x-auto no-scrollbar">
+          {t('Feed Formulation (Single)')}
+        </h1>
+        <div className="flex flex-row items-center space-x-2 md:space-x-4 mb-4 overflow-x-auto no-scrollbar">
               {/* STEP 1 */}
               <div className="flex items-center gap-2 shrink-0">
                 <h1 className="text-gray-300 text-xs font-bold md:text-sm uppercase tracking-wider">
-                  Select/Create
+                  {t('Select/Create')}
                 </h1>
                 <RiArrowRightSLine className="text-gray-300 h-5 w-5" />
               </div>
@@ -1574,9 +1259,8 @@ const handleIngredientClick = async (ingredient) => {
               <div className="flex items-center gap-2 shrink-0">
                 <div className="flex flex-col items-center">
                   <h1 className="text-deepbrown text-xs font-bold md:text-sm uppercase tracking-wider">
-                    Formulate
+                    {t('Formulate')}
                   </h1>
-                  {/* Visual underline signifier for active state */}
                   <div className="h-1 w-full bg-deepbrown rounded-full mt-0.5 animate-pulse" />
                 </div>
                 <RiArrowRightSLine className="text-gray-300 h-5 w-5" />
@@ -1585,13 +1269,10 @@ const handleIngredientClick = async (ingredient) => {
               {/* STEP 3 */}
               <div className="flex items-center gap-2 shrink-0">
                 <h1 className="text-gray-300 text-xs font-bold md:text-sm uppercase tracking-wider">
-                  Generate
+                  {t('Generate')}
                 </h1>
               </div>
             </div>
-
-      
-      
       
       {/* 2. TOGGLE BUTTONS ROW (Visible on Large and Smaller) */}
       {isLargeOrSmaller && (
@@ -1606,10 +1287,9 @@ const handleIngredientClick = async (ingredient) => {
             }`}
           >
             <RiSettings4Line className={activeTab === 'tools' ? 'rotate-90' : ''} />
-            <span className="text-xs">Compute</span>
+            <span className="text-xs">{t('Compute')}</span>
             <RiArrowDownSLine className={activeTab === 'tools' ? 'rotate-180' : ''} />
           </button>
-
           {/* Details Toggle */}
           <button 
             onClick={() => toggleTab('details')}
@@ -1620,7 +1300,7 @@ const handleIngredientClick = async (ingredient) => {
             }`}
           >
             <RiInformationLine className={activeTab === 'details' ? 'text-white' : 'text-green-button'} />
-            <span className="text-xs">Details</span>
+            <span className="text-xs">{t('Details')}</span>
             <RiArrowDownSLine className={activeTab === 'details' ? 'rotate-180' : ''} />
           </button>
         </div>
@@ -1638,57 +1318,49 @@ const handleIngredientClick = async (ingredient) => {
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           className="relative z-[30]" 
-      style={{ overflow: 'visible' }}
+          style={{ overflow: 'visible' }}
         >
           {/* --- COMPUTE / TOOLS TOOLBAR --- */}
 <div className="relative z-20 flex flex-col gap-3 sm:flex-row-reverse sm:items-center sm:justify-between bg-white p-3 rounded-2xl border border-gray-100 shadow-sm md:mb-2">
-
-  {/* SECTION A: Share & Save (Right side on SM+, Top row on narrow Mobile) */}
+  {/* SECTION A: Share & Save */}
   <div className="flex items-center justify-between sm:justify-end gap-3 pb-2 sm:pb-0 border-b border-gray-50 sm:border-none">
     {/* Avatars */}
     <div className="flex space-x-2 shrink-0">
       {others.map(({ connectionId, info }) => (
         <Avatar key={connectionId} src={info.avatar} name={info.name} />
       ))}
-      <Avatar src={self.info.avatar} name="You" />
+      <Avatar src={self.info.avatar} name={t('You')} />
     </div>
-
     {/* Primary Actions */}
     <div className="flex items-center gap-2">
       <button 
         onClick={handleOpenShareFormulationModal} 
         className="btn btn-ghost btn-sm border border-gray-300 gap-2 rounded-xl text-xs font-medium"
       >
-        <RiShareLine /> <span className="hidden xs:inline">Share</span>
+        <RiShareLine /> <span className="hidden xs:inline">{t('Share')}</span>
       </button>
       <button 
         onClick={() => handleSave(isDirty)} 
         className="btn bg-green-button border-none btn-sm gap-2 rounded-xl text-xs text-white hover:bg-green-600 shadow-sm transition-all active:scale-95"
       >
-        <RiSave2Line className="h-4 w-4" /> <span>Save</span>
+        <RiSave2Line className="h-4 w-4" /> <span>{t('Save')}</span>
       </button>
     </div>
   </div>
-
-  {/* SECTION B: Core Tools (Left side on SM+, Bottom row on narrow Mobile) */}
+  {/* SECTION B: Core Tools */}
   <div className="flex flex-wrap items-center gap-2 pt-1 sm:pt-0">
           
           {/* Optimize Dropdown */}
-
           {constraintMode !== 'percent' &&(
             <div className="dropdown dropdown-bottom dropdown-start">
             <div tabIndex={0} role="button" className="btn bg-green-button border-none text-white btn-sm gap-2 rounded-xl shadow-sm">
-              <RiCalculatorLine /> <span className="inline">Optimize</span>
+              <RiCalculatorLine /> <span className="inline">{t('Optimize')}</span>
             </div>
-            {/* 4. High Z-index ensures it floats over the content below */}
             <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[100] w-52 p-2 shadow-xl border border-base-200 mt-2">
-              <li><button className="py-2.5 text-xs" onClick={() => handleOptimize('simplex-soft-constraint')}>Simplex Soft Constraint</button></li>
-              <li><button className="py-2.5 text-xs" onClick={() => handleOptimize('simplex-dry-matter')}>Simplex Hard Constraint</button></li>
+              <li><button className="py-2.5 text-xs" onClick={() => handleOptimize('simplex-dry-matter')}>{t('Simplex Hard Constraint')}</button></li>
             </ul>
           </div>
-
           )}
-
             <GenerateReport className='z-[9999]'
                   userAccess={userAccess}
                   formulation={formulationRealTime}
@@ -1698,14 +1370,13 @@ const handleIngredientClick = async (ingredient) => {
                   isCustomizationModalOpen={isCustomizationModalOpen}
                   setIsCustomizationModalOpen={setIsCustomizationModalOpen}
             />
-
           {recentFormulation === 'Success' && (
             <div className="hidden lg:flex items-center gap-2">
               <button 
                 className="btn border-green-200 bg-green-50 hover:bg-green-100 btn-sm gap-2 rounded-xl text-xs px-3 font-bold text-green-700 transition-all" 
                 onClick={() => setIsResultsModalOpen(true)}
               >
-                <RiHistoryLine className="animate-pulse" /> Latest Results
+                <RiHistoryLine className="animate-pulse" /> {t('Latest Results')}
               </button>
             </div>
           )}
@@ -1715,45 +1386,43 @@ const handleIngredientClick = async (ingredient) => {
                 className="btn border-red-200 bg-red-50 hover:bg-red-100 btn-sm gap-2 rounded-xl text-xs px-3 font-bold text-red-700 transition-all" 
                 onClick={() => setInfeasibilityModal(prev => ({ ...prev, isOpen: true }))}
               >
-                <RiHistoryLine className="animate-pulse" /> Latest Results
+                <RiHistoryLine className="animate-pulse" /> {t('Latest Results')}
               </button>
             </div>
           )}
-
           <div className="flex items-center gap-2">
             <div className="dropdown dropdown-bottom dropdown-end lg:hidden">
               <div tabIndex={0} role="button" className="btn btn-ghost btn-sm border border-gray-300 rounded-xl px-2">
                 <RiMore2Fill size={20} className="text-deepbrown" />
               </div>
               <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[100] w-48 p-2 shadow-xl border border-base-200 mt-2">
-                <li><button className="text-xs" onClick={() => setShadowPricingTabOpen(true)}><RiLineChartLine /> Shadow Prices</button></li>
+                <li><button className="text-xs" onClick={() => setShadowPricingTabOpen(true)}><RiLineChartLine /> {t('Shadow Prices')}</button></li>
                 {formulation.animal_group !=="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" && (
-                  <li><button className="text-xs" onClick={() => setAdvancedPressed(!advancedPressed)}><RiSettings4Line /> {advancedPressed ? 'Show Basic' : 'Show Advanced'}</button></li>
+                  <li><button className="text-xs" onClick={() => setAdvancedPressed(!advancedPressed)}><RiSettings4Line /> {advancedPressed ? t('Show Basic') : t('Show Advanced')}</button></li>
                 )}
-                <li><button className="text-xs" onClick={() => setProgressPressed(!progressPressed)}><RiBarChartLine /> Show Progress</button></li>
+                <li><button className="text-xs" onClick={() => setProgressPressed(!progressPressed)}><RiBarChartLine /> {t('Show Progress')}</button></li>
                 {optimizationResults && (
                   <li>
                     <button className="text-xs" onClick={() => setIsResultsModalOpen(true)}>
-                      <RiHistoryLine /> Latest Results
+                      <RiHistoryLine /> {t('Latest Results')}
                     </button>
                   </li>
                 )}
               </ul>
             </div>
-
             <div className="hidden lg:flex items-center gap-2">
               <button className="btn border border-gray-300 bg-white btn-sm gap-2 rounded-xl text-xs px-3 font-medium" onClick={() => setShadowPricingTabOpen(true)}>
-                <RiLineChartLine /> Shadow Prices
+                <RiLineChartLine /> {t('Shadow Prices')}
               </button>
             </div>
             <div className="hidden lg:flex items-center gap-2">
               {formulation.animal_group !=="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" ? (
               <button className="btn border border-gray-300 bg-white btn-sm gap-2 rounded-xl text-xs px-3 font-medium" onClick={() => setAdvancedPressed(!advancedPressed)}>
-                <RiSettings4Line />  {advancedPressed ? 'Show Basic' : 'Show Advanced'}
+                <RiSettings4Line /> {advancedPressed ? t('Show Basic') : t('Show Advanced')}
               </button>
               ): 
               <button className="btn border border-gray-300 bg-white btn-sm gap-2 rounded-xl text-xs px-3 font-medium" disabled>
-                <RiSettings4Line />  Manual Modify
+                <RiSettings4Line /> {t('Manual Modify')}
               </button>
               }
             </div>
@@ -1762,10 +1431,9 @@ const handleIngredientClick = async (ingredient) => {
                 className="btn border border-gray-300 bg-white btn-sm gap-2 rounded-xl text-xs px-3 hover:bg-gray-50 text-deepbrown font-medium" 
                 onClick={() => setProgressPressed(!progressPressed)}
               >
-                <RiBarChartLine /> Progress
+                <RiBarChartLine /> {t('Progress')}
             </button>
             </div>
-            
           </div>
         </div>
 </div>
@@ -1775,14 +1443,12 @@ const handleIngredientClick = async (ingredient) => {
 
       {/* Slim Constraint Type Selector */}
 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 md:px-5 md:py-3 bg-white rounded-xl border border-gray-100 shadow-sm mt-4 mb-4">
-  
   {/* Header Section */}
   <div>
     <h3 className="text-xs font-bold text-deepbrown uppercase tracking-wider">
-      Constraint Setup
+      {t('Constraint Setup')}
     </h3>
   </div>
-
   {/* Radio Buttons Container */}
   <div className="flex flex-row items-center gap-2 sm:gap-3">
     
@@ -1802,10 +1468,9 @@ const handleIngredientClick = async (ingredient) => {
         className="w-4 h-4 appearance-none border border-gray-300 rounded-full checked:border-deepbrown checked:border-[5px] transition-all"
       />
       <span className="text-sm font-semibold text-deepbrown whitespace-nowrap">
-        Percent-Based
+        {t('Percent-Based')}
       </span>
     </label>
-
     {/* Option 2: Kg-Based */}
     <label 
       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all flex-1 md:flex-none ${
@@ -1822,12 +1487,12 @@ const handleIngredientClick = async (ingredient) => {
         className="w-4 h-4 appearance-none border border-gray-300 rounded-full checked:border-deepbrown checked:border-[5px] transition-all"
       />
       <span className="text-sm font-semibold text-deepbrown whitespace-nowrap">
-        Kg-Based
+        {t('Kg-Based')}
       </span>
     </label>
-
   </div>
 </div>
+
       {/* 4. DETAILS / CARABAO INFO PANEL */}
       <AnimatePresence>
   {(activeTab === 'details' || (!isLargeOrSmaller && window.innerWidth >= 768)) && (
@@ -1840,13 +1505,13 @@ const handleIngredientClick = async (ingredient) => {
       {/* Header Section */}
       <div className="px-4 md:px-6 pt-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-bold text-deepbrown uppercase tracking-wider">Formulation Summary</h3>
+          <h3 className="text-sm font-bold text-deepbrown uppercase tracking-wider">{t('Formulation Summary')}</h3>
           {/* Toggle Button for Laptop */}
           <button 
             onClick={() => setShowAllDetails(!showAllDetails)}
             className="hidden md:flex btn btn-ghost btn-xs text-deepbrown/50 hover:bg-gray-100 gap-1 normal-case"
           >
-            {showAllDetails ? 'Show less' : 'View more details'}
+            {showAllDetails ? t('Show less') : t('View more details')}
             <svg 
               className={`transition-transform duration-200 ${showAllDetails ? 'rotate-180' : ''}`}
               width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
@@ -1859,32 +1524,27 @@ const handleIngredientClick = async (ingredient) => {
           onClick={() => setIsEditModalOpen(true)}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-          Edit/Update Parameters
+          {t('Edit/Update Parameters')}
         </button>
       </div>
-
       <div className="p-4 md:p-6">
         {/* Primary Info Grid (Always Visible) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4">
           <div className="col-span-1">
-            <p className="text-[10px] font-bold text-gray-400 uppercase">Name</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">{t('Name')}</p>
             <p className="text-sm font-semibold text-deepbrown truncate">{formulation.name || '—'}</p>
-
           </div>
-
           <div className="col-span-1 md:col-span-2">
-            <p className="text-[10px] font-bold text-gray-400 uppercase">Animal Group</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">{t('Animal Group')}</p>
             <p className="text-sm font-semibold text-deepbrown">{formulation.animal_group || '—'}</p>
           </div>
-
           <div className="col-span-1">
-            <p className="text-[10px] font-bold text-gray-400 uppercase">Body Weight</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">{t('Body Weight')}</p>
             <p className="text-sm font-semibold text-deepbrown">
               {formulation.body_weight || 0} <span className="text-xs font-normal text-gray-500">kg</span>
             </p>
           </div>
         </div>
-
         {/* Collapsible Secondary Info */}
         <motion.div
           initial={false}
@@ -1893,53 +1553,38 @@ const handleIngredientClick = async (ingredient) => {
         >
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-5 mt-5 pt-5 border-t border-gray-50">
             <div className="col-span-1">
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Code</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">{t('Code')}</p>
               <p className="text-sm font-semibold text-deepbrown">{formulation.code || '—'}</p>
             </div>
-
             <div className="col-span-1">
-              <p className="text-[10px] font-bold text-gray-400 uppercase">DM Intake</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">{t('DM Intake')}</p>
               <p className="text-sm font-semibold text-deepbrown">
                 {formulation.dmintake.toFixed(2) || 0} <span className="text-xs font-normal text-gray-500">kg/d</span>
               </p>
             </div>
-
-            {/* Note: Standardized string to "Inahing kalabaw" to match your logic check */}
             {(formulation.animal_group === "Cow | Inahing kalabaw" || formulation.animal_group === "Heifer | Dumalaga") && (
               <div className="col-span-1">
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Pregnancy</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase">{t('Pregnancy')}</p>
                 <div className="inline-flex items-center gap-1.5 text-deepbrown font-bold text-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
-                  {formulation.pregnant_phase > 8 ? `Late (${formulation.pregnant_phase}m)` : 
-                   formulation.pregnant_phase > 0 ? `Early (${formulation.pregnant_phase}m)` : 
-                   formulation.pregnant_phase === 0 ? "Not Pregnant" : "No info"}
+                  {formulation.pregnant_phase > 8 ? t('Late ({{phase}}m)', { phase: formulation.pregnant_phase }) : 
+                   formulation.pregnant_phase > 0 ? t('Early ({{phase}}m)', { phase: formulation.pregnant_phase }) : 
+                   formulation.pregnant_phase === 0 ? t('Not Pregnant') : t('No info')}
                 </div>
               </div>
             )}
-
             {formulation.animal_group === "Cow | Inahing kalabaw" && (
               <>
                 <div className="col-span-1">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase">Lactation</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">{t('Lactation')}</p>
                   <p className="text-sm font-bold text-blue-700">{formulation.lactating_phase || '—'}</p>
                 </div>
-
-                {/* <div className="col-span-1">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase">Milk Yield</p>
-                  <p className="text-sm font-bold text-green-700">
-                    {formulation.milkYieldProgress?.length > 0 
-                      ? formulation.milkYieldProgress[formulation.milkYieldProgress.length - 1] 
-                      : 0} 
-                    <span className="text-xs font-normal opacity-70 ml-1">L/day</span>
-                  </p>
-                </div> */}
               </>
             )}
-
             <div className="col-span-2 md:col-span-4 lg:col-span-6">
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Description</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">{t('Description')}</p>
               <p className="text-sm text-deepbrown italic">
-                {formulation.description || "No description provided."}
+                {formulation.description || t('No description provided.')}
               </p>
             </div>
           </div>
@@ -1948,28 +1593,24 @@ const handleIngredientClick = async (ingredient) => {
     </motion.div>
   )}
 </AnimatePresence>
+
     </div>
 
     {/* 5. DIRTY ALERT */}
     {isDirty && (
       <div className="alert alert-error alert-soft text-sm py-2">
         <Warning />
-        <span>Formula constraints changed. Optimize and Save.</span>
+        <span>{t('Formula constraints changed. Optimize and Save.')}</span>
       </div>
     )}
   </div>
           
-          {/* This is where you place your Gestational Phases */}
-
-          
-                
-                {/* Tables - Grid on desktop, Stack on mobile */}
           {/* Box showing missing nutrients after optimization */}
           {missingNutrientsValue.length > 0  && (
             <div className="my-4">
               <div className="rounded-lg border border-yellow-400 bg-yellow-50 p-3 shadow-sm">
                 <div className="font-semibold text-yellow-700 mb-2 flex items-center gap-2">
-                  <Warning /> Nutrients Still Missing
+                  <Warning /> {t('Nutrients Still Missing')}
                 </div>
                 <ul className="list-disc pl-5 text-sm text-yellow-800">
                     {missingNutrientsValue.map((n, i) => (
@@ -1981,28 +1622,15 @@ const handleIngredientClick = async (ingredient) => {
           )
           }
           { !advancedPressed ? (<>
-
-          {/* {constraintMode === 'none' && ingredients?.some(ing => 
-                  (ing.minimum && parseFloat(ing.minimum) !== 0) || 
-                  (ing.maximum && parseFloat(ing.maximum) !== 0)
-                ) && (
-                  <div className="mx-4 mt-2 mb-4 p-3 rounded-lg bg-orange-50 text-orange-800 text-xs flex items-start gap-2 border border-orange-200">
-                    <Info size={16} className="mt-0.5 flex-shrink-0" />
-                    <span>
-                      <strong>Precaution:</strong> You have set strict limits greater than zero. Please ensure the formulation can mathematically satisfy these constraints to avoid calculation errors.
-                    </span>
-                  </div>
-                )} */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Roughage Table */}
               <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                 <div className="p-4 pb-2">
-                  <h3 className="mb-1 text-sm font-semibold">Roughage (Approx. 70% of total feed)</h3>
+                  <h3 className="mb-1 text-sm font-semibold">{t('Roughage (Approx. 70% of total feed)')}</h3>
                   <p className="flex items-center gap-1 text-xs text-gray-500">
-                    <Info /> Contains Grasses, Legumes, and other by-products.
+                    <Info /> {t('Contains Grasses, Legumes, and other by-products.')}
                   </p>
                   
-                  {/* The Toggle Checkbox - Styled to match your theme */}
                   <div className="mt-3 flex items-center gap-2">
                     <input 
                       type="checkbox" 
@@ -2012,53 +1640,46 @@ const handleIngredientClick = async (ingredient) => {
                       onChange={(e) => setShowRoughageLimits(e.target.checked)}
                     />
                     <label htmlFor="toggle-roughage-limits" className="cursor-pointer text-[11px] font-medium text-gray-600 uppercase tracking-wider">
-                      Add/Show Amount Limit
+                      {t('Add/Show Amount Limit')}
                     </label>
                   </div>
                 </div>
-
                 <div className="max-h-64 overflow-x-auto overflow-y-auto">
                   <table className="table-sm table-pin-rows table w-full">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th>Name</th>
+                        <th>{t('Name')}</th>
                         {showRoughageLimits && (
                           <>
-                           
-                            <th className="text-center">{ispercentcompute ? 'Min (%)' : 'Min (kg)'}</th>
-                            <th className="text-center">{ispercentcompute ? 'Max (%)' : 'Max (kg)'}</th>
+                            <th className="text-center">{ispercentcompute ? t('Min (%)') : t('Min (kg)')}</th>
+                            <th className="text-center">{ispercentcompute ? t('Max (%)') : t('Max (kg)')}</th>
                           </>
                         )}
-                        <th>{ispercentcompute ? 'Amount (%)' : 'Amount (kg)'}</th>
-                        
+                        <th>{ispercentcompute ? t('Amount (%)') : t('Amount (kg)')}</th>
                         <th></th>
                       </tr>
                     </thead>
                     <tbody>{renderIngredientsTableRows('roughage')}</tbody>
                   </table>
                 </div>
-
                 <div className="p-4 border-t border-gray-100">
                   <button
                     disabled={isDisabled}
                     onClick={() => {setIsChooseIngredientsModalOpen(true); setFilterIngredientCode('roughage')}}
                     className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                   >
-                    <RiAddLine /> Add Roughage
+                    <RiAddLine /> {t('Add Roughage')}
                   </button>
                 </div>
               </div>
 
-
-            {/* COncentrate Table */}
+            {/* Concentrate Table */}
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
               <div className="p-4">
-                <h3 className="mb-1 text-sm font-semibold">Concentrate (Approx. 27% of total feed)</h3>
+                <h3 className="mb-1 text-sm font-semibold">{t('Concentrate (Approx. 27% of total feed)')}</h3>
                 <p className="flex text-xs text-gray-500 mb-2">
-                  <Info /> Contains Food with Concentrated Nutrients (27% max)
+                  <Info /> {t('Contains Food with Concentrated Nutrients (27% max)')}
                 </p>
-
-                {/* Toggle for Concentrate Limits */}
                 <div className="flex items-center gap-2">
                   <input 
                     type="checkbox" 
@@ -2068,30 +1689,28 @@ const handleIngredientClick = async (ingredient) => {
                     onChange={(e) => setShowConcentrateLimits(e.target.checked)}
                   />
                   <label htmlFor="toggle-concentrate-limits" className="cursor-pointer text-[11px] font-medium text-gray-600 uppercase tracking-wider">
-                    Add/Show Amount Limit
+                    {t('Add/Show Amount Limit')}
                   </label>
                 </div>
               </div>
-
               <div className="max-h-64 overflow-x-auto overflow-y-auto">
                 <table className="table-sm table-pin-rows table w-full">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="text-sm">Name</th>
+                      <th className="text-sm">{t('Name')}</th>
                       {showConcentrateLimits && (
                         <>
-                          <th className="text-center text-sm">{ispercentcompute ? 'Min (%)' : 'Min (kg)'}</th>
-                          <th className="text-center text-sm">{ispercentcompute ? 'Max (%)' : 'Max (kg)'}</th>
+                          <th className="text-center text-sm">{ispercentcompute ? t('Min (%)') : t('Min (kg)')}</th>
+                          <th className="text-center text-sm">{ispercentcompute ? t('Max (%)') : t('Max (kg)')}</th>
                         </>
                       )}
-                      <th className="text-sm">{ispercentcompute ? 'Amount (%)' : 'Amount (kg)'}</th>
+                      <th className="text-sm">{ispercentcompute ? t('Amount (%)') : t('Amount (kg)')}</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody>{renderIngredientsTableRows('concentrate')}</tbody>
                 </table>
               </div>
-
               <div className="p-4 border-t border-gray-100">
                 <button
                   disabled={isDisabled}
@@ -2101,23 +1720,20 @@ const handleIngredientClick = async (ingredient) => {
                   }}
                   className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
-                  <RiAddLine /> Add Concentrate
+                  <RiAddLine /> {t('Add Concentrate')}
                 </button>
               </div>
             </div>
-
             
           </div>
 
           {/* Vitamins Table */}
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
               <div className="p-4">
-                <h3 className="mb-2 text-sm font-semibold">Mineral Supplement (Approx. 3% of total feed)</h3>
+                <h3 className="mb-2 text-sm font-semibold">{t('Mineral Supplement (Approx. 3% of total feed)')}</h3>
                 <p className="flex text-xs text-gray-500 mb-3">
-                  <Info /> Contains Minerals.
+                  <Info /> {t('Contains Minerals.')}
                 </p>
-
-                {/* Toggle for Vitamin Limits */}
                 <div className="flex items-center gap-2 mb-1">
                   <input 
                     type="checkbox" 
@@ -2127,30 +1743,28 @@ const handleIngredientClick = async (ingredient) => {
                     onChange={(e) => setShowVitaminLimits(e.target.checked)}
                   />
                   <label htmlFor="toggle-vitamin-limits" className="cursor-pointer text-[11px] font-medium text-gray-600 uppercase tracking-wider">
-                    Add/Show Amount Limit
+                    {t('Add/Show Amount Limit')}
                   </label>
                 </div>
               </div>
-
               <div className="max-h-64 overflow-x-auto overflow-y-auto">
                 <table className="table-sm table-pin-rows table w-full">
                   <thead>
                     <tr className="bg-gray-50 text-xs">
-                      <th>Name</th>
+                      <th>{t('Name')}</th>
                       {showVitaminLimits && (
                         <>
-                          <th className="text-center">{ispercentcompute ? 'Min (%)' : 'Min (kg)'}</th>
-                          <th className="text-center">{ispercentcompute ? 'Max (%)' : 'Max (kg)'}</th>
+                          <th className="text-center">{ispercentcompute ? t('Min (%)') : t('Min (kg)')}</th>
+                          <th className="text-center">{ispercentcompute ? t('Max (%)') : t('Max (kg)')}</th>
                         </>
                       )}
-                      <th>{ispercentcompute ? 'Amount (%)' : 'Amount (kg)'}</th>
+                      <th>{ispercentcompute ? t('Amount (%)') : t('Amount (kg)')}</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody>{renderIngredientsTableRows('vitamins')}</tbody>
                 </table>
               </div>
-
               <div className="p-4 border-t border-gray-100">
                 <button
                   disabled={isDisabled}
@@ -2160,73 +1774,63 @@ const handleIngredientClick = async (ingredient) => {
                   }}
                   className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
-                  <RiAddLine /> Add Vitamins Minerals
+                  <RiAddLine /> {t('Add Vitamins Minerals')}
                 </button>
               </div>
             </div>
-
             </>) : (<>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-
             
             <div className={`overflow-hidden rounded-xl border border-gray-200 bg-white ${constraintMode === 'percent' ? 'sm:lg:col-span-5 lg:col-span-2' : 'sm:col-span-5 lg:col-span-3'}`}>
   <div className="p-4">
     <div className="mb-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-      <h3 className="text-sm font-semibold">All Ingredients (kg)</h3>
+      <h3 className="text-sm font-semibold">{t('All Ingredients (kg)')}</h3>
       
       {/* Dynamic Constraint Mode Dropdown */}
       <div className="flex items-center gap-2">
-        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Constraints:</label>
+        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('Constraints:')}</label>
         <select 
           className="select select-bordered select-xs rounded-lg font-medium text-deepbrown"
-          value={constraintMode} // 'none', 'kg', or 'percent'
+          value={constraintMode}
           onChange={(e) => setConstraintMode(e.target.value)}
         >
-
-          <option value="none">No Limits/Hide Limits</option>
-          <option value="kg">Fixed</option>
-          <option value="percent">Manual Percentage (%)</option>
+          <option value="none">{t('No Limits/Hide Limits')}</option>
+          <option value="kg">{t('Fixed')}</option>
+          <option value="percent">{t('Manual Percentage (%)')}</option>
         </select>
       </div>
     </div>
-
     <p className="flex items-center gap-1 text-xs text-gray-500">
       <Info size={14} /> 
       <span>
         {constraintMode === 'percent' 
-          ? 'Enter constraints as % of total formulation weight.' 
-          : 'Shows all ingredients in the formulation in kilograms.'}
+          ? t('Enter constraints as % of total formulation weight.') 
+          : t('Shows all ingredients in the formulation in kilograms.')}
       </span>
     </p>
   </div>
-
   <div className="max-h-64 overflow-x-auto overflow-y-auto no-scrollbar">
     <table className="table-sm table-pin-rows table w-full">
       <thead>
         <tr>
-          <th className="text-deepbrown">Name</th>
-          {/* Conditional Headers based on mode */}
+          <th className="text-deepbrown">{t('Name')}</th>
           {constraintMode !== 'none' && (
             <>
               <th className="text-deepbrown text-center">
-                 {constraintMode === 'percent' ? '(%)' : !ispercentcompute ? 'Min (kg)' : 'Min (%)'}
+                 {constraintMode === 'percent' ? '(%)' : !ispercentcompute ? t('Min (kg)') : t('Min (%)')}
               </th>
               {constraintMode !== 'percent' && <th className="text-deepbrown text-center">
-                {constraintMode === 'percent' ? '(%)' : !ispercentcompute ? 'Max (kg)' : 'Max (%)'}
-              </th> }
-              
+                {constraintMode === 'percent' ? '(%)' : !ispercentcompute ? t('Max (kg)') : t('Max (%)')}
+              </th>}
             </>
           )}
-          <th className="text-deepbrown">Classification</th>
-
-
+          <th className="text-deepbrown">{t('Classification')}</th>
           {constraintMode !== 'percent' && (
             <>
-            <th className="text-deepbrown">{ispercentcompute ? 'Amount (%)' : 'Amount (kg)'}</th>
-            <th className="text-deepbrown">{ispercentcompute ? 'Total (kg)' : 'Total (%)'}</th>
+            <th className="text-deepbrown">{ispercentcompute ? t('Amount (%)') : t('Amount (kg)')}</th>
+            <th className="text-deepbrown">{ispercentcompute ? t('Total (kg)') : t('Total (%)')}</th>
             </>
           )}
-          
           <th></th>
         </tr>
       </thead>
@@ -2239,7 +1843,6 @@ const handleIngredientClick = async (ingredient) => {
               {ingredient.name}
             </td>
             
-
             {/* Dynamic Inputs */}
             {constraintMode !== 'none' && (
               <>
@@ -2260,12 +1863,10 @@ const handleIngredientClick = async (ingredient) => {
                           let processedValue = /^N\/A\d*/.test(inputValue)
                             ? inputValue.replace('N/A', '')
                             : inputValue;
-
                           if (ispercentcompute && processedValue !== '' && Number(processedValue) > 100) {
                             processedValue = '100';
                           }
                         handleIngredientMinimumChange(ingredient.ingredient_id, processedValue)}
-                      
                       }}
                     />
                     {constraintMode === 'percent' && (
@@ -2274,7 +1875,6 @@ const handleIngredientClick = async (ingredient) => {
                   </div>
                 </td>
                 {/* Max Input */}
-
                 {constraintMode !== 'percent' &&
                 <td>
                   <div className="relative flex items-center">
@@ -2292,16 +1892,10 @@ const handleIngredientClick = async (ingredient) => {
                           let processedValue = /^N\/A\d*/.test(inputValue)
                             ? inputValue.replace('N/A', '')
                             : inputValue;
-                          console.log(ispercentcompute)
-                          console.log(processedValue!=='')
-                          console.log(Number(processedValue))
-                          console.log(processedValue)
                           if (ispercentcompute && processedValue !== '' && Number(processedValue) > 100) {
-                            console.log('Processed Value Exceed 100:', processedValue); // Debug log
                             processedValue = 100;
                           }
                         handleIngredientMaximumChange(ingredient.ingredient_id, processedValue)}
-                      
                       }}
                     />
                     {constraintMode === 'percent' && (
@@ -2309,26 +1903,19 @@ const handleIngredientClick = async (ingredient) => {
                     )}
                   </div>
                 </td>
-                
                 }
-                
               </>
             )}
-
             <td className="text-gray-500 text-xs uppercase">{ingredient.group}</td>
-
             {constraintMode !== 'percent' && (
               <>
               <td className="font-mono font-bold text-deepbrown">
                 {ispercentcompute ? ingredient.value.toFixed(3) + " %" : ingredient.value.toFixed(3) + " kg"}
-
             </td>
             <td className="font-mono font-bold text-deepbrown">
               {ispercentcompute ? ((ingredient.value*percentweight)/100).toFixed(2) + " kg": (ingredient.value.toFixed(3)/weight *100).toFixed(1) + " %" }
-              {/* {(ingredient.value.toFixed(3)/weight *100).toFixed(1)} */}
             </td>
               </>
-            
           )}
             <td className="text-right">
               <button
@@ -2351,38 +1938,35 @@ const handleIngredientClick = async (ingredient) => {
     <div className="mx-4 mt-2 mb-4 p-3 rounded-lg bg-orange-50 text-orange-800 text-xs flex items-start gap-2 border border-orange-200">
       <Info size={16} className="mt-0.5 flex-shrink-0" />
       <span>
-        <strong>Precaution:</strong> You have set strict limits greater than zero. Please ensure the formulation can mathematically satisfy these constraints to avoid calculation errors.
+        <strong>{t('Precaution:')}</strong> {t('You have set strict limits greater than zero. Please ensure the formulation can mathematically satisfy these constraints to avoid calculation errors.')}
       </span>
     </div>
   )}
-
   <div className="p-4 border-t border-gray-50 bg-gray-50/50 flex flex-row space-x-5">
     <button
       disabled={isDisabled}
       onClick={() => setIsChooseIngredientsModalOpen(true)}
       className="bg-green-button flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-white shadow-sm hover:bg-green-600 active:transform active:scale-95 transition-all disabled:bg-gray-300"
     >
-      <RiAddLine /> Add ingredient
+      <RiAddLine /> {t('Add ingredient')}
     </button>
     
     {constraintMode === 'percent' && (
-
       <button
       disabled={isDisabled}
       onClick={() => handleManualOptimize()}
       className="bg-yellow-400 flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-deepbrown shadow-sm hover:bg-green-600 active:transform active:scale-95 transition-all disabled:bg-gray-300"
     >
-      <RiCalculatorLine /> Manual Solve
+      <RiCalculatorLine /> {t('Manual Solve')}
     </button>
     )}
-    
   </div>
 </div>
 
         {constraintMode === 'percent' && (
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white sm:mt-0 mt-4 md:col-span-3">
       <ManualFormulation
-        isOpen ={isManualFormulationOpen}
+        isOpen={isManualFormulationOpen}
         onClose={()=>setIsManualFormulationOpen(false)}
         results={optimizationResults}
         onGenerateReport={() => {
@@ -2393,55 +1977,51 @@ const handleIngredientClick = async (ingredient) => {
       />
       </div>
          ) }
-            {/* NUtrients section */}
+
+            {/* Nutrients section */}
           {constraintMode !== 'percent' &&(
             
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white sm:mt-0 mt-4 sm:col-span-5 lg:col-span-2">
               <div className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold">Nutrients (g)</h3>
+                    <h3 className="text-sm font-semibold">{t('Nutrients (g)')}</h3>
                     {/* Reference Button */}
-
                     {formulation.animal_group !== "Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" && (
                       <>
                         <button 
                         onClick={() => setIsPCCModalOpen(true)}
                         className="btn btn-ghost btn-xs text-blue-600 hover:bg-blue-50 flex items-center gap-1"
                       >
-                        <RiBookLine /> Reference: <div className='lg:block hidden'> PCC Book</div>
+                        <RiBookLine /> {t('Reference:')} <div className='lg:block hidden'> {t('PCC Book')}</div>
                       </button>
                       <button 
                         onClick={() => resetFormulationToInitialState()}
                         className="btn btn-ghost btn-xs text-red-600 hover:bg-blue-50 flex items-center gap-1"
                       >
-                        <RiBookLine /> Reset <div className='lg:block hidden'> to PCC Reference</div>
+                        <RiBookLine /> {t('Reset')} <div className='lg:block hidden'> {t('to PCC Reference')}</div>
                       </button>
                     </>
                     )}
-            
-                    
                   </div>
                 </div>
                 
                 <p className="flex text-xs text-gray-500">
-                  <Info className="mr-1" /> Shows all nutrients in the formulation in grams.
+                  <Info className="mr-1" /> {t('Shows all nutrients in the formulation in grams.')}
                 </p>
               </div>
-
               <div className="max-h-64 overflow-x-auto overflow-y-auto">
                 <table className="table-sm table-pin-rows table w-full">
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>{ispercentcompute ? 'Min (g)' : 'Min (g)'}</th>
-                      <th>{ispercentcompute ? 'Max (g)' : 'Max (g)'}</th>
-                      <th>{ispercentcompute ? 'Amount (%)' : 'Amount (kg)'}</th>
-                      {/* <th></th> */}
+                      <th>{t('Name')}</th>
+                      <th>{t('Min (g)')}</th>
+                      <th>{t('Max (g)')}</th>
+                      <th>{ispercentcompute ? t('Amount (%)') : t('Amount (kg)')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {nutrients && nutrients.map((nutrient, index) => (
+                    {(ispercentcompute ? percentnutrients : nutrients).map((nutrient, index) => (
                       <tr key={nutrient.nutrient_id || index} className="hover:bg-base-300">
                         <td className="font-medium">{nutrient.name}</td>
                         {/* Minimum Input */}
@@ -2455,12 +2035,10 @@ const handleIngredientClick = async (ingredient) => {
                               value={nutrient.minimum !== 0 ? nutrient.minimum : 'N/A'}
                               onChange={(e) => {
                                 const inputValue = e.target.value
-                                // in consideration for 'N/A' values which means 0
                                 if (
                                   /^N\/A(\d+|\.)/.test(inputValue) ||
                                   /^\d*\.?\d{0,2}$/.test(inputValue)
                                 ) {
-                                  // to allow rewriting of input if user types a number after clicking on input with 'N/A'
                                   const processedValue = /^N\/A\d*/.test(inputValue)
                                     ? inputValue.replace('N/A', '')
                                     : inputValue
@@ -2484,21 +2062,18 @@ const handleIngredientClick = async (ingredient) => {
                               disabled={isDisabled}
                               value={nutrient.maximum !== 0 ? nutrient.maximum : 'N/A'}
                               onChange={(e) => {
-                const inputValue = e.target.value
-                
-                // in consideration for 'N/A' values which means 0
-                if (
-                  /^N\/A(\d+|\.)/.test(inputValue) ||
-                  /^\d*\.?\d{0,2}$/.test(inputValue)
-                ) {
-                  // to allow rewriting of input if user types a number after clicking on input with 'N/A'
-                  const processedValue = /^N\/A\d*/.test(inputValue)
-                    ? inputValue.replace('N/A', '')
-                    : inputValue
-                  handleNutrientMaximumChange(nutrient.nutrient_id, processedValue)
-                  setIsDirty(false)
-                }
-              }}
+                                const inputValue = e.target.value
+                                if (
+                                  /^N\/A(\d+|\.)/.test(inputValue) ||
+                                  /^\d*\.?\d{0,2}$/.test(inputValue)
+                                ) {
+                                  const processedValue = /^N\/A\d*/.test(inputValue)
+                                    ? inputValue.replace('N/A', '')
+                                    : inputValue
+                                  handleNutrientMaximumChange(nutrient.nutrient_id, processedValue)
+                                  setIsDirty(false)
+                                }
+                              }}
                               onFocus={() => updateMyPresence({ focusedId: `nutrient-${index}-maximum` })}
                               onBlur={() => updateMyPresence({ focusedId: null })}
                             />
@@ -2506,37 +2081,22 @@ const handleIngredientClick = async (ingredient) => {
                           </div>
                         </td>
                         <td className="text-gray-600">{nutrient.value.toFixed(3)}</td>
-                        {/* <td>
-                          {!isDisabled && (
-                            <button
-                              className="btn btn-ghost btn-xs text-red-500 hover:bg-red-200"
-                              onClick={() => handleRemoveNutrient(nutrient)}
-                            >
-                              <RiDeleteBinLine />
-                            </button>
-                          )}
-                        </td> */}
                       </tr>
                     ))}
-                    
                   </tbody>
-                  
                 </table>
-                
               </div>
-
-              {/* PCC Reference Modal / Section */}
+              {/* PCC Reference Modal */}
               {isPCCModalOpen && (
                 <div className="modal modal-open">
                   <div className="modal-box max-w-md">
-                    <h3 className="font-bold text-lg mb-1">Formulation Information (PCC Book)</h3>
-                    <h3 className="font-medium text-sm mb-4">Other changes may be due to carabao's special phases (ie. Mid-Lactation, Late Pregnancy)</h3>
-                    <h3 className="font-medium text-xs mb-4">Minimum is 20% lower than actual value and maximum is 20% higher</h3>
+                    <h3 className="font-bold text-lg mb-1">{t('Formulation Information (PCC Book)')}</h3>
+                    <h3 className="font-medium text-sm mb-4">{t("Other changes may be due to carabao's special phases (ie. Mid-Lactation, Late Pregnancy)")}</h3>
+                    <h3 className="font-medium text-xs mb-4">{t('Minimum is 20% lower than actual value and maximum is 20% higher')}</h3>
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 border-b pb-2 text-xs font-bold uppercase text-gray-500">
-                        <span>Nutrient</span>
-
-                        <span className="text-right">Reference Avg</span>
+                        <span>{t('Nutrient')}</span>
+                        <span className="text-right">{t('Reference Avg')}</span>
                       </div>
                       {formulation.origNutrientTargets.map((n) => {
                         const avg = (Number(n.minimum || 0) + Number(n.maximum || 0)) / 2;
@@ -2549,7 +2109,7 @@ const handleIngredientClick = async (ingredient) => {
                       })}
                     </div>
                     <div className="modal-action">
-                      <button className="btn btn-sm" onClick={() => setIsPCCModalOpen(false)}>Close</button>
+                      <button className="btn btn-sm" onClick={() => setIsPCCModalOpen(false)}>{t('Close')}</button>
                     </div>
                   </div>
                 </div>
@@ -2560,23 +2120,21 @@ const handleIngredientClick = async (ingredient) => {
                   onClick={() => setIsChooseNutrientsModalOpen(true)}
                   className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
-                  <RiAddLine /> Add nutrient
+                  <RiAddLine /> {t('Add nutrient')}
                 </button>
               </div>
             </div>)}
             </div>
 
             {/* Nutrient Ratio Constraints Table */}
-
-            {constraintMode!== 'percent' && (
-
+            {constraintMode !== 'percent' && (
             
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white mt-4">
               <div className="p-4 flex items-center justify-between">
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold">Nutrient Ratio Constraints</h3>
+                  <h3 className="mb-2 text-sm font-semibold">{t('Nutrient Ratio Constraints')}</h3>
                   <p className="flex text-xs text-gray-500">
-                    <Info /> Set constraints between two nutrients (e.g., Protein : Fat ≥ 2:1).
+                    <Info /> {t('Set constraints between two nutrients (e.g., Protein : Fat ≥ 2:1).')}
                   </p>
                 </div>
                 <button
@@ -2587,17 +2145,17 @@ const handleIngredientClick = async (ingredient) => {
                   }}
                   className="bg-green-button flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors hover:bg-green-600 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
-                  <RiAddLine /> Add ratio
+                  <RiAddLine /> {t('Add ratio')}
                 </button>
               </div>
               <div className="max-h-64 overflow-x-auto overflow-y-auto">
                 <table className="table-sm table-pin-rows table w-full">
                   <thead>
                     <tr>
-                      <th>First Nutrient</th>
-                      <th>Second Nutrient</th>
-                      <th>Operator</th>
-                      <th>Ratio</th>
+                      <th>{t('First Nutrient')}</th>
+                      <th>{t('Second Nutrient')}</th>
+                      <th>{t('Operator')}</th>
+                      <th>{t('Ratio')}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -2610,15 +2168,12 @@ const handleIngredientClick = async (ingredient) => {
             </>
             )}
           
-
           {constraintMode !== 'percent' ? (
-
             <div className="flex flex-wrap justify-end gap-2 px-4 pb-5 md:mb-0 mb-15 md:mt-0 mt-5">
-            {/* Target Amount */}
             
             <div className="flex items-center justify-end gap-1 pr-2">
               <span className="text-sm font-medium text-gray-600">
-                Amount to be Fed (kg):
+                {t('Amount to be Fed (kg):')}
               </span>
               <span className="text-green-button text-lg font-bold underline">
                 <div>
@@ -2633,7 +2188,6 @@ const handleIngredientClick = async (ingredient) => {
                     }
                     onBlur={() => updateMyPresence({ focusedId: null })}
                     onChange={(e) => {
-
                       if (ispercentcompute){
                         if (e.target.value === ' ') {
                           updatePercentWeight(100)
@@ -2647,7 +2201,6 @@ const handleIngredientClick = async (ingredient) => {
                           updateWeight(e.target.value)
                         }
                       }
-                      
                     }}
                     maxLength={20}
                   />
@@ -2658,7 +2211,7 @@ const handleIngredientClick = async (ingredient) => {
             {/* Total Cost */}
             <div className="flex items-center justify-end gap-1 pr-2 ">
               <span className="text-sm font-medium text-gray-600">
-                Total cost (per {weight} kg):
+                {t('Total cost (per {{weight}} kg):', { weight })}
               </span>
               <span className="text-green-button text-lg font-bold underline">
                 ₱ {cost && cost.toFixed(2)}
@@ -2667,8 +2220,6 @@ const handleIngredientClick = async (ingredient) => {
             
           </div>
             
-          
-          
           ): <div className='w-full mb-10 bg-white h-10'></div>}
           
         </div>
@@ -2689,22 +2240,19 @@ const handleIngredientClick = async (ingredient) => {
         isOpen={isAddCollaboratorModalOpen}
         onClose={() => setIsAddCollaboratorModalOpen(false)}
         onConfirm={handleAddCollaborator}
-        title="Add collaborator"
+        title={t('Add collaborator')}
         description={
           <>
-            Add <strong>{newCollaborator.newEmail}</strong> as a collaborator to
-            this formulation?
+            {t('Add')} <strong>{newCollaborator.newEmail}</strong> {t('as a collaborator to this formulation?')}
           </>
         }
         type="add"
       />
-
       <ShadowPricingTab
         open={shadowPricingTabOpen}
         onClose={()=>setShadowPricingTabOpen(false)}
         data={shadowPrices}
       />
-
       <ChooseIngredientsModal
         isOpen={isChooseIngredientsModalOpen}
         onClose={() => setIsChooseIngredientsModalOpen(false)}
@@ -2718,7 +2266,6 @@ const handleIngredientClick = async (ingredient) => {
         nutrients={nutrientsMenu}
         onResult={handleAddNutrients}
       />
-
       <ChooseNutrientRatiosModal
         isOpen={isChooseNutrientRatiosModalOpen}
         onClose={() => {
@@ -2729,14 +2276,12 @@ const handleIngredientClick = async (ingredient) => {
         nutrients={nutrients}
         allNutrients={listOfNutrients}
         onResult={(newRatio) => {
-          // Add new nutrient ratio to the shared real-time data
           updateNutrientRatioConstraints([...(nutrientRatioConstraints || []), newRatio]);
         }}
-        onUpdate={handleUpdateNutrientRatio} // for edit mode
+        onUpdate={handleUpdateNutrientRatio}
         type={nutrientRatioModifyType}
         editingNutrientRatio={nutrientRatioToEdit}
       />
-
       <Progress
         open={progressPressed}
         onClose={() => setProgressPressed(false)}
@@ -2745,7 +2290,6 @@ const handleIngredientClick = async (ingredient) => {
         typeProgress={formulation.typeProgress}
         dateProgress={formulation.dateProgress}
       />
-
       {/*  Toasts */}
       <Toast
         className="transition delay-150 ease-in-out"
@@ -2754,18 +2298,9 @@ const handleIngredientClick = async (ingredient) => {
         message={message}
         onHide={hideToast}
       />
-
         <OptimizeFAB
-          handleOptimize = {handleOptimize}
+          handleOptimize={handleOptimize}
         />
-
-
-        
-
-      
-
-      
-      
       
       <OptimizationResultsModal 
         isOpen={isResultsModalOpen}
@@ -2776,7 +2311,7 @@ const handleIngredientClick = async (ingredient) => {
           setIsCustomizationModalOpen(true);
         }}
         formulation={formulationRealTime}
-        goToPercent = {
+        goToPercent={
           () => {
             setAdvancedPressed(true);
             setConstraintMode('percent');
@@ -2798,7 +2333,6 @@ const handleIngredientClick = async (ingredient) => {
         isCustomizationModalOpen={isCustomizationModalOpen}
         setIsCustomizationModalOpen={setIsCustomizationModalOpen}
       />
-
       <EditFormulationModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}

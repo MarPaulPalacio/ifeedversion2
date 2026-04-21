@@ -5,6 +5,8 @@ import Info from '../../icons/Info.jsx'
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/react'
 import { HiSelector, HiCheck } from 'react-icons/hi'
 import { ChevronDown, ChevronUp } from "lucide-react"; // lucide icons
+// Import useTranslation from your library
+import { useTranslation } from 'react-i18next'
 
 function CarabaoIdentifySetup({
   formulations,
@@ -39,37 +41,12 @@ function CarabaoIdentifySetup({
   setCarabaoConfiguration,
   identifyCurrentCarabaoPhase
 }) {
+  const { t } = useTranslation();
 
   // Dummy template options by animal group
   /*
   const animalGroupTemplates = {
-    'Swine': [
-      { id: 0, name: 'None' },
-      { id: 1, name: 'Swine Sample Template 1' },
-      { id: 2, name: 'Swine Sample Template 2' },
-      { id: 3, name: 'Swine Sample Template 3' },
-      { id: 4, name: 'Swine Sample Template 4' },
-      { id: 5, name: 'Swine Sample Template 5' },
-      { id: 6, name: 'Swine Sample Template 6' },
-    ],
-    'Poultry': [
-      { id: 0, name: 'None' },
-      { id: 7, name: 'Poultry Sample Template 1' },
-      { id: 8, name: 'Poultry Sample Template 2' },
-      { id: 9, name: 'Poultry Sample Template 3' },
-      { id: 10, name: 'Poultry Sample Template 4' },
-      { id: 11, name: 'Poultry Sample Template 5' },
-      { id: 12, name: 'Poultry Sample Template 6' },
-    ],
-    'Water Buffalo': [
-      { id: 0, name: 'None' },
-      { id: 13, name: 'Water Buffalo Sample Template 1' },
-      { id: 14, name: 'Water Buffalo Sample Template 2' },
-      { id: 15, name: 'Water Buffalo Sample Template 3' },
-      { id: 16, name: 'Water Buffalo Sample Template 4' },
-      { id: 17, name: 'Water Buffalo Sample Template 5' },
-      { id: 18, name: 'Water Buffalo Sample Template 6' },
-    ],
+    ...
   }
   */
 
@@ -87,7 +64,7 @@ function CarabaoIdentifySetup({
         }
       })
       .catch(() => {
-        setFetchError('Failed to fetch templates');
+        setFetchError(t('Failed to fetch templates'));
         setFetchedTemplates([]);
       })
       .finally(() => setIsLoadingTemplates(false));
@@ -95,13 +72,13 @@ function CarabaoIdentifySetup({
 
   // Reset template selection when animal group changes
   useEffect(() => {
-    setSelectedTemplate({ id: 0, name: 'None' })
+    setSelectedTemplate({ id: 0, name: t('None') })
     setTemplateQuery('')
   }, [formData.animal_group])
 
   // Filter fetched templates by selected animal group
   const templateOptions = [
-    { id: 0, name: 'None' },
+    { id: 0, name: t('None') },
     ...(
       formData.animal_group
         ? fetchedTemplates
@@ -135,8 +112,6 @@ function CarabaoIdentifySetup({
         ...prev,
         temporaryNameArray: Array.from({ length: cost }, () => " "),
       }));
-      
-      
     }
     
     // client-side validation
@@ -146,7 +121,7 @@ function CarabaoIdentifySetup({
           formulation.code.toLowerCase() === formData.code.toLowerCase()
       )
     ) {
-      setCodeError('Code already exists ')
+      setCodeError(t('Code already exists'))
       setNameError('')
       setIsDisabled(false)
       return
@@ -157,7 +132,7 @@ function CarabaoIdentifySetup({
           formulation.name.toLowerCase() === formData.name.toLowerCase()
       )
     ) {
-      setNameError('Name already exists')
+      setNameError(t('Name already exists'))
       setCodeError('')
       setIsDisabled(false)
       return
@@ -171,7 +146,7 @@ function CarabaoIdentifySetup({
       console.log("THIS IS CURRENT CARABAO CONFIGURATION", carabaoConfiguration)
     } catch (err) {
       console.log(err)
-      onResult(null, 'error', 'Failed to create formulation.')
+      onResult(null, 'error', t('Failed to create formulation.'))
     } finally {
       setIsDisabled(false)
       setCodeError('')
@@ -207,11 +182,9 @@ function CarabaoIdentifySetup({
       },
       
     }));
-    
   };
 
   const handleCheckBoxChange = (e) =>{
-    
     const { name, checked } = e.target
     setCarabaoConfiguration((prev) => ({
       ...prev,
@@ -231,8 +204,6 @@ function CarabaoIdentifySetup({
       }))
     }
   }
-
-
 
   const handleClose = () => {
     setCurrSection(0)
@@ -283,12 +254,10 @@ function CarabaoIdentifySetup({
     const {name} = e.target
     
     if (checkSameConfigArray(name)){
-      
       setCarabaoConfiguration((prev)=>({
         ...prev,
         sameConfigTypeArray: prev.sameConfigTypeArray.filter((phase)=>phase!==name)
       }))
-
     } else {
       setCarabaoConfiguration((prev)=>({
         ...prev,
@@ -321,7 +290,7 @@ function CarabaoIdentifySetup({
                       id="single-carabao"
                     />
                     <label htmlFor="single-carabao" className="label whitespace-normal pb-2">
-                      <span className="label-text">Add Single Carabao</span>
+                      <span className="label-text">{t("Add Single Carabao")}</span>
                     </label>
                   </div>
                   {/* Option: Multiple Carabaos */}
@@ -337,11 +306,9 @@ function CarabaoIdentifySetup({
                       id="multiple-carabao"
                     />
                     <label htmlFor="multiple-carabao" className="label whitespace-normal pb-2">
-                      <span className="label-text">Add Multiple Carabaos With Same Configuration</span>
+                      <span className="label-text">{t("Add Multiple Carabaos With Same Configuration")}</span>
                     </label>
                   </div>
-
-                  
                 </div>
 
                   
@@ -354,14 +321,14 @@ function CarabaoIdentifySetup({
                           required
                           disabled={isDisabled}
                           onChange={handleChange}
-                          placeholder="Enter Number of Carabaos"
+                          placeholder={t("Enter Number of Carabaos")}
                           className={`input input-bordered w-full rounded-xl ${codeError ? 'border-red-500' : ''}`}
                       />
                     </div>
                     
                     <div className='form-control w-full space-x-5 md:pt-0 mt-5'>
                       <label className="label whitespace-normal">
-                        <span className="label-text">Choose Phase:</span>
+                        <span className="label-text">{t("Choose Phase:")}</span>
                       </label>
                       <select
                         name="animalGroupSelection"
@@ -371,13 +338,14 @@ function CarabaoIdentifySetup({
                         onChange={handleMultiSelectionChange}
                         className="select select-bordered w-full rounded-xl"
                       >
-                        <option value="">Select Phase</option>
-                        <option value="Heifer | Dumalaga">Heifer | Dumalaga</option>
-                        <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)</option>
-                        <option value="Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)">Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)</option>
-                        <option value="Junior Bull | Lumalaking bulugan (2 - 3 taon)">Junior Bull | Lumalaking bulugan (2 - 3 taon)</option>
-                        <option value="Cow | Inahing kalabaw">Cow | Inahing kalabaw</option>
-                        <option value="Senior Bull | Bulugan (> 3 taon)">Senior Bull | Bulugan ({'>'} 3 taon)</option>
+                        {/* Note: the value props shouldn't be translated if backend/logic depends on exact spelling, just the display text inside */}
+                        <option value="">{t("Select Phase")}</option>
+                        <option value="Heifer | Dumalaga">{t("Heifer | Dumalaga")}</option>
+                        <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">{t("Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)")}</option>
+                        <option value="Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)">{t("Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)")}</option>
+                        <option value="Junior Bull | Lumalaking bulugan (2 - 3 taon)">{t("Junior Bull | Lumalaking bulugan (2 - 3 taon)")}</option>
+                        <option value="Cow | Inahing kalabaw">{t("Cow | Inahing kalabaw")}</option>
+                        <option value="Senior Bull | Bulugan (> 3 taon)">{t("Senior Bull | Bulugan (> 3 taon)")}</option>
                       </select>
                     </div>
                     </>
@@ -399,13 +367,13 @@ function CarabaoIdentifySetup({
               className="btn rounded-xl px-8"
               onClick={handleClose}
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               type="submit"
               className={`btn bg-green-button ${isDisabled ? 'disabled bg-red-100' : 'hover:bg-green-600'} rounded-xl px-8 text-white`}
             >
-              {`${isDisabled ? 'Creating...' : 'Continue'}`}
+              {isDisabled ? t("Creating...") : t("Continue")}
             </button>
           </div>
         </form>

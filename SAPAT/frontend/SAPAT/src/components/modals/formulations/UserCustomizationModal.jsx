@@ -1,9 +1,11 @@
-import { RiCloseLine } from 'react-icons/ri'
+import { RiCloseLine, RiArrowRightSLine } from 'react-icons/ri'
 import { useState } from 'react'
 import Info from '../../icons/Info.jsx'
-import {RiArrowRightSLine} from 'react-icons/ri'
+// Adjust this import based on your translation library
+import { useTranslation } from 'react-i18next'
 
 function ReportGenerationModal({ isOpen, onClose, onGenerate, userAccess, formulation, owner, weight, shadowPrices, isCustomizationModalOpen, setIsCustomizationModalOpen }) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     showEmptyValues: false,
     additionalCosts: [],
@@ -28,7 +30,7 @@ function ReportGenerationModal({ isOpen, onClose, onGenerate, userAccess, formul
       onClose() // Close the modal after successful generation
     } catch (err) {
       console.log(err)
-      setError('Failed to generate PDF report.')
+      setError(t('Failed to generate PDF report.'))
     } finally {
       setIsGenerating(false)
     }
@@ -44,7 +46,7 @@ function ReportGenerationModal({ isOpen, onClose, onGenerate, userAccess, formul
 
   const handleAddCost = () => {
     if (!newCostName.trim() || isNaN(parseFloat(newCostValue))) {
-      setError('Please enter a valid name and cost value')
+      setError(t('Please enter a valid name and cost value'))
       return
     }
 
@@ -85,7 +87,7 @@ function ReportGenerationModal({ isOpen, onClose, onGenerate, userAccess, formul
     onClose()
   }
 
-return (
+  return (
     <dialog
       id="report_generation_modal"
       className={`modal ${isOpen ? 'modal-open' : ''} z-[9999]`}
@@ -95,33 +97,34 @@ return (
         <button
           className="btn btn-sm btn-circle absolute top-4 right-2 md:right-4 z-10"
           onClick={handleClose}
+          aria-label={t("Close")}
         >
           <RiCloseLine className="h-5 w-5" />
         </button>
 
         <h3 className="text-deepbrown mb-1 text-base md:text-lg font-bold">
-          Feed Formulation
+          {t("Feed Formulation")}
         </h3>
 
         {/* COMPACT STEP PROGRESS */}
         <div className="flex flex-row items-center gap-2 mb-4 overflow-x-auto no-scrollbar border-b border-gray-100 pb-2">
           <div className="flex items-center gap-1 opacity-50 shrink-0">
-            <span className="text-[10px] md:text-xs font-bold uppercase tracking-tighter">Select</span>
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-tighter">{t("Select")}</span>
             <RiArrowRightSLine className="h-3 w-3" />
           </div>
           <div className="flex items-center gap-1 opacity-50 shrink-0">
-            <span className="text-[10px] md:text-xs font-bold uppercase tracking-tighter">Formulate</span>
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-tighter">{t("Formulate")}</span>
             <RiArrowRightSLine className="h-3 w-3" />
           </div>
           <div className="flex flex-col items-start shrink-0">
-            <span className="text-deepbrown text-[10px] md:text-xs font-bold uppercase tracking-tighter">Generate</span>
+            <span className="text-deepbrown text-[10px] md:text-xs font-bold uppercase tracking-tighter">{t("Generate")}</span>
             <div className="h-1 w-full bg-deepbrown rounded-full mt-0.5 animate-pulse" />
           </div>
         </div>
 
         <p className="mb-4 flex gap-2 text-[11px] md:text-sm text-gray-500 italic">
           <Info className="w-4 h-4 shrink-0" />
-          Customize PDF report appearance.
+          {t("Customize PDF report appearance.")}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -129,7 +132,7 @@ return (
           <div className="grid grid-cols-2 gap-3">
             <div className="form-control w-full">
               <label className="label py-1">
-                <span className="label-text text-[10px] font-bold uppercase text-gray-400">Sorting</span>
+                <span className="label-text text-[10px] font-bold uppercase text-gray-400">{t("Sorting")}</span>
               </label>
               <select
                 name="ingredientSorting"
@@ -138,15 +141,15 @@ return (
                 className="select select-bordered select-sm w-full rounded-xl text-xs"
                 disabled={isGenerating}
               >
-                <option value="alphabetical">A-Z</option>
-                <option value="valueHighToLow">High-Low</option>
-                <option value="valueLowToHigh">Low-High</option>
+                <option value="alphabetical">{t("A-Z")}</option>
+                <option value="valueHighToLow">{t("High-Low")}</option>
+                <option value="valueLowToHigh">{t("Low-High")}</option>
               </select>
             </div>
 
             <div className="form-control w-full">
               <label className="label py-1">
-                <span className="label-text text-[10px] font-bold uppercase text-gray-400">Rounding</span>
+                <span className="label-text text-[10px] font-bold uppercase text-gray-400">{t("Rounding")}</span>
               </label>
               <select
                 name="roundingPrecision"
@@ -155,22 +158,22 @@ return (
                 className="select select-bordered select-sm w-full rounded-xl text-xs"
                 disabled={isGenerating}
               >
-                <option value="0">0 dec</option>
-                <option value="1">1 dec</option>
-                <option value="2">2 dec</option>
+                <option value="0">{t("0 dec")}</option>
+                <option value="1">{t("1 dec")}</option>
+                <option value="2">{t("2 dec")}</option>
               </select>
             </div>
           </div>
 
           {/* Additional Costs - Compact Input Group */}
           <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
-            <h4 className="text-[11px] font-bold uppercase text-gray-500 mb-2">Extra Costs</h4>
+            <h4 className="text-[11px] font-bold uppercase text-gray-500 mb-2">{t("Extra Costs")}</h4>
             <div className="flex flex-col gap-2">
               <input
                 type="text"
                 value={newCostName}
                 onChange={(e) => setNewCostName(e.target.value)}
-                placeholder="Name (e.g. Labor)"
+                placeholder={t("Name (e.g. Labor)")}
                 className="input input-bordered input-sm w-full rounded-lg text-xs"
                 disabled={isGenerating}
               />
@@ -179,7 +182,7 @@ return (
                   type="number"
                   value={newCostValue}
                   onChange={(e) => setNewCostValue(e.target.value)}
-                  placeholder="PHP"
+                  placeholder={t("PHP")}
                   className="input input-bordered input-sm flex-1 rounded-lg text-xs"
                   disabled={isGenerating}
                 />
@@ -189,7 +192,7 @@ return (
                   className="btn btn-sm bg-green-button text-white rounded-lg px-4"
                   disabled={isGenerating}
                 >
-                  Add
+                  {t("Add")}
                 </button>
               </div>
             </div>
@@ -205,6 +208,7 @@ return (
                       <button 
                         onClick={() => handleRemoveCost(index)} 
                         className="text-red-500 font-bold"
+                        type="button"
                       >✕</button>
                     </div>
                   </li>
@@ -219,7 +223,7 @@ return (
               name="remarks"
               value={formData.remarks}
               onChange={handleChange}
-              placeholder="Report remarks..."
+              placeholder={t("Report remarks...")}
               className="textarea textarea-bordered w-full rounded-xl text-xs"
               rows="2"
               disabled={isGenerating}
@@ -236,7 +240,7 @@ return (
                 onChange={handleChange}
                 className="checkbox checkbox-xs"
               />
-              <span className="label-text text-[11px]">Include zero-value items</span>
+              <span className="label-text text-[11px]">{t("Include zero-value items")}</span>
             </label>
           </div>
 
@@ -250,20 +254,20 @@ return (
               onClick={handleClose}
               disabled={isGenerating}
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               type="submit"
               className={`btn btn-sm flex-[2] bg-green-button text-white rounded-xl ${isGenerating ? 'loading' : ''}`}
               disabled={isGenerating}
             >
-              {isGenerating ? '' : 'Generate PDF'}
+              {isGenerating ? '' : t('Generate PDF')}
             </button>
           </div>
         </form>
       </div>
       <form method="dialog" className="modal-backdrop bg-black/30 backdrop-blur-[2px]">
-        <button onClick={handleClose}>close</button>
+        <button onClick={handleClose}>{t("close")}</button>
       </form>
     </dialog>
   )

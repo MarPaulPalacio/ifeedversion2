@@ -7,7 +7,7 @@ import { HiSelector, HiCheck } from 'react-icons/hi'
 import CarabaoIdentify from './CarabaoIdentify.jsx'
 import CarabaoIdentifyContinue from './CarabaoIdentifyContinue.jsx'
 import CarabaoIdentifySetup from './CarabaoIdentifySetup.jsx'
-// import CarabaoIdentifyContinue from './CarabaoIdentifyContinue.jsx'
+import { useTranslation } from 'react-i18next' // 1. Import the hook
 
 function CreateFormulationModal({
   formulations,
@@ -18,6 +18,8 @@ function CreateFormulationModal({
   onResult,
   userType 
 }) {
+  const { t } = useTranslation() // 2. Initialize the translation function
+
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -59,38 +61,6 @@ function CreateFormulationModal({
   const [fetchError, setFetchError] = useState('')
   const [currSection, setCurrSection] = useState(0)
   const [monthsPregnantError, setMonthsPregnantError] = useState('')
-  // Dummy template options by animal group
-  /*
-  const animalGroupTemplates = {
-    'Swine': [
-      { id: 0, name: 'None' },
-      { id: 1, name: 'Swine Sample Template 1' },
-      { id: 2, name: 'Swine Sample Template 2' },
-      { id: 3, name: 'Swine Sample Template 3' },
-      { id: 4, name: 'Swine Sample Template 4' },
-      { id: 5, name: 'Swine Sample Template 5' },
-      { id: 6, name: 'Swine Sample Template 6' },
-    ],
-    'Poultry': [
-      { id: 0, name: 'None' },
-      { id: 7, name: 'Poultry Sample Template 1' },
-      { id: 8, name: 'Poultry Sample Template 2' },
-      { id: 9, name: 'Poultry Sample Template 3' },
-      { id: 10, name: 'Poultry Sample Template 4' },
-      { id: 11, name: 'Poultry Sample Template 5' },
-      { id: 12, name: 'Poultry Sample Template 6' },
-    ],
-    'Water Buffalo': [
-      { id: 0, name: 'None' },
-      { id: 13, name: 'Water Buffalo Sample Template 1' },
-      { id: 14, name: 'Water Buffalo Sample Template 2' },
-      { id: 15, name: 'Water Buffalo Sample Template 3' },
-      { id: 16, name: 'Water Buffalo Sample Template 4' },
-      { id: 17, name: 'Water Buffalo Sample Template 5' },
-      { id: 18, name: 'Water Buffalo Sample Template 6' },
-    ],
-  }
-  */
 
   // Fetch templates from backend when modal opens or animal group changes
   useEffect(() => {
@@ -152,7 +122,6 @@ function CreateFormulationModal({
   const identifyCurrentCarabaoPhase = () => {
   const { carabaoPhases, currentCarabaoCreation } = carabaoConfiguration;
 
-
     let cumulative = 0;
     
     for (const [phase, count] of Object.entries(carabaoPhases)) {
@@ -183,18 +152,17 @@ function CreateFormulationModal({
         </button>
 
         <h3 className="text-deepbrown mb-1 text-lg font-bold">
-          {(carabaoConfiguration.multipleCarabaos && currSection>0) ? ((identifyCurrentCarabaoPhase()!=null && carabaoConfiguration.sameConfigTypeArray.includes(identifyCurrentCarabaoPhase()[1]))  ? ("Group Configuration for all " + (identifyCurrentCarabaoPhase()[0]) + "s") : ("Create Multiple Carabao Configurations (Carabao Number "+ (carabaoConfiguration.currentCarabaoCreation)+" "
+          {/* 3. Wrapped text strings in t() */}
+          {(carabaoConfiguration.multipleCarabaos && currSection>0) ? ((identifyCurrentCarabaoPhase()!=null && carabaoConfiguration.sameConfigTypeArray.includes(identifyCurrentCarabaoPhase()[1]))  ? (`${t("Group Configuration for all")} ` + (identifyCurrentCarabaoPhase()[0]) + "s") : (`${t("Create Multiple Carabao Configurations (Carabao Number")} `+ (carabaoConfiguration.currentCarabaoCreation)+" "
            +((carabaoConfiguration.carabaoPhases!={} && identifyCurrentCarabaoPhase()!=null)? identifyCurrentCarabaoPhase()[0]: "")
            + ")"))
-          : "Create Formulation"}
+          : t("Create Formulation")}
         </h3>
         <p className="mb-4 flex text-sm text-gray-500 whitespace-nowrap">
           <Info />
-          Set up initial details for your new formulation.
+          {/* 4. Wrapped text string in t() */}
+          {t("Set up initial details for your new formulation.")}
         </p>
-
-        
-
 
         {/* First Part */}
         {currSection === 0 ? (
@@ -315,12 +283,10 @@ function CreateFormulationModal({
         )
         }
         
-        {/* Second Part */}
-
-        
       </div>
       <form method="dialog" className="modal-backdrop">
-        <button onClick={handleClose}>close</button>
+        {/* 5. Wrapped close button text */}
+        <button onClick={handleClose}>{t("close")}</button>
       </form>
 
       <div className="modal-backdrop" onClick={handleClose}></div>

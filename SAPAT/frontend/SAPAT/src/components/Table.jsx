@@ -131,7 +131,7 @@ function Table({
                 </div>
 
                 <div className="text-xs text-gray-600 line-clamp-2 mb-3 italic">
-                  {row.description || 'No description provided.'}
+                  {row.description || t('No description provided.')}
                 </div>
 
                 <div className="flex justify-between items-center pt-2 border-t border-gray-100">

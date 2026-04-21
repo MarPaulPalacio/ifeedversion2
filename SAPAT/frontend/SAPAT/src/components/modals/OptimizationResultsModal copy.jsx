@@ -22,10 +22,9 @@ const OptimizationResultsModal = ({
   const formatNum = (val, decimals = 2) => Number(val || 0).toFixed(decimals);
 
   const getAchievedTotal = (nutrientList, targetName, totalweight) => {
-    console.log(nutrientList, "NUTRIENT LIST HERE")
+
     if (!nutrientList || !Array.isArray(nutrientList)) return 0;
     const n = nutrientList.find(nut => nut.name?.toLowerCase().includes(targetName.toLowerCase()));
-
     console.log("Achieved Total", n)
     if (ispercentcompute){
       return n ? Number(n.value|| 0) : 0;
@@ -126,48 +125,33 @@ const OptimizationResultsModal = ({
    * Logic: (Weight * DM%) * Nutrient%
    * Last element is always treated as the multiplier for others
    */
-/**
- * Corrected version - works for BOTH percent and gram mode
- */
-const getIngredientContribution = (ingredientId, weightValue, nutrientTargetId, ingredientData, unit = 'grams', totalWeightKg) => {
-  if (!ingredientData || !ingredientData.nutrients) return 0;
+  const getIngredientContribution = (ingredientId, weightInGrams, nutrientTargetId, ing, unit = 'grams', totalweight) => {
+    const ingredientData = detailedIngredients.find(item => item._id === ingredientId);
+    if (!ingredientData || !ingredientData.nutrients) return 0;
 
-  const lastNutrient = formulation.nutrients[formulation.nutrients.length - 1];
-  const dmTargetId = lastNutrient?._id || lastNutrient?.id || lastNutrient?.nutrient_id;
+    const lastNutrient = formulation.nutrients[formulation.nutrients.length - 1];
+    const dmTargetId = lastNutrient._id || lastNutrient.id;
 
-  const currentNutrientEntry = ingredientData.nutrients.find(n => n.nutrient === nutrientTargetId);
-  const dmEntry = ingredientData.nutrients.find(n => n.nutrient === dmTargetId);
+    const currentNutrientEntry = ingredientData.nutrients.find(n => n.nutrient === nutrientTargetId);
+    const dmEntry = ingredientData.nutrients.find(n => n.nutrient === dmTargetId);
+    
+    if (!currentNutrientEntry) return 0;
 
-  if (!currentNutrientEntry) return 0;
+    let weightKg = Number(weightInGrams) / 1000;
+    if (ispercentcompute){
+      weightKg = Number(weightInGrams) /100 * (totalweight);
+    }
+    
+    const dmPercentage = Number(dmEntry?.value || 0);
+    const dryMatterKg = weightKg * dmPercentage;
 
-  const dmDecimal = Number(dmEntry?.value || 0.90);
+    if (nutrientTargetId === dmTargetId) {
+      return dryMatterKg * 1000; 
+    }
+    
+    return dryMatterKg * Number(currentNutrientEntry.value || 0) * 1000;
+  };
 
-  // Get total Dry Matter from backend (already correct in both modes)
-  const dmTargetGrams = getAchievedTotal(results.nutrients, "Dry Matter", totalWeightKg);
-  const dmTargetKg = dmTargetGrams / 1000;
-
-  let asFedKg = 0;
-
-  if (ispercentcompute) {
-    // percent mode: weightValue = % of DM
-    const percentOfDM = Number(weightValue);
-    const dmKgOfIngredient = (percentOfDM / 100) * dmTargetKg;
-    asFedKg = dmKgOfIngredient / dmDecimal;
-  } else {
-    // gram mode: weightValue = grams as-fed
-    asFedKg = Number(weightValue) / 1000;
-  }
-
-  if (nutrientTargetId === dmTargetId) {
-    return asFedKg * dmDecimal * 1000; // return grams of DM
-  }
-
-  // Normal nutrient
-  const nutrientFraction = Number(currentNutrientEntry.value || 0);
-  const nutrientGrams = asFedKg * dmDecimal * nutrientFraction * 1000;
-
-  return nutrientGrams;
-};
   // --- ADDED SORTING LOGIC HERE ---
   // Create a new sorted array descending by value
   const sortedIngredients = [...results.ingredients].sort((a, b) => Number(b.value) - Number(a.value));

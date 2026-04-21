@@ -45,17 +45,7 @@ export default function OptimizeFAB({ handleOptimize }) {
             fixed bottom-40 right-6 z-[200] w-52 p-2
           "
         >
-          <li>
-            <button
-              className="py-2.5 text-xs"
-              onClick={() => {
-                handleOptimize("simplex");
-                setOpen(false); // 👈 close after click
-              }}
-            >
-              Simplex Feed Ratio
-            </button>
-          </li>
+          
           <li>
             <button
               className="py-2.5 text-xs"
@@ -64,7 +54,7 @@ export default function OptimizeFAB({ handleOptimize }) {
                 setOpen(false);
               }}
             >
-              Simplex Dry Matter
+              Simplex
             </button>
           </li>
         </ul>

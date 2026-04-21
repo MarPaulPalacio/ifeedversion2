@@ -1,7 +1,10 @@
 import { useEffect } from 'react'
 import { RiCheckLine, RiCloseLine } from 'react-icons/ri'
+import { useTranslation } from 'react-i18next' // Imported the hook
 
 function Toast({ show, action, message, onHide }) {
+  const { t } = useTranslation(); // Initialized the translation function
+
   useEffect(() => {
     if (show) {
       const timer = setTimeout(() => {
@@ -40,12 +43,13 @@ function Toast({ show, action, message, onHide }) {
           )}
         </div>
         
-        <span className="font-medium tracking-wide">{message}</span>
+        {/* Wrapped message in t() so parent strings are translated automatically */}
+        <span className="font-medium tracking-wide">{message ? t(message) : ''}</span>
 
         <button 
           onClick={onHide}
           className="ml-2 hover:opacity-100 opacity-50 transition-opacity"
-          aria-label="Close notification"
+          aria-label={t("Close notification")}
         >
           <RiCloseLine size={18} className="text-white" />
         </button>

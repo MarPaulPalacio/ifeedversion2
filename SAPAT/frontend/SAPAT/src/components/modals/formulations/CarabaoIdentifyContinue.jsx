@@ -4,6 +4,7 @@ import axios from 'axios'
 import Info from '../../icons/Info.jsx'
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/react'
 import { HiSelector, HiCheck } from 'react-icons/hi'
+import { useTranslation } from 'react-i18next';
 
 function CarabaoIdentifyContinue({
   formulations,
@@ -46,6 +47,7 @@ function CarabaoIdentifyContinue({
   setCarabaoConfiguration,
   identifyCurrentCarabaoPhase,
 }) {
+  const { t } = useTranslation();
 
   // Fetch templates from backend when modal opens or animal group changes
   useEffect(() => {
@@ -187,7 +189,7 @@ function CarabaoIdentifyContinue({
             const nutrientWithDryMatter = 
             nutrients.find(n => n.name === 'Dry Matter') 
               ? nutrients 
-              : [...nutrients, { nutrient_id: dmNutrient._id, _id: dmNutrient._id, name: 'Dry Matter', minimum: drymatterintake * 0.8 * 1000, maximum: drymatterintake * 1.2 * 1000, value: 0, unit: '%' }]
+              : [...nutrients, { nutrient_id: dmNutrient._id, _id: dmNutrient._id, name: 'Dry Matter', minimum: (drymatterintake * 0.8 * 1000).toFixed(2), maximum: (drymatterintake * 1.2 * 1000).toFixed(2), value: 0, unit: '%' }]
             return nutrientWithDryMatter;
             // return nutrients;
         }
@@ -356,19 +358,19 @@ function CarabaoIdentifyContinue({
   }
 
   return (
-    <>
+   <>
         {/* Close button */}
         <div className=' pb-2  whitespace-normal font-bold flex flex-col text-gray-600'>
           {identifyCurrentCarabaoPhase()!=null && Object.keys(carabaoConfiguration.carabaoPhases).includes(identifyCurrentCarabaoPhase()[1]) ? 
           <>
-            <span className='label-text'>Group Formulation for Carabaos used by [{carabaoConfiguration.temporaryNameArray}] </span>
-            <span className='label-text'>Phase: {formData.animal_group} Weight: {formData.body_weight}</span>
+            <span className='label-text'>{t('Group Formulation for Carabaos used by')} [{carabaoConfiguration.temporaryNameArray}] </span>
+            <span className='label-text'>{t('Phase:')} {formData.animal_group} {t('Weight:')} {formData.body_weight}</span>
           </>
           
            : (
           <>
-          <span className='label-text'>Formulation for Carabao {formData.name} used by {formData.code} </span>
-          <span className='label-text'>Phase: {formData.animal_group} weigh: {formData.body_weight}</span>
+          <span className='label-text'>{t('Formulation for Carabao')} {formData.name} {t('used by')} {formData.code} </span>
+          <span className='label-text'>{t('Phase:')} {formData.animal_group} {t('weigh:')} {formData.body_weight}</span>
           </>
           )
           
@@ -388,7 +390,7 @@ function CarabaoIdentifyContinue({
                 {formData.animal_group === 'Cow | Inahing kalabaw' && (
                 <div className='form-control w-full space-x-5 md:pt-0 pt-0'>
                   <label className="label whitespace-normal">
-                    <span className="label-text">Is Lactating (Nag Gagatas?)</span>
+                    <span className="label-text">{t('Is Lactating (Nag Gagatas?)')}</span>
                   </label>
                   <select
                     name="is_lactating"
@@ -398,11 +400,11 @@ function CarabaoIdentifyContinue({
                     className="select select-bordered w-full rounded-xl"
                   >
                     <option value="Not Lactating" defaultChecked>
-                      Dry (Not Lactating)
+                      {t('Dry (Not Lactating)')}
                     </option>
-                    <option value="Early Lactation (1-100 Days)">Early Lactation (1-100 Days)</option>
-                    <option value="Mid Lactation (101-200 Days)">Mid Lactation (101-200 Days)</option>
-                    <option value="Late Lactation (201-305 Days)">Late Lactation (201-305 Days)</option>
+                    <option value="Early Lactation (1-100 Days)">{t('Early Lactation (1-100 Days)')}</option>
+                    <option value="Mid Lactation (101-200 Days)">{t('Mid Lactation (101-200 Days)')}</option>
+                    <option value="Late Lactation (201-305 Days)">{t('Late Lactation (201-305 Days)')}</option>
                   </select>
                   
                   
@@ -411,7 +413,7 @@ function CarabaoIdentifyContinue({
                 
                 <div className='form-control w-full space-x-5 md:pt-0 pt-0'>
                     <label className="label whitespace-normal">
-                      <span className="label-text">Is Pregnant (Buntis?)</span>
+                      <span className="label-text">{t('Is Pregnant (Buntis?)')}</span>
                     </label>
                     <select
                       name="months_pregnant"
@@ -420,9 +422,9 @@ function CarabaoIdentifyContinue({
                       onChange={handleChange}
                       className={`select select-bordered w-full rounded-xl ${monthsPregnantError ? 'border-red-500' : ''}`}
                     >
-                      <option value="Not Pregnant">Not Pregnant (Hindi Buntis)</option>
-                      <option value="1">1-8 Months</option>
-                      <option value="9">9-11 Months</option>
+                      <option value="Not Pregnant">{t('Not Pregnant (Hindi Buntis)')}</option>
+                      <option value="1">{t('1-8 Months')}</option>
+                      <option value="9">{t('9-11 Months')}</option>
                     </select>
                   </div>
               </>
@@ -432,7 +434,7 @@ function CarabaoIdentifyContinue({
             formData.animal_group !== "Cow | Inahing kalabaw" && formData.animal_group!=="Senior Bull | Bulugan (> 3 taon)" && (
               <div className='form-control w-full'>
                 <label className="label whitespace-normal">
-                  <span className="label-text font-medium">Average Daily Gain (in kg)</span>
+                  <span className="label-text font-medium">{t('Average Daily Gain (in kg)')}</span>
                 </label>
                 <select
                   name="average_daily_gain"
@@ -442,16 +444,16 @@ function CarabaoIdentifyContinue({
                   onChange={handleChange}
                   className={`select select-bordered w-full rounded-xl ${averageDailyGainError ? 'border-red-500' : ''}`}
                 >
-                  <option value="" disabled>Select Average Daily Gain</option>
-                  <option value="0">0 kg (Maintenance)</option>
-                  <option value="0.25">0.25 kg</option>
-                  <option value="0.5">0.50 kg</option>
-                  <option value="0.75">0.75 kg</option>
-                  <option value="1">1 kg</option>
+                  <option value="" disabled>{t('Select Average Daily Gain')}</option>
+                  <option value="0">{t('0 kg (Maintenance)')}</option>
+                  <option value="0.25">{t('0.25 kg')}</option>
+                  <option value="0.5">{t('0.50 kg')}</option>
+                  <option value="0.75">{t('0.75 kg')}</option>
+                  <option value="1">{t('1 kg')}</option>
                 </select>
                 {averageDailyGainError && (
                   <label className="label">
-                    <span className="label-text-alt text-red-500">Please select a gain value.</span>
+                    <span className="label-text-alt text-red-500">{t('Please select a gain value.')}</span>
                   </label>
                 )}
 
@@ -468,7 +470,7 @@ function CarabaoIdentifyContinue({
               <>
               <div className='form-control w-full'>
                 <label className="label whitespace-normal">
-                  <span className="label-text">Milk Yield Per Day - Kg (Nakukuhang gatas bawat araw - kg) <label className='text-red-400'>* Optional</label></span>
+                  <span className="label-text">{t('Milk Yield Per Day - Kg (Nakukuhang gatas bawat araw - kg)')} <label className='text-red-400'>{t('* Optional')}</label></span>
                 </label>
                 <input
                   type="number"
@@ -477,7 +479,7 @@ function CarabaoIdentifyContinue({
                   
                   disabled={isDisabled}
                   onChange={handleChange}
-                  placeholder="Enter milk yield"
+                  placeholder={t("Enter milk yield")}
                   className={`input input-bordered w-full rounded-xl ${milkYieldError ? 'border-red-500' : ''}`}
                 />
                 {milkYieldError && (
@@ -507,8 +509,7 @@ function CarabaoIdentifyContinue({
                   </p>
                 )}
               </div> */}
-{/* 
-              <div className='form-control w-full'>
+{/* <div className='form-control w-full'>
                 <label className="label whitespace-normal">
                   <span className="label-text">Milk Price - Php (Presyo ng gatas - Php)</span>
                 </label>
@@ -532,51 +533,7 @@ function CarabaoIdentifyContinue({
             )}
 
             {/* Template Combobox - only show if userType is not 'admin' */}
-            {/* {userType !== 'admin' && (
-              <div className="form-control w-full">
-                <label className="label whitespace-normal">
-                  <span className="label-text">Use Group Template (Optional)</span>
-                </label>
-                <Combobox value={selectedTemplate} onChange={setSelectedTemplate} disabled={isTemplateDisabled} by="id">
-                  <div className="relative">
-                    <ComboboxInput
-                      className="input input-bordered w-full rounded-xl pr-10"
-                      displayValue={(t) => t?.name || ''}
-                      onChange={(e) => setTemplateQuery(e.target.value)}
-                      placeholder={isTemplateDisabled ? (fetchError ? fetchError : 'Select animal group first') : 'Select template'}
-                      disabled={isTemplateDisabled}
-                    />
-                    <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      <HiSelector className="h-5 w-5 text-gray-400" />
-                    </ComboboxButton>
-                    {!isTemplateDisabled && filteredTemplates.length > 0 && (
-                      <ComboboxOptions className="absolute z-10 max-h-56 w-full max-w-[350px] overflow-auto bg-white py-1 text-base ring-[0.5px] -mt-[0.1px] focus:outline-none">
-                        {filteredTemplates.map((template) => (
-                          <ComboboxOption
-                            key={template.id}
-                            value={template}
-                            className={({ active }) =>
-                              `cursor-pointer select-none px-4 py-2 ${
-                                active ? 'bg-base-200 text-primary' : 'text-gray-900'
-                              }`
-                            }
-                          >
-                            {({ selected }) => (
-                              <span className={`flex items-center`}>
-                                {selected && (
-                                  <HiCheck className="mr-2 h-5 w-5 text-primary" />
-                                )}
-                                {template.name}
-                              </span>
-                            )}
-                          </ComboboxOption>
-                        ))}
-                      </ComboboxOptions>
-                    )}
-                  </div>
-                </Combobox>
-              </div>
-            )} */}
+            {/* {userType !== 'admin' && ( ... )} */}
 
             
           </div>
@@ -588,19 +545,19 @@ function CarabaoIdentifyContinue({
               className="btn rounded-xl px-8"
               onClick={handleClose}
             >
-              Back
+              {t('Back')}
             </button>
             <button
               type="submit"
               className={`btn bg-green-button ${isDisabled ? 'disabled bg-red-100' : 'hover:bg-green-600'} rounded-xl px-8 text-white`}
             >
-              {`${isDisabled ? 'Creating...' : 'Create'}`}
+              {isDisabled ? t('Creating...') : t('Create')}
             </button>
           </div>
         </form>
 
       <form method="dialog" className="modal-backdrop">
-        <button onClick={handleClose}>close</button>
+        <button onClick={handleClose}>{t('close')}</button>
       </form>
 
       <div className="modal-backdrop" onClick={handleClose}></div>

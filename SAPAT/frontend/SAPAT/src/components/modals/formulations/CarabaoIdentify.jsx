@@ -5,6 +5,7 @@ import Info from '../../icons/Info.jsx'
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/react'
 import { HiSelector, HiCheck } from 'react-icons/hi'
 import { useTranslation } from 'react-i18next'
+
 function CarabaoIdentify({
   formulations,
   ownerId,
@@ -40,39 +41,6 @@ function CarabaoIdentify({
 }) {
   const { t, i18n } = useTranslation();
 
-  // Dummy template options by animal group
-  /*
-  const animalGroupTemplates = {
-    'Swine': [
-      { id: 0, name: 'None' },
-      { id: 1, name: 'Swine Sample Template 1' },
-      { id: 2, name: 'Swine Sample Template 2' },
-      { id: 3, name: 'Swine Sample Template 3' },
-      { id: 4, name: 'Swine Sample Template 4' },
-      { id: 5, name: 'Swine Sample Template 5' },
-      { id: 6, name: 'Swine Sample Template 6' },
-    ],
-    'Poultry': [
-      { id: 0, name: 'None' },
-      { id: 7, name: 'Poultry Sample Template 1' },
-      { id: 8, name: 'Poultry Sample Template 2' },
-      { id: 9, name: 'Poultry Sample Template 3' },
-      { id: 10, name: 'Poultry Sample Template 4' },
-      { id: 11, name: 'Poultry Sample Template 5' },
-      { id: 12, name: 'Poultry Sample Template 6' },
-    ],
-    'Water Buffalo': [
-      { id: 0, name: 'None' },
-      { id: 13, name: 'Water Buffalo Sample Template 1' },
-      { id: 14, name: 'Water Buffalo Sample Template 2' },
-      { id: 15, name: 'Water Buffalo Sample Template 3' },
-      { id: 16, name: 'Water Buffalo Sample Template 4' },
-      { id: 17, name: 'Water Buffalo Sample Template 5' },
-      { id: 18, name: 'Water Buffalo Sample Template 6' },
-    ],
-  }
-  */
-
   // Fetch templates from backend when modal opens or animal group changes
   useEffect(() => {
     if (!isOpen) return;
@@ -87,7 +55,7 @@ function CarabaoIdentify({
         }
       })
       .catch(() => {
-        setFetchError('Failed to fetch templates');
+        setFetchError(t('Failed to fetch templates'));
         setFetchedTemplates([]);
       })
       .finally(() => setIsLoadingTemplates(false));
@@ -95,13 +63,13 @@ function CarabaoIdentify({
 
   // Reset template selection when animal group changes
   useEffect(() => {
-    setSelectedTemplate({ id: 0, name: 'None' })
+    setSelectedTemplate({ id: 0, name: t('None') })
     setTemplateQuery('')
   }, [formData.animal_group])
 
   // Filter fetched templates by selected animal group
   const templateOptions = [
-    { id: 0, name: 'None' },
+    { id: 0, name: t('None') },
     ...(
       formData.animal_group
         ? fetchedTemplates
@@ -129,7 +97,7 @@ function CarabaoIdentify({
           formulation.name.toLowerCase() === formData.name.toLowerCase()
       )
     ) {
-      setNameError('Name already exists')
+      setNameError(t('Name already exists'))
       setCodeError('')
       setIsDisabled(false)
       return
@@ -142,7 +110,7 @@ function CarabaoIdentify({
       setCurrSection(2)
     } catch (err) {
       console.log(err)
-      onResult(null, 'error', 'Failed to create formulation.')
+      onResult(null, 'error', t('Failed to create formulation.'))
     } finally {
       setIsDisabled(false)
       setCodeError('')
@@ -158,27 +126,23 @@ function CarabaoIdentify({
     }))
   }
 
-const handleArrayChange = (e) => {
-  console.log("THIS IS CURRENT CARABAO CONFIGURATION", carabaoConfiguration)
-  const { name, value } = e.target;
-  // Extract the index from the name, e.g., "name_1" → 0
-  const index = parseInt(name) - 1;
-  
+  const handleArrayChange = (e) => {
+    console.log("THIS IS CURRENT CARABAO CONFIGURATION", carabaoConfiguration)
+    const { name, value } = e.target;
+    // Extract the index from the name, e.g., "name_1" → 0
+    const index = parseInt(name) - 1;
 
-  setCarabaoConfiguration((prev) => {
-    const updatedArray = [...prev.temporaryNameArray]; // copy existing array
-    updatedArray[index] = value; // update one element
-    console.log("This is the item:", carabaoConfiguration.temporaryNameArray[index])
-    
-    return {
-      ...prev,
-      temporaryNameArray: updatedArray,
-    };
-
-  });
-};
-
-
+    setCarabaoConfiguration((prev) => {
+      const updatedArray = [...prev.temporaryNameArray]; // copy existing array
+      updatedArray[index] = value; // update one element
+      console.log("This is the item:", carabaoConfiguration.temporaryNameArray[index])
+      
+      return {
+        ...prev,
+        temporaryNameArray: updatedArray,
+      };
+    });
+  };
 
   const handleClose = () => {
     setCurrSection(0)
@@ -196,24 +160,17 @@ const handleArrayChange = (e) => {
     } else {
       return formData.animal_group
     }
-    
   }
 
   return (
     <>
       <>
-        {/* Close button */}
-
-
         <form onSubmit={handleSubmit}>
-         
           {/* Form fields */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             
             {/* Farmer Name */}
-
             <div className="form-control w-full">
-              
               <label className="label">
                 <span className="label-text">{t('Farmer Name')}</span>
               </label>
@@ -224,7 +181,7 @@ const handleArrayChange = (e) => {
                 required
                 disabled={isDisabled}
                 onChange={handleChange}
-                placeholder="Enter code"
+                placeholder={t("Enter code")}
                 className={`input input-bordered w-full rounded-xl ${codeError ? 'border-red-500' : ''}`}
               />
               {codeError && (
@@ -235,7 +192,6 @@ const handleArrayChange = (e) => {
             </div>
             
             {/* Carabao Name */}
-
             {(identifyCurrentCarabaoPhase()!=null) ? "":(
               <div className="form-control w-full">
               <label className="label">
@@ -248,7 +204,7 @@ const handleArrayChange = (e) => {
                 required
                 disabled={isDisabled}
                 onChange={handleChange}
-                placeholder="Enter name"
+                placeholder={t("Enter name")}
                 className={`input input-bordered w-full rounded-xl ${nameError ? 'border-red-500' : ''}`}
               />
               {nameError && (
@@ -257,10 +213,8 @@ const handleArrayChange = (e) => {
                 </p>
               )}
             </div>
-            )
-            }
+            )}
             
-
             {/* Animal Group Select */}
             <div className="form-control w-full">
               <label className="label">
@@ -274,11 +228,11 @@ const handleArrayChange = (e) => {
                 className="select select-bordered w-full rounded-xl"
               >
                 <option value="" disabled>
-                  Choose Carabao Category
+                  {t("Choose Carabao Category")}
                 </option>
                 <option value="Heifer | Dumalaga">{t('Heifer')}</option>
                 <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">{t('Calf (0-4 months) - lower than 100kg')}</option>
-                <option value="Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)"> {t('Growing Calves (5-12 months)')}</option>
+                <option value="Growing Calves (5-12 months) | Lumalaking bula (5 - 12 buwan)">{t('Growing Calves (5-12 months)')}</option>
                 <option value="Junior Bull | Lumalaking bulugan (2 - 3 taon)">{t('Junior Bull')}</option>
                 <option value="Cow | Inahing kalabaw">{t('Cow')}</option>
                 <option value="Senior Bull | Bulugan (> 3 taon)">{t('Senior Bull')}</option>
@@ -288,7 +242,7 @@ const handleArrayChange = (e) => {
             {/* Body Weight */}
             <div className='form-control w-full'>
               <label className="label">
-                <span className="label-text">Body Weight</span>
+                <span className="label-text">{t('Body Weight')}</span>
               </label>
               <input
                 type="number"
@@ -297,7 +251,7 @@ const handleArrayChange = (e) => {
                 required
                 disabled={isDisabled}
                 onChange={handleChange}
-                placeholder="Enter body weight"
+                placeholder={t("Enter body weight")}
                 className={`input input-bordered w-full rounded-xl ${bodyWeightError ? 'border-red-500' : ''}`}
               />
               {bodyWeightError && (
@@ -305,27 +259,24 @@ const handleArrayChange = (e) => {
                   {bodyWeightError}
                 </p>
               )}
-          
             </div>
 
             {(identifyCurrentCarabaoPhase()!=null && carabaoConfiguration.sameConfigTypeArray.includes(identifyCurrentCarabaoPhase()[1])) ? (<>
-              <div classNamr ="form-control w-full"></div>
-
+              <div className ="form-control w-full"></div>
               
               {[...Array(carabaoConfiguration.carabaoPhases[identifyCurrentCarabaoPhase()[1]] || 0)].map((_, i) => (
                 <div key={i} className="form-control w-full md:col-span-2">
                   <label className="label">
-                    <span className="label-text">Carabao Name {i + 1}</span>
+                    <span className="label-text">{t("Carabao Name")} {i + 1}</span>
                   </label>
                   <input
                     type="text"
                     name={i + 1}
-                    value={carabaoConfiguration.temporaryNameArray[i]}
-                    // value="SDDS"
+                    value={carabaoConfiguration.temporaryNameArray[i] || ""}
                     required
                     disabled={isDisabled}
                     onChange={handleArrayChange}
-                    placeholder={`Enter name ${i + 1}`}
+                    placeholder={`${t("Enter name")} ${i + 1}`}
                     className={`input input-bordered w-full rounded-xl ${nameError ? 'border-red-500' : ''}`}
                   />
 
@@ -336,25 +287,23 @@ const handleArrayChange = (e) => {
                   )}
                 </div>
               ))}
-            
             </>):(
               <div className="form-control w-full md:col-span-2">
                 <label className="label">
-                  <span className="label-text">Description</span>
+                  <span className="label-text">{t("Description")}</span>
                 </label>
                 <textarea
                   name="description"
                   value={formData.description}
                   disabled={isDisabled}
                   onChange={handleChange}
-                  placeholder="Enter description"
+                  placeholder={t("Enter description")}
                   className="textarea textarea-bordered w-full rounded-xl"
                   rows="3"
                   maxLength="60"
                 ></textarea>
               </div>
-            )
-            }
+            )}
             
           </div>
 
@@ -365,13 +314,13 @@ const handleArrayChange = (e) => {
               className="btn rounded-xl px-8"
               onClick={handleClose}
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               type="submit"
               className={`btn bg-green-button ${isDisabled ? 'disabled bg-red-100' : 'hover:bg-green-600'} rounded-xl px-8 text-white`}
             >
-              {`${isDisabled ? 'Creating...' : 'Continue'}`}
+              {isDisabled ? t("Creating...") : t("Continue")}
             </button>
           </div>
         </form>
