@@ -2,6 +2,7 @@ import { RiCloseLine } from 'react-icons/ri'
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import Info from '../../icons/Info.jsx'
+import { useTranslation } from 'react-i18next' // 1. Imported the hook
 
 function EditFormulationModal({
   formulations,
@@ -10,6 +11,8 @@ function EditFormulationModal({
   formulation,
   onResult,
 }) {
+  const { t } = useTranslation() // 2. Initialized the translation function
+
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -58,7 +61,7 @@ function EditFormulationModal({
         .some((f) => f.name.toLowerCase() === formData.name.toLowerCase())
 
       if (isDuplicate) {
-        setNameError('Name already exists')
+        setNameError(t('Name already exists')) // Translated string
         setIsDisabled(false)
         return
       }
@@ -206,7 +209,8 @@ function EditFormulationModal({
       onResult(
         res.data.formulations,
         res.data.message,
-        res.data.message === 'success' ? 'Successfully updated formulation.' : 'Failed to update formulation.'
+        // Translated strings below
+        res.data.message === 'success' ? t('Successfully updated formulation.') : t('Failed to update formulation.')
       )
     } catch (err) {
       console.log(err)
@@ -240,9 +244,9 @@ function EditFormulationModal({
           <button className="btn btn-sm btn-circle absolute top-4 right-4" onClick={onClose}>
             <RiCloseLine className="h-5 w-5" />
           </button>
-          <h3 className="text-[#4A3728] mb-1 text-lg font-bold">Update Formulation</h3>
+          <h3 className="text-[#4A3728] mb-1 text-lg font-bold">{t('Update Formulation')}</h3>
           <p className="flex text-sm text-gray-500 items-center gap-1">
-            <Info /> Modify basic details of your feed formulation.
+            <Info /> {t('Modify basic details of your feed formulation.')}
           </p>
         </div>
 
@@ -252,36 +256,36 @@ function EditFormulationModal({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               
               <div className="form-control w-full">
-                <label className="label"><span className="label-text">Code</span></label>
+                <label className="label"><span className="label-text">{t('Code')}</span></label>
                 <input type="text" name="code" value={formData.code} required disabled={isDisabled} onChange={handleChange} className={`input input-bordered w-full rounded-xl ${codeError ? 'border-red-500' : ''}`} />
               </div>
 
               <div className="form-control w-full">
-                <label className="label"><span className="label-text">Name</span></label>
+                <label className="label"><span className="label-text">{t('Name')}</span></label>
                 <input type="text" name="name" value={formData.name} required disabled={isDisabled} onChange={handleChange} className={`input input-bordered w-full rounded-xl ${nameError ? 'border-red-500' : ''}`} />
               </div>
 
               <div className="form-control w-full">
-                <label className="label"><span className="label-text">Animal Group</span></label>
+                <label className="label"><span className="label-text">{t('Animal Group')}</span></label>
                 <select name="animal_group" value={formData.animal_group} required disabled={isDisabled} onChange={handleChange} className="select select-bordered w-full rounded-xl">
-                  <option value="Heifer | Dumalaga">Heifer | Dumalaga</option>
-                  <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">Calf (0-4 months)</option>
-                  <option value="Growing Calves (5-12 months) | Lumalaking bula">Growing Calves</option>
-                  <option value="Junior Bull | Lumalaking bulugan">Junior Bull</option>
-                  <option value="Cow | Inahing kalabaw">Cow | Inahing kalabaw</option>
-                  <option value="Senior Bull | Bulugan (> 3 taon)">Senior Bull</option>
+                  <option value="Heifer | Dumalaga">{t('Heifer | Dumalaga')}</option>
+                  <option value="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)">{t('Calf (0-4 months)')}</option>
+                  <option value="Growing Calves (5-12 months) | Lumalaking bula">{t('Growing Calves')}</option>
+                  <option value="Junior Bull | Lumalaking bulugan">{t('Junior Bull')}</option>
+                  <option value="Cow | Inahing kalabaw">{t('Cow | Inahing kalabaw')}</option>
+                  <option value="Senior Bull | Bulugan (> 3 taon)">{t('Senior Bull')}</option>
                 </select>
               </div>
 
               <div className="form-control w-full">
-                <label className="label"><span className="label-text">Body Weight (kg)</span></label>
+                <label className="label"><span className="label-text">{t('Body Weight (kg)')}</span></label>
                 <input type="number" name="body_weight" value={formData.body_weight} required disabled={isDisabled} onChange={handleChange} className={`input input-bordered w-full rounded-xl ${bodyWeightError ? 'border-red-500' : ''}`} />
               </div>
 
               {(formData.animal_group !== "Cow | Inahing kalabaw") && (formData.animal_group !== "Senior Bull | Bulugan (> 3 taon)") && (
                 <div className="form-control w-full">
                   <label className="label whitespace-normal">
-                  <span className="label-text font-medium">Average Daily Gain (in kg)</span>
+                  <span className="label-text font-medium">{t('Average Daily Gain (in kg)')}</span>
                 </label>
                 <select
                   name="average_daily_gain"
@@ -291,24 +295,24 @@ function EditFormulationModal({
                   onChange={handleChange}
                   className={`select select-bordered w-full rounded-xl ${averageDailyGainError ? 'border-red-500' : ''}`}
                 >
-                  <option value="" disabled>Select Average Daily Gain</option>
-                  <option value="0">0 kg (Maintenance)</option>
-                  <option value="0.25">0.25 kg</option>
-                  <option value="0.5">0.50 kg</option>
-                  <option value="0.75">0.75 kg</option>
-                  <option value="1">1 kg</option>
+                  <option value="" disabled>{t('Select Average Daily Gain')}</option>
+                  <option value="0">{t('0 kg (Maintenance)')}</option>
+                  <option value="0.25">{t('0.25 kg')}</option>
+                  <option value="0.5">{t('0.50 kg')}</option>
+                  <option value="0.75">{t('0.75 kg')}</option>
+                  <option value="1">{t('1 kg')}</option>
                 </select>
                 </div>
               )}
 
               {formData.animal_group === 'Cow | Inahing kalabaw' && (
                 <div className="form-control w-full">
-                  <label className="label"><span className="label-text">Lactation Stage</span></label>
+                  <label className="label"><span className="label-text">{t('Lactation Stage')}</span></label>
                   <select name="is_lactating" value={formData.is_lactating} onChange={handleChange} className="select select-bordered w-full rounded-xl">
-                    <option value="Not Lactating">Dry (Not Lactating)</option>
-                    <option value="Early Lactation (1-100 Days)">Early (1-100 Days)</option>
-                    <option value="Mid Lactation (101-200 Days)">Mid (101-200 Days)</option>
-                    <option value="Late Lactation (201-305 Days)">Late (201-305 Days)</option>
+                    <option value="Not Lactating">{t('Dry (Not Lactating)')}</option>
+                    <option value="Early Lactation (1-100 Days)">{t('Early (1-100 Days)')}</option>
+                    <option value="Mid Lactation (101-200 Days)">{t('Mid (101-200 Days)')}</option>
+                    <option value="Late Lactation (201-305 Days)">{t('Late (201-305 Days)')}</option>
                   </select>
                 </div>
               )}
@@ -316,9 +320,9 @@ function EditFormulationModal({
               {(formData.animal_group === 'Cow | Inahing kalabaw' || formData.animal_group === 'Heifer | Dumalaga') && (
                 <div className="form-control w-full flex flex-row items-center gap-3 pt-8">
                   <input type="checkbox" name="is_pregnant" checked={formData.is_pregnant} onChange={handleCheckBoxChange} className="checkbox checkbox-warning" />
-                  <label className="label p-0"><span className="label-text">Pregnant?</span></label>
+                  <label className="label p-0"><span className="label-text">{t('Pregnant?')}</span></label>
                   {formData.is_pregnant && (
-                    <input type="number" name="pregnant_phase" value={formData.pregnant_phase} onChange={handleChange} className="input input-bordered input-sm w-20 rounded-lg" placeholder="Mo." />
+                    <input type="number" name="pregnant_phase" value={formData.pregnant_phase} onChange={handleChange} className="input input-bordered input-sm w-20 rounded-lg" placeholder={t('Mo.')} />
                   )}
                 </div>
               )}
@@ -326,22 +330,22 @@ function EditFormulationModal({
               {formData.animal_group === "Cow | Inahing kalabaw" && (
                 <>
                   <div className="form-control w-full">
-                    <label className="label"><span className="label-text">Milk Yield (kg)</span></label>
+                    <label className="label"><span className="label-text">{t('Milk Yield (kg)')}</span></label>
                     <input type="number" name="milkYieldProgress" value={formData.milkYieldProgress[formData.milkYieldProgress.length-1]} onChange={handleChange} className="input input-bordered w-full rounded-xl" />
                   </div>
                   <div className="form-control w-full">
-                    <label className="label"><span className="label-text">Fat/Protein %</span></label>
+                    <label className="label"><span className="label-text">{t('Fat/Protein %')}</span></label>
                     <input type="number" name="fat_content" value={formData.fat_content} onChange={handleChange} className="input input-bordered w-full rounded-xl" />
                   </div>
                   <div className="form-control w-full">
-                    <label className="label"><span className="label-text">Milk Price (Php)</span></label>
+                    <label className="label"><span className="label-text">{t('Milk Price (Php)')}</span></label>
                     <input type="number" name="milk_price" value={formData.milk_price} onChange={handleChange} className="input input-bordered w-full rounded-xl" />
                   </div>
                 </>
               )}
 
               <div className="form-control w-full md:col-span-2 lg:col-span-3">
-                <label className="label"><span className="label-text">Description</span></label>
+                <label className="label"><span className="label-text">{t('Description')}</span></label>
                 <textarea name="description" value={formData.description} onChange={handleChange} className="textarea textarea-bordered w-full rounded-xl" rows="2" maxLength="60"></textarea>
               </div>
             </div>
@@ -349,14 +353,14 @@ function EditFormulationModal({
 
           {/* Footer Actions - Fixed with Amber Theme */}
           <div className="modal-action p-6 pt-2 bg-white border-t">
-            <button type="button" className="btn rounded-xl px-8" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn rounded-xl px-8" onClick={onClose}>{t('Cancel')}</button>
             <button type="submit" className={`btn rounded-xl bg-amber-500 hover:bg-amber-600 px-8 text-white border-none ${isDisabled ? 'bg-amber-200' : ''}`} disabled={isDisabled}>
-              {isDisabled ? 'Updating...' : 'Update'}
+              {isDisabled ? t('Updating...') : t('Update')}
             </button>
           </div>
         </form>
       </div>
-      <form method="dialog" className="modal-backdrop"><button onClick={onClose}>close</button></form>
+      <form method="dialog" className="modal-backdrop"><button onClick={onClose}>{t('close')}</button></form>
     </dialog>
   )
 }

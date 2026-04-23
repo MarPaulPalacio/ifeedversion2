@@ -4,7 +4,7 @@ import Info from '../../icons/Info.jsx'
 // Adjust this import based on your translation library
 import { useTranslation } from 'react-i18next'
 
-function ReportGenerationModal({ isOpen, onClose, onGenerate, userAccess, formulation, owner, weight, shadowPrices, isCustomizationModalOpen, setIsCustomizationModalOpen }) {
+function ReportGenerationModal({ isOpen, onClose, onGenerate, userAccess, formulation, owner, weight, shadowPrices, isCustomizationModalOpen, setIsCustomizationModalOpen, ispercentcompute }) {
   const { t } = useTranslation()
   const [formData, setFormData] = useState({
     showEmptyValues: false,
@@ -22,10 +22,14 @@ function ReportGenerationModal({ isOpen, onClose, onGenerate, userAccess, formul
     e.preventDefault()
     setIsGenerating(true)
 
+    console.log("Form Data on submit:", formData)
+    console.log("Formulation on submit:", formulation)
+    console.log("weight on submit:", weight)
+
     try {
       console.log("FoRMAS DFS", formData)
       console.log("Form Data on submit weight:", weight)
-      await onGenerate(formData, formulation, owner, shadowPrices, weight)
+      await onGenerate(formData, formulation, owner, shadowPrices, weight, ispercentcompute)
       setError('')
       onClose() // Close the modal after successful generation
     } catch (err) {
@@ -141,8 +145,9 @@ function ReportGenerationModal({ isOpen, onClose, onGenerate, userAccess, formul
                 className="select select-bordered select-sm w-full rounded-xl text-xs"
                 disabled={isGenerating}
               >
+                <option value="valueHighToLow" default>{t("High-Low")}</option>
                 <option value="alphabetical">{t("A-Z")}</option>
-                <option value="valueHighToLow">{t("High-Low")}</option>
+                
                 <option value="valueLowToHigh">{t("Low-High")}</option>
               </select>
             </div>

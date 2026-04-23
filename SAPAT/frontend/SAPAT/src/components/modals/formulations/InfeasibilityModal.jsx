@@ -106,11 +106,11 @@ function InfeasibilityModal({ isOpen, onClose, diagnosisData }) {
                         <div className="flex gap-4 mb-3 text-xs">
                             <div>
                             <p className="text-gray-400">{t("Required")}</p>
-                            <p className="font-semibold text-gray-700">{gap.required?.toLocaleString()} {ispercent ? '%' : 'g'}</p>
+                            <p className="font-semibold text-gray-700">{gap.required?.toLocaleString()} {ispercent ? 'g' : 'g'}</p>
                             </div>
                             <div>
                             <p className="text-gray-400">{t("Max possible")}</p>
-                            <p className="font-semibold text-gray-700">{gap.maxPossible?.toLocaleString()} {ispercent ? '%' : 'g'}</p>
+                            <p className="font-semibold text-gray-700">{gap.maxPossible?.toLocaleString()} {ispercent ? 'g' : 'g'}</p>
                             </div>
                         </div>
                         <div className="bg-white rounded-full h-1.5 overflow-hidden mb-1">

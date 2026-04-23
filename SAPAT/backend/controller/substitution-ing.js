@@ -152,6 +152,7 @@ const suggestSubstitute = async (req, res) => {
     // 6. Filter pool for candidates in the SAME cluster (excluding the target itself)
     const candidates = formattedIngredients.filter(ing => 
       ing.clusterId === targetIngredient.clusterId && 
+      ing.group === targetIngredient.group &&
       ing.ingredient_id !== targetIngredient.ingredient_id
     );
 

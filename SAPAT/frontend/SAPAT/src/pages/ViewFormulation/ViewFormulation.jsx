@@ -535,6 +535,7 @@ function ViewFormulation({
         totalWeight: amountFed,
         totalCost: optimizedCost / 1000,
       });
+      console.log("Optimization results:", res.data);
       setIsResultsModalOpen(true);
       setIsDirty(false)
       setMessage(t('Formulation Creator'))
@@ -818,27 +819,27 @@ function ViewFormulation({
   }
 
   const handleNutrientMinimumChange = (index, value) => {
-    if (ispercentcompute === false){
+    
       value === 'N/A' || value === ''
       ? updateNutrientProperty(index, 'minimum', 0)
       : updateNutrientProperty(index, 'minimum', value)
-    } else {
+
       value === 'N/A' || value === ''
       ? updatePercentNutrientProperty(index, 'minimum', 0)
       : updatePercentNutrientProperty(index, 'minimum', value)
-    }
+ 
   }
 
   const handleNutrientMaximumChange = (index, value) => {
-    if (ispercentcompute === false){
+
       value === 'N/A' || value === ''
       ? updateNutrientProperty(index, 'maximum', 0)
       : updateNutrientProperty(index, 'maximum', value)
-    } else {
+
       value === 'N/A' || value === ''
         ? updatePercentNutrientProperty(index, 'maximum', 0)
         : updatePercentNutrientProperty(index, 'maximum', value)
-    }
+
   }
 
   const renderIngredientsTableRows = (group) => {
@@ -1361,6 +1362,7 @@ function ViewFormulation({
             </ul>
           </div>
           )}
+          
             <GenerateReport className='z-[9999]'
                   userAccess={userAccess}
                   formulation={formulationRealTime}
@@ -1396,7 +1398,7 @@ function ViewFormulation({
                 <RiMore2Fill size={20} className="text-deepbrown" />
               </div>
               <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[100] w-48 p-2 shadow-xl border border-base-200 mt-2">
-                <li><button className="text-xs" onClick={() => setShadowPricingTabOpen(true)}><RiLineChartLine /> {t('Shadow Prices')}</button></li>
+                {/* <li><button className="text-xs" onClick={() => setShadowPricingTabOpen(true)}><RiLineChartLine /> {t('Shadow Prices')}</button></li> */}
                 {formulation.animal_group !=="Calf (0-4 months) - lower than 100kg | Bulo (0 - 4 na buwan)" && (
                   <li><button className="text-xs" onClick={() => setAdvancedPressed(!advancedPressed)}><RiSettings4Line /> {advancedPressed ? t('Show Basic') : t('Show Advanced')}</button></li>
                 )}
@@ -1730,7 +1732,7 @@ function ViewFormulation({
           {/* Vitamins Table */}
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
               <div className="p-4">
-                <h3 className="mb-2 text-sm font-semibold">{t('Mineral Supplement (Approx. 3% of total feed)')}</h3>
+                <h3 className="mb-2 text-sm font-semibold">{t('Mineral Supplement (Maximum 3% of total feed, can be zero if mineral block is supplemented)')}</h3>
                 <p className="flex text-xs text-gray-500 mb-3">
                   <Info /> {t('Contains Minerals.')}
                 </p>
@@ -2017,7 +2019,7 @@ function ViewFormulation({
                       <th>{t('Name')}</th>
                       <th>{t('Min (g)')}</th>
                       <th>{t('Max (g)')}</th>
-                      <th>{ispercentcompute ? t('Amount (%)') : t('Amount (kg)')}</th>
+                      <th>{ispercentcompute ? t('Amount (g)') : t('Amount (g)')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2080,7 +2082,7 @@ function ViewFormulation({
                             <Selections id={`nutrient-${index}-maximum`} others={others} />
                           </div>
                         </td>
-                        <td className="text-gray-600">{nutrient.value.toFixed(3)}</td>
+                        <td className="text-gray-600">{nutrient.value.toFixed(3)} g</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2127,7 +2129,7 @@ function ViewFormulation({
             </div>
 
             {/* Nutrient Ratio Constraints Table */}
-            {constraintMode !== 'percent' && (
+            {/* {constraintMode !== 'percent' && (
             
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white mt-4">
               <div className="p-4 flex items-center justify-between">
@@ -2163,7 +2165,7 @@ function ViewFormulation({
                 </table>
               </div>
             </div>
-            )}
+            )} */}
             
             </>
             )}
@@ -2321,6 +2323,18 @@ function ViewFormulation({
         }
         ispercentcompute={ispercentcomputeLast}
       />
+      {ispercentcompute ? <UserCustomizationModal
+        isOpen={isCustomizationModalOpen}
+        onClose={() => setIsCustomizationModalOpen(false)}
+        onGenerate={handleGenerateReport}
+        userAccess={userAccess}
+        formulation={percentFormulationRealTime}
+        owner={owner}
+        weight={weight}
+        shadowPrices={shadowPrices}
+        isCustomizationModalOpen={isCustomizationModalOpen}
+        setIsCustomizationModalOpen={setIsCustomizationModalOpen}
+      />:
       <UserCustomizationModal
         isOpen={isCustomizationModalOpen}
         onClose={() => setIsCustomizationModalOpen(false)}
@@ -2333,6 +2347,9 @@ function ViewFormulation({
         isCustomizationModalOpen={isCustomizationModalOpen}
         setIsCustomizationModalOpen={setIsCustomizationModalOpen}
       />
+    
+    }
+      
       <EditFormulationModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}

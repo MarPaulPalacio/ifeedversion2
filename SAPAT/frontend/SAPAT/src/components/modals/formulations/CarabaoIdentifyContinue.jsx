@@ -272,6 +272,8 @@ function CarabaoIdentifyContinue({
 
       
       const milkyield = formData.milk_yield ? parseFloat(formData.milk_yield) : 0;
+      const avgGain = formData.average_daily_gain ? parseFloat(formData.average_daily_gain) : '';
+
       if (carabaoConfiguration.multipleCarabaos=== true && carabaoConfiguration.temporaryNameArray!==null && carabaoConfiguration.temporaryNameArray.length !==0 && identifyCurrentCarabaoPhase()!==null && carabaoConfiguration.sameConfigTypeArray.includes(identifyCurrentCarabaoPhase()[1])){
         await Promise.all(
           carabaoConfiguration.temporaryNameArray.map(async (element) => {
@@ -280,7 +282,7 @@ function CarabaoIdentifyContinue({
               name: element,
             };
             
-            const body = { ...updatedFormData, dmintake, ownerId, ownerName, userType, bodynutrient_constraints, nutrients, milkyield};
+            const body = { ...updatedFormData, dmintake, ownerId, ownerName, userType, bodynutrient_constraints, nutrients, milkyield, avgGain};
             
             const res = await axios.post(`${import.meta.env.VITE_API_URL}/formulation`, body);
             let newFormulation = res.data.formulations;
@@ -291,7 +293,8 @@ function CarabaoIdentifyContinue({
         carabaoConfiguration.currentCarabaoCreation += carabaoConfiguration.carabaoPhases[identifyCurrentCarabaoPhase()[1]]
       } else {
         console.log("Form Data for single carabao:", formData)
-        const body = { ...formData, dmintake, ownerId, ownerName, userType, bodynutrient_constraints, nutrients, milkyield};
+        
+        const body = { ...formData, dmintake, ownerId, ownerName, userType, bodynutrient_constraints, nutrients, milkyield, avgGain};
         const res = await axios.post(`${import.meta.env.VITE_API_URL}/formulation`, body);
         let newFormulation = res.data.formulations
         newFormulation.access = 'owner'

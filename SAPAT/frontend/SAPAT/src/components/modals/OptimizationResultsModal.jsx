@@ -22,11 +22,9 @@ const OptimizationResultsModal = ({
   const formatNum = (val, decimals = 2) => Number(val || 0).toFixed(decimals);
 
   const getAchievedTotal = (nutrientList, targetName, totalweight) => {
-    console.log(nutrientList, "NUTRIENT LIST HERE")
     if (!nutrientList || !Array.isArray(nutrientList)) return 0;
     const n = nutrientList.find(nut => nut.name?.toLowerCase().includes(targetName.toLowerCase()));
 
-    console.log("Achieved Total", n)
     if (ispercentcompute){
       return n ? Number(n.value|| 0) : 0;
     }
@@ -98,7 +96,7 @@ const OptimizationResultsModal = ({
 
         // Construct the final comprehensive prompt
         const promptString = `Analyze this feed formulation. ${animalGroup} ${desc} ${pregnant} ${lactating} Ingredients: ${ingredientSummary}. Total Weight: ${results.totalWeight}kg. Nutrients Breakdown: ${nutrientSummary}. 
-        Is this balanced? Tell me if the ingredient mix is good. Provide a short 3-sentence expert summary with both positive and negative aspects.`.trim().replace(/\s+/g, ' ');
+        Is this balanced? Tell me if the ingredient mix is good. Provide a short 3-sentence expert summary with both positive and negative aspects. Use normal typings. remove emojis, and also bold italic or any other text styles`.trim().replace(/\s+/g, ' ');
 
         const response = await fetch(`${import.meta.env.VITE_API_URL}/gemini`, {
           method: 'POST',

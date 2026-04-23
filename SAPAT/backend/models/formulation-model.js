@@ -48,6 +48,8 @@ const formulationSchema = new Schema({
     // Tags used to identify the formulation, e.g. lactating, maintenance, etc.
     tags: { type: [String], default: [] },
 
+    avgGain: { type: String, default: '' },
+
     pregnant_phase: {type: String, default: '' },
 
     lactating_phase: {type: String, default: ''},

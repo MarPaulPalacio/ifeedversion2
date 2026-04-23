@@ -32,7 +32,8 @@ const createIngredient = async (req, res) => {
       image: {
         url: image?.url || '',
         public_id: image?.public_id || ''
-      }
+      },
+      constraint: 0
     });
 
     res.status(200).json({ message: 'success', ingredients: newIngredient });
@@ -60,6 +61,7 @@ const getAllIngredients = async (req, res) => {
         ...data,
         price: Number(data.price).toFixed(2),
         group: data.group || 'Uncategorized',
+        constraint: Number(data.constraint)
       };
     })
 
@@ -130,6 +132,7 @@ const getIngredientsByIds = async (req, res) => {
         ...data,
         price: Number(data.price).toFixed(2),
         group: data.group || 'Uncategorized',
+        constraint: Number(data.constraint)
       };
     });
 
@@ -218,7 +221,7 @@ const getIngredientsByFilters = async (req, res) => {
 const updateIngredient = async (req, res) => {
   const { id, userId } = req.params;
   // 1. Add 'image' to the destructured body
-  const { name, price, available, group, description, nutrients, image } = req.body;
+  const { name, price, available, group, description, nutrients, image, constraint } = req.body;
   
   try {
     const ingredient = await Ingredient.findById(id);
@@ -241,7 +244,8 @@ const updateIngredient = async (req, res) => {
           url: image.url || '',
           public_id: image.public_id || ''
         };
-      }
+      };
+      if (constraint) ingredient.constraint = constraint;
 
       const updatedIngredient = await ingredient.save();
       res.status(200).json({ message: 'success', ingredients: updatedIngredient });
@@ -259,7 +263,8 @@ const updateIngredient = async (req, res) => {
         nutrients, 
         id, 
         userId,
-        image // Pass image here
+        image, // Pass image here
+        constraint
       );
       res.status(200).json({ message: 'success', ingredients: updatedIngredient });
     }

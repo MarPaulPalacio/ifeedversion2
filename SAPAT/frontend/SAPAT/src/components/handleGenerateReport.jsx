@@ -1,7 +1,7 @@
 import { RiFileChartLine } from 'react-icons/ri'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
-const handleGenerateReport = async (customization, formulation, owner, shadowPrices, weight) => {
+const handleGenerateReport = async (customization, formulation, owner, shadowPrices, weight, ispercentcompute) => {
     // Create a new PDFDocument
     const pdfDoc = await PDFDocument.create()
     
@@ -62,6 +62,8 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
         sortedIngredients.sort((a, b) => a.name.localeCompare(b.name))
     }
 
+    console.log("Ingredients before filter:", sortedIngredients)
+    console.log("showEmptyValues:", showEmptyValues)
     // Filter out empty values if specified
     if (!showEmptyValues) {
       sortedIngredients = sortedIngredients.filter(ing => ing.value > 0)
@@ -170,7 +172,7 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
       { label: 'Description:', value: formulation.description },
       { label: 'Animal Group:', value: formulation.animal_group },
       { label: 'Created by:', value: owner.displayName || 'N/A' },
-      { label: 'Total Cost:', value: `PHP ${totalCost.toFixed(roundingPrecision)} per ${formulation.weight}kg` },
+      { label: 'Total Cost:', value: `PHP ${totalCost.toFixed(roundingPrecision)/1000} per ${formulation.weight}kg` },
     ]
     // console.log("Ingredients Present here ", Ingredients)
 
@@ -321,6 +323,7 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
     // Draw ingredients rows (using sorted ingredients)
     console.log(sortedIngredients, "SORTED INGREDIENTS HERE")
     sortedIngredients.forEach((ing) => {
+      console.log("Drawing ingredient:", ing.name, "at yPosition:", yPosition)
       page.drawText(ing.name, {
         x: nameX,
         y: yPosition,
@@ -345,6 +348,8 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
       //   color: textColor,
       // })
 
+      if (ispercentcompute === false) {
+
       page.drawText((ing.value).toFixed(roundingPrecision).toString() + " kilograms", {
         x: valX,
         y: yPosition,
@@ -352,6 +357,15 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
         font: timesRomanFont,
         color: textColor,
       })
+    } else {
+      page.drawText((ing.value).toFixed(roundingPrecision).toString() + " %", {
+        x: valX,
+        y: yPosition,
+        size: bodyFontSize,
+        font: timesRomanFont,
+        color: textColor,
+      })
+    }
 
       yPosition -= lineHeight
 
@@ -455,25 +469,36 @@ const handleGenerateReport = async (customization, formulation, owner, shadowPri
       //   color: textColor,
       // })
 
-      if (nutrient.name === "Total Digestible Nutrients" || nutrient.name ==="Dry Matter") {
-        page.drawText(
-        ((nutrient.value/1000).toFixed(roundingPrecision)).toString() + " kilograms", {
+      if(ispercentcompute ===false){
+        if (nutrient.name === "Total Digestible Nutrients" || nutrient.name ==="Dry Matter") {
+          page.drawText(
+          ((nutrient.value/1000).toFixed(roundingPrecision)).toString() + " kilograms", {
+          x: valX,
+          y: yPosition,
+          size: bodyFontSize,
+          font: timesRomanFont,
+          color: textColor,
+          })
+        } else {
+          page.drawText(
+          nutrient.value.toFixed(roundingPrecision).toString() + " grams", {
+          x: valX,
+          y: yPosition,
+          size: bodyFontSize,
+          font: timesRomanFont,
+          color: textColor,
+          })
+        }
+    } else {
+      page.drawText(
+        ((nutrient.value / (formulation.weight * 1000))*100).toFixed(roundingPrecision).toString() + " %", {
         x: valX,
         y: yPosition,
         size: bodyFontSize,
         font: timesRomanFont,
         color: textColor,
         })
-      } else {
-        page.drawText(
-        nutrient.value.toFixed(roundingPrecision).toString() + " grams", {
-        x: valX,
-        y: yPosition,
-        size: bodyFontSize,
-        font: timesRomanFont,
-        color: textColor,
-        })
-      }
+    }
       
 
       yPosition -= lineHeight

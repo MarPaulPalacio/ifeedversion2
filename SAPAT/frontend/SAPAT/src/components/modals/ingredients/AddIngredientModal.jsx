@@ -18,6 +18,7 @@ function AddIngredientModal({
     description: '',
     image: { url: '', public_id: '' },
     nutrients: [],
+    constraint: 0
   }
 
   const [formData, setFormData] = useState(initialFormState)
@@ -181,6 +182,10 @@ function AddIngredientModal({
               <div className="form-control">
                 <label className="label-text">Price (PHP/kg)</label>
                 <input type="number" name="price" value={formData.price} onChange={handleChange} className="input input-bordered rounded-xl" required />
+              </div>
+              <div className="form-control">
+                <label className="label-text">Hard Max Constraint % (optional)</label>
+                <input type="text" name="constraint" value={formData.constraint} onChange={handleChange} className="input input-bordered rounded-xl" />
               </div>
               <div className="form-control">
                 <label className="label-text">Available</label>

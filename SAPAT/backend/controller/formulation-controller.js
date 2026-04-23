@@ -12,7 +12,7 @@ import mongoose from 'mongoose';
 const createFormulation = async (req, res) => {
     const {
         code, name, description, animal_group, body_weight, ownerId, ownerName, 
-        nutrients, dmintake, milkyield, fat_protein_content, is_lactating, months_pregnant
+        nutrients, dmintake, milkyield, fat_protein_content, is_lactating, months_pregnant, avgGain
     } = req.body;
     try {
         const owner = await User.findById(ownerId);
@@ -23,7 +23,7 @@ const createFormulation = async (req, res) => {
             isTemplate, nutrients, weight:' ', dmintake:parseFloat(dmintake),
             weightProgress: [parseInt(body_weight)], milkYieldProgress: [milkyield], 
             typeProgress: [animal_group], dateProgress: [new Date()], body_weight:parseInt(body_weight),
-            fat_content:fat_protein_content, lactating_phase: is_lactating, pregnant_phase: months_pregnant, origNutrientTargets: nutrients
+            fat_content:fat_protein_content, lactating_phase: is_lactating, pregnant_phase: months_pregnant, origNutrientTargets: nutrients, avgGain
         });
 
         const filteredFormulation = {
@@ -44,7 +44,8 @@ const createFormulation = async (req, res) => {
             "fat_content": fat_protein_content ? fat_protein_content: '',
             "lactating_phase": is_lactating ? is_lactating: '',
             "pregnant_phase": months_pregnant ? months_pregnant: '',
-            "origNutrientTargets": nutrients
+            "origNutrientTargets": nutrients,
+            "avgGain": avgGain ? avgGain : ''
         }
 
         await upsertGroupFormulation(newFormulation);
@@ -171,7 +172,8 @@ const getAllFormulations = async (req, res) => {
                 "body_weight": formulation.body_weight ? formulation.body_weight : 0,
                 "fat_content": formulation.fat_content ? formulation.fat_content: '',
                 "lactating_phase": formulation.lactating_phase ? formulation.lactating_phase: '',
-                "pregnant_phase": formulation.pregnant_phase ? formulation.pregnant_phase: ''
+                "pregnant_phase": formulation.pregnant_phase ? formulation.pregnant_phase: '',
+                "avgGain": formulation.avgGain ? formulation.avgGain : ''
             }
         })
 
@@ -324,7 +326,8 @@ const getFormulationByFilters = async (req, res) => {
                 "body_weight": formulation.body_weight ? formulation.body_weight : 0,
                 "fat_content": formulation.fat_content ? formulation.fat_content: '',
                 "lactating_phase": formulation.lactating_phase ? formulation.lactating_phase: '',
-                "pregnant_phase": formulation.pregnant_phase ? formulation.pregnant_phase: ''
+                "pregnant_phase": formulation.pregnant_phase ? formulation.pregnant_phase: '',
+                "avgGain": formulation.avgGain ? formulation.avgGain : ''
             }
         })
 
@@ -479,6 +482,7 @@ const formulation = await Formulation.findByIdAndUpdate(
       "fat_content": formulation.fat_content || '',
       "lactating_phase": formulation.lactating_phase || '',
       "pregnant_phase": formulation.pregnant_phase || '',
+      "avgGain": formulation.avgGain || ''
 
     };
 
@@ -934,14 +938,52 @@ const getBodyWeightRange = (bw) => {
 
         return 'none';
     };
+const generateGroupDescription = (formulation, bwCategory, pregnancyCategory) => {
+  let text = `Formulation for ${formulation.animal_group || 'animals'}`;
+  if (bwCategory) text += ` (${bwCategory} kg).`;
+  else text += `.`;
+
+  // Status sentence
+  const hasLactation = formulation.lactating_phase && formulation.lactating_phase !== 'Not Lactating';
+  const hasPregnancy = pregnancyCategory && pregnancyCategory !== 'Not Pregnant';
+  
+  if (hasLactation || hasPregnancy) {
+    text += ` Currently`;
+    if (hasLactation) text += ` in ${formulation.lactating_phase}`;
+    if (hasLactation && hasPregnancy) text += ` and`;
+    if (hasPregnancy) text += ` ${pregnancyCategory} pregnant.`;
+    else text += `.`;
+  }
+
+  // Targets sentence
+  if (formulation.avgGain || formulation.fat_content) {
+    text += ` Targeting`;
+    if (formulation.avgGain) text += ` an ADG of ${formulation.avgGain} kg`;
+    if (formulation.avgGain && formulation.fat_content) text += ` and`;
+    if (formulation.fat_content) text += ` milk fat of ${formulation.fat_content}%.`;
+    else text += `.`;
+  }
+
+  return text.trim().replace(/\s+/g, ' '); // Cleans up any double spaces
+};
 
 // Add Formulation in groupformulation.
 const upsertGroupFormulation = async (formulation) => {
   const bwCategory = getBodyWeightRange(formulation.body_weight);
   const pregnancyCategory = getPregnancyCategory(formulation.pregnant_phase);
+  const avgGain = formulation.avgGain || '';
+  const groupDescription = generateGroupDescription(formulation, bwCategory, pregnancyCategory);
+  const nameParts = [
+    formulation.animal_group,
+    bwCategory ? `Wt:${bwCategory}` : null,
+    formulation.fat_content ? `Fat:${formulation.fat_content}` : null,
+    formulation.lactating_phase && formulation.lactating_phase !== 'Not Lactating' ? formulation.lactating_phase : null,
+    pregnancyCategory !== 'Not Pregnant' ? pregnancyCategory : null, // Assuming you have a default like this
+    avgGain ? `ADG:${avgGain}` : null
+  ];
 
-  const groupName = `${formulation.animal_group}-Weight_${bwCategory}-Fat_${formulation.fat_content}-${formulation.lactating_phase}-${pregnancyCategory}`;
-
+  // 2. Filter out the nulls/empties and join with a clean separator
+  const groupName = nameParts.filter(Boolean).join(' | ');
   let group = await GroupFormulation.findOne({ name: groupName });
   console.log("COLLABORATORS HERE is there: ", formulation.collaborators)
   const formulationDetail = {
@@ -961,7 +1003,8 @@ const upsertGroupFormulation = async (formulation) => {
     milkYieldProgress: formulation.milkYieldProgress || [],
     typeProgress: formulation.typeProgress || [],
     dateProgress: formulation.dateProgress || [],
-    collaborators: formulation.collaborators || []
+    collaborators: formulation.collaborators || [],
+    avgGain: formulation.avgGain || ''
   };
   console.log("FORMULATION DETAIL: ", formulationDetail)
   if (group) {
@@ -985,7 +1028,7 @@ const upsertGroupFormulation = async (formulation) => {
         },
         $set: { 
             lastUpdated: new Date(),
-            description: groupName 
+            description: groupDescription
         },
         $setOnInsert: { 
             createdBy: formulation.collaborators?.[0]?.userId || null 
@@ -1038,10 +1081,19 @@ const getAllGroupFormulations = async (req, res) => {
 const upsertGroupFormulationForUpdate = async (formulation) => {
   const bwCategory = getBodyWeightRange(formulation.body_weight);
   const pregnancyCategory = getPregnancyCategory(formulation.pregnant_phase);
-  const fat = formulation.fat_content || 'none';
-  const lactating = formulation.lactating_phase || 'none';
+  const avgGain = formulation.avgGain || '';
+  const groupDescription = generateGroupDescription(formulation, bwCategory, pregnancyCategory);
+  const nameParts = [
+    formulation.animal_group,
+    bwCategory ? `Wt:${bwCategory}` : null,
+    formulation.fat_content ? `Fat:${formulation.fat_content}` : null,
+    formulation.lactating_phase && formulation.lactating_phase !== 'Not Lactating' ? formulation.lactating_phase : null,
+    pregnancyCategory !== 'Not Pregnant' ? pregnancyCategory : null, // Assuming you have a default like this
+    avgGain ? `ADG:${avgGain}` : null
+  ];
 
-  const newGroupName = `${formulation.animal_group}-Weight_${bwCategory}-${fat? "Fat_":''}${fat}-${lactating}-${pregnancyCategory}`;
+  // 2. Filter out the nulls/empties and join with a clean separator
+  const newGroupName = nameParts.filter(Boolean).join(' | ');
 
   // Copy the formulation details to store in the group
   const formulationDetail = {
@@ -1062,6 +1114,7 @@ const upsertGroupFormulationForUpdate = async (formulation) => {
     typeProgress: formulation.typeProgress || [],
     dateProgress: formulation.dateProgress || [],
     origNutrientTargets: formulation.origNutrientTargets || [],
+    avgGain: formulation.avgGain || '',
   };
 
   // Find the current group the formulation belongs to
@@ -1093,9 +1146,10 @@ const upsertGroupFormulationForUpdate = async (formulation) => {
     if (!newGroup) {
       newGroup = await GroupFormulation.create({
         name: newGroupName,
-        description: newGroupName,
+        description: groupDescription,
         formulations: [formulation._id],
         formulationDetails: [formulationDetail],
+
         createdBy: formulation.collaborators?.[0]?.userId || null,
       });
     } else {

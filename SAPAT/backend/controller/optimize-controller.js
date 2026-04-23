@@ -61,14 +61,18 @@ const canAddFromGroup = (ingredientGroup, availableGroups) => {
 
 
 // Enhanced version that considers actual maxPossible calculation
-const suggestByGroupEnhanced = (nutrientGaps, ingredientsData, currentIngredients, constraints, type) => {
+const suggestByGroupEnhanced = (
+  nutrientGaps, ingredientsData, currentIngredients, 
+  constraints, type,
+  nutrientsRequest = []   // ← ADD THIS
+) => {
   const isPercentMode = type === 'percent';
   const currentIngredientIds = currentIngredients.map(ing => ing.ingredient_id.toString());
 
   const forageConstraint = constraints.find(c => c.name.includes("Grasses & Legumes"));
   const byproductConstraint = constraints.find(c => c.name.includes("Byproducts"));
-  const forageMin = isPercentMode ? Number(forageConstraint?.bnds.lb || 60) : Number(forageConstraint?.bnds.lb || 0);
-  const byproductMax = isPercentMode ? Number(byproductConstraint?.bnds.ub || 40) : Number(byproductConstraint?.bnds.ub || 100000);
+  const forageMin = isPercentMode ? Number(forageConstraint?.bnds.lb || 70) : Number(forageConstraint?.bnds.lb || 0);
+  const byproductMax = isPercentMode ? Number(byproductConstraint?.bnds.ub || 30) : Number(byproductConstraint?.bnds.ub || 100000);
 
   // ✅ Build a map: nutrientName -> nutrientId, from the constraints themselves
   // constraints were built from nutrients[] which has both .name and .nutrient_id
@@ -136,56 +140,14 @@ const suggestByGroupEnhanced = (nutrientGaps, ingredientsData, currentIngredient
 
   // ✅ For each nutrient name, try ALL nutrient subdoc positions and pick the one
   // whose values correlate with the constraint coefs across selected ingredients
-  const buildNutrientIdMap = () => {
+const buildNutrientIdMap = () => {
   const map = {};
-
   nutrientGaps.forEach(gap => {
-    const nutrientName = gap.nutrient;
-    const matchingConstraint = constraints.find(c => c.name === nutrientName);
-    if (!matchingConstraint) return;
-
-    // Find a selected ingredient with non-zero coef for this nutrient constraint
-    const selectedVarWithCoef = matchingConstraint.vars.find(v => v.coef > 0);
-    if (!selectedVarWithCoef) return;
-
-    const selectedIng = ingredientsData.find(i => i.name === selectedVarWithCoef.name);
-    if (!selectedIng) return;
-
-    const knownCoef = selectedVarWithCoef.coef;
-
-    // Get DM coef for same ingredient from DM constraint
-    const dmVarCoef = dmConstraint?.vars.find(v => v.name === selectedVarWithCoef.name)?.coef || 1;
-
-    // In absolute mode: coef = dmDecimal * rawValue → rawValue = coef / dmDecimal = coef / dmVarCoef
-    // In percent mode:  coef = percentScale * dmDecimal * rawValue → rawValue = coef / (percentScale * dmVarCoef)
-    // But dmVarCoef in absolute = dmDecimal, in percent = percentScale * dmDecimal
-    // So in BOTH cases: rawValue = knownCoef / dmVarCoef  ✅
-    const expectedRawValue = knownCoef / dmVarCoef;
-
-    console.log(`[buildNutrientIdMap] ${nutrientName}: knownCoef=${knownCoef}, dmVarCoef=${dmVarCoef}, expectedRawValue=${expectedRawValue.toFixed(4)}`);
-
-    // Find which nutrient ObjectId matches this rawValue
-    let bestMatch = null;
-    let bestDiff = Infinity;
-
-    selectedIng.nutrients.forEach(n => {
-      const diff = Math.abs((n.value || 0) - expectedRawValue);
-      console.log(`  [buildNutrientIdMap] checking nutrient ${n.nutrient}: value=${n.value}, diff=${diff.toFixed(4)}`);
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestMatch = n.nutrient?.toString();
-      }
-    });
-
-    // ✅ Relaxed threshold from 0.05 to 0.15 to handle rounding
-    if (bestMatch && bestDiff < 0.15) {
-      map[nutrientName] = bestMatch;
-      console.log(`[buildNutrientIdMap] ✅ ${nutrientName} → ${bestMatch} (diff: ${bestDiff.toFixed(4)})`);
-    } else {
-      console.log(`[buildNutrientIdMap] ❌ ${nutrientName} → no match (bestDiff: ${bestDiff?.toFixed(4)})`);
+    const nutrientReq = nutrientsRequest.find(n => n.name === gap.nutrient);
+    if (nutrientReq?.nutrient_id) {
+      map[gap.nutrient] = nutrientReq.nutrient_id;
     }
   });
-
   return map;
 };
 
@@ -304,6 +266,7 @@ nutrientGaps.forEach(gap => {
   console.log(`  Top 3 by rawValue:`, allCandidates.sort((a,b) => b.rawValue - a.rawValue).slice(0,3).map(c => `${c.name}: ${c.rawValue}`));
 });
     // Determine strategy
+    // AFTER
     const highForages = allCandidates.filter(c =>
       (c.group === 'Grass' || c.group === 'Legumes') &&
       c.nutrientContent >= nutrientThreshold.forage
@@ -312,16 +275,23 @@ nutrientGaps.forEach(gap => {
       (c.group === 'Industrial by-products' || c.group === 'Agricultural by-products') &&
       c.nutrientContent >= nutrientThreshold.byproduct
     );
+    // VM supplements are always considered if they have any value for the nutrient
+    const highVitaminMinerals = allCandidates.filter(c =>
+      c.group === 'Vitamin-Mineral' &&
+      c.nutrientContent > 0
+    );
 
     let targetGroups = [];
     let strategy = "";
     if (highForages.length > 0) { targetGroups.push('forage'); strategy = `Replace current forage with higher-${nutrientName} forage`; }
     if (highByproducts.length > 0 && byproductMax > 0) { targetGroups.push('byproduct'); strategy += (strategy ? " OR " : "") + `Add high-${nutrientName} byproducts (up to ${byproductMax}%)`; }
+    if (highVitaminMinerals.length > 0) { targetGroups.push('vitaminMineral'); strategy += (strategy ? " OR " : "") + `Add ${nutrientName} supplement (Vitamin-Mineral, up to 3%)`; }
     if (targetGroups.length === 0) strategy = `Add any ingredients high in ${nutrientName}`;
 
-    // Filter and rank
+    // Filter and rank — VM ingredients bypass the minimum threshold since even small amounts help
     let filtered = allCandidates
       .filter(c => {
+        if (c.groupCategory === 'vitaminMineral') return c.nutrientContent > 0; // no threshold for supplements
         if (targetGroups.length > 0 && !targetGroups.includes(c.groupCategory)) return false;
         return c.nutrientContent >= nutrientThreshold.minimum;
       })
@@ -336,7 +306,6 @@ nutrientGaps.forEach(gap => {
         .sort((a, b) => b.nutrientContent - a.nutrientContent)
         .slice(0, 5);
     }
-
     console.log(`  Final (${filtered.length}):`, filtered.map(f => `${f.name} ${f.nutrientPercentage}%`));
 
     if (filtered.length > 0) {
@@ -438,7 +407,7 @@ const suggestIngredients = (nutrientGaps, ingredientsData, currentIngredients) =
  * Smart structural diagnosis - FULL GROUP-AWARE VERSION
  * Now properly respects all group constraints when checking feasibility
  */
-const smartDiagnosis = (constraints, variableBounds, type) => {
+const smartDiagnosis = (constraints, variableBounds, type, ingredientsData = [], solverVars = null) => {
   const issues = [];
   const isPercentMode = type === 'percent';
 
@@ -468,14 +437,95 @@ const smartDiagnosis = (constraints, variableBounds, type) => {
       });
     }
   }
+  // Check if forage minimum + high-CP legumes conflict with nutrient maximums
+  if (isPercentMode && solverVars) {
+  constraints
+    .filter(c => !c.name.includes("Group:") && !c.name.includes("Total Mixture") && !c.name.includes("Ratio:"))
+    .forEach(nutrientC => {
+      if (!nutrientC.bnds?.ub || nutrientC.bnds.ub <= 0) return;
+      const ub = nutrientC.bnds.ub;
+
+      // Compute the actual nutrient value from the solver's last (infeasible) solution
+      let actualValue = 0;
+      nutrientC.vars.forEach(v => {
+        const solverVal = solverVars[v.name] || 0;
+        actualValue += v.coef * solverVal;
+      });
+
+      if (actualValue > ub * 1.0) {
+        issues.push({
+          type: 'group_nutrient_conflict',
+          severity: 'critical',
+          message: `${nutrientC.name} is ${actualValue.toFixed(1)}g in the best attempted solution, exceeding the maximum of ${ub.toFixed(1)}g.`,
+          recommendation: `Remove high-${nutrientC.name} ingredients (especially legumes), reduce their percentage, or increase the ${nutrientC.name} maximum.`
+        });
+      }
+    });
+}
+
+
+
 
   console.log(`🔍 [SmartDiagnosis] Finished - Found ${issues.length} issue(s)`);
   return issues;
 };
 
-const diagnoseNutrientShortages = (constraints, ingredientsData, selectedIngredients, type, percentScale = 1, dmTarget) => {
+/**
+ * Resolve the DM nutrient ObjectId from ingredientsData using either:
+ *  - a provided dmNutrientId (fastest path), or
+ *  - scanning ingredient nutrient subdocs for a value in the 0.1–1.0 range
+ *    that matches an expected dmDecimal derived from the dmVarCoef.
+ */
+const resolveDMNutrientId = (ingredientsData, dmNutrientId, dmVars) => {
+  if (dmNutrientId) return dmNutrientId;
+ 
+  // Fallback: use the first selected ingredient's dm var coef to find which subdoc it is
+  if (dmVars?.length > 0) {
+    const sel = dmVars.find(v => v.coef > 0);
+    if (sel) {
+      const selIng = ingredientsData.find(i => i.name === sel.name);
+      if (selIng) {
+        let bestId = null, bestDiff = Infinity;
+        selIng.nutrients.forEach(n => {
+          const diff = Math.abs((n.value || 0) - sel.coef);
+          if (diff < bestDiff) { bestDiff = diff; bestId = n.nutrient?.toString(); }
+        });
+        if (bestDiff < 0.15) return bestId;
+      }
+    }
+  }
+  return null;
+};
+
+/**
+ * Build a synthetic DM constraint vars array from ingredientsData + dmNutrientId.
+ * Used when the real DM constraint was filtered out (percent mode).
+ * Returns an array of { name, coef } where coef = dmDecimal for each selected ingredient.
+ */
+const buildSyntheticDMVars = (selectedIngredients, ingredientsData, dmNutrientId) => {
+  return selectedIngredients.map(ing => {
+    const ingData = ingredientsData.find(d =>
+      d._id?.toString() === (ing.ingredient_id || ing._id)?.toString() ||
+      d.name === ing.name
+    );
+    const dmEntry = dmNutrientId
+      ? ingData?.nutrients.find(n => n.nutrient?.toString() === dmNutrientId.toString())
+      : ingData?.nutrients.find(n => n.name?.toLowerCase().includes('dry matter') || n.name?.toLowerCase() === 'dm');
+    return {
+      name: ing.name,
+      coef: dmEntry?.value || 0.85
+    };
+  });
+};
+
+const diagnoseNutrientShortages = (
+  constraints, ingredientsData, selectedIngredients, 
+  type, percentScale = 1, dmTarget, dmNutrientId,
+  nutrientsRequest = []   // ← ADD THIS
+) => {
   const gaps = [];
   const isPercentMode = type === 'percent';
+  console.log('[diagnoseNutrientShortages] nutrientsRequest:', JSON.stringify(nutrientsRequest?.slice(0,2)));
 
   const nutrientConstraints = constraints.filter(c =>
     !c.name.includes("Group:") &&
@@ -486,82 +536,89 @@ const diagnoseNutrientShortages = (constraints, ingredientsData, selectedIngredi
   const forageConstraint = constraints.find(c => c.name.includes("Grasses & Legumes"));
   const byproductConstraint = constraints.find(c => c.name.includes("Byproducts"));
 
-  const forageMin = Number(forageConstraint?.bnds.lb || (isPercentMode ? 60 : 0));
-  const byproductMax = Number(byproductConstraint?.bnds.ub || (isPercentMode ? 40 : 100000));
+  const forageMin = Number(forageConstraint?.bnds.lb || (isPercentMode ? 70 : 0));
+  const byproductMax = Number(byproductConstraint?.bnds.ub || (isPercentMode ? 30 : 100000));
 
-  // ✅ Identify DM nutrient ID from the DM constraint's coefs
-  const dmConstraint = constraints.find(c =>
+  let dmConstraint = constraints.find(c =>
     c.name?.toLowerCase().includes("dry matter") || c.name?.toLowerCase() === "dm"
   );
 
+  if (!dmConstraint && isPercentMode) {
+    const syntheticVars = buildSyntheticDMVars(selectedIngredients, ingredientsData, dmNutrientId);
+    dmConstraint = {
+      name: 'Dry Matter',
+      vars: syntheticVars,
+      bnds: { lb: dmTarget, ub: dmTarget }
+    };
+    console.log('[diagnoseNutrientShortages] Using synthetic DM constraint, vars:', syntheticVars.map(v => `${v.name}:${v.coef}`));
+  }
+
+  const resolvedDMNutrientId = resolveDMNutrientId(ingredientsData, dmNutrientId, dmConstraint?.vars);
+  console.log('[diagnoseNutrientShortages] nutrientConstraints count:', nutrientConstraints.length);
+  console.log('[diagnoseNutrientShortages] nutrientsRequest count:', nutrientsRequest.length);
+  const selectedIngredientNames = selectedIngredients.map(i => i.name);
+
+  nutrientConstraints.forEach(c => {
+    console.log(`  constraint: ${c.name}, lb=${c.bnds?.lb}, type=${c.bnds?.type}`);
+  });
+  console.log('[diagnoseNutrientShortages] resolvedDMNutrientId:', resolvedDMNutrientId);
+
   nutrientConstraints.forEach(constraint => {
+    
+    // Also log top 3 allIngCoefs:
+    
     if (!constraint.bnds?.lb || constraint.bnds.lb <= 0) return;
     const lb = constraint.bnds.lb;
 
-    // ✅ Build coef for ALL ingredients in ingredientsData, not just selected ones
-    // We need: dmDecimal and nutrientRawValue per ingredient
-    // Strategy: recover nutrient_id by matching coefs of selected ingredients (same as buildNutrientIdMap)
+    const isDMConstraint = constraint.name?.toLowerCase().includes("dry matter") || constraint.name?.toLowerCase() === "dm";
 
-    // Step 1: find nutrient_id for this constraint by cross-referencing a selected ingredient
+    // ─── Recover nutrient_id (NOW MODE-AWARE) ─────────────────────────────
     let nutrientId = null;
-    if (dmConstraint) {
-      const selVar = constraint.vars.find(v => v.coef > 0);
-      if (selVar) {
-        const selIng = ingredientsData.find(i => i.name === selVar.name);
-        const dmVar = dmConstraint.vars.find(v => v.name === selVar.name);
-        if (selIng && dmVar) {
-          // coef = dmDecimal * rawValue  →  rawValue = coef / dmDecimal
-          // dmVar.coef = dmDecimal (in percent mode, no percentScale in coef)
-          const dmDecimal = dmVar.coef; // already dmDecimal in percent mode
-          const expectedRaw = selVar.coef / dmDecimal;
-          let bestDiff = Infinity;
-          selIng.nutrients.forEach(n => {
-            const diff = Math.abs((n.value || 0) - expectedRaw);
-            if (diff < bestDiff) { bestDiff = diff; nutrientId = n.nutrient?.toString(); }
-          });
-          if (bestDiff >= 0.15) nutrientId = null;
-        }
+    if (!isDMConstraint) {
+      // Direct lookup from the original request — no reverse-engineering needed
+      const nutrientReq = nutrientsRequest.find(n => n.name === constraint.name);
+      if (nutrientReq?.nutrient_id) {
+        nutrientId = nutrientReq.nutrient_id;
       }
     }
-
+    
     const scalingFactor = isPercentMode ? (dmTarget / 100) : 1.0;
 
-    // Step 2: compute coef for ALL ingredients using recovered nutrient_id
-    const allIngCoefs = ingredientsData.map(ing => {
-      const dmEntry = dmConstraint
-        ? (() => {
-            // Try to get DM value same way as formatInput
-            const dmVar = dmConstraint.vars.find(v => v.name === ing.name);
-            if (dmVar) return { value: dmVar.coef }; // already dmDecimal for selected ings
-            // For unselected: find DM nutrient by nutrient_id match or fallback
-            const dmNutrientId = (() => {
-              const dmSelVar = dmConstraint.vars.find(v => v.coef > 0);
-              if (!dmSelVar) return null;
-              const dmSelIng = ingredientsData.find(i => i.name === dmSelVar.name);
-              if (!dmSelIng) return null;
-              // dmVar.coef = dmDecimal, find which nutrient subdoc matches
-              let bestId = null, bestDiff = Infinity;
-              dmSelIng.nutrients.forEach(n => {
-                const diff = Math.abs((n.value || 0) - dmSelVar.coef);
-                if (diff < bestDiff) { bestDiff = diff; bestId = n.nutrient?.toString(); }
-              });
-              return bestDiff < 0.15 ? bestId : null;
-            })();
-            if (dmNutrientId) {
-              return ing.nutrients.find(n => n.nutrient?.toString() === dmNutrientId);
-            }
-            return ing.nutrients.find(n => n.name?.toLowerCase().includes('dry matter'));
-          })()
-        : ing.nutrients.find(n => n.name?.toLowerCase().includes('dry matter'));
-
-      const dmDecimal = dmEntry?.value || 0.85;
+    // ─── Compute coef for ALL ingredients (selected + unselected) ─────────
+    const allIngCoefs = ingredientsData
+      .filter(ing => selectedIngredientNames.includes(ing.name))
+      .map(ing => {
+        if (ing.name === 'NapierGrass' && constraint.name === 'Total Digestible Nutrients') {
+          console.log(`NapierGrass TDN lookup: nutrientId=${nutrientId}`);
+          ing.nutrients.forEach(n => console.log(`  subdoc: ${n.nutrient?.toString()} = ${n.value}`));
+        }
+      let dmDecimal = 0.85;
+      if (resolvedDMNutrientId) {
+        const dmEntry = ing.nutrients.find(n => n.nutrient?.toString() === resolvedDMNutrientId);
+        if (dmEntry) dmDecimal = dmEntry.value || 0.85;
+      } else {
+        const dmVar = dmConstraint?.vars.find(v => v.name === ing.name);
+        if (dmVar) dmDecimal = dmVar.coef;
+        else {
+          const dmEntry = ing.nutrients.find(n =>
+            n.name?.toLowerCase().includes('dry matter') || n.name?.toLowerCase() === 'dm'
+          );
+          if (dmEntry) dmDecimal = dmEntry.value || 0.85;
+        }
+      }
 
       const nutrientEntry = nutrientId
         ? ing.nutrients.find(n => n.nutrient?.toString() === nutrientId)
         : ing.nutrients.find(n => n.name === constraint.name);
+
       const rawValue = nutrientEntry?.value || 0;
 
-      const coef = (dmDecimal * rawValue) * scalingFactor; // grams per 1% (same formula as formatInput)
+      // FIXED: DM is special-cased so we never square the DM fraction
+      const coef = isDMConstraint
+      ? dmDecimal * scalingFactor
+      : isPercentMode
+        ? rawValue * scalingFactor          // no extra dmDecimal — matches formatInput
+        : dmDecimal * rawValue;
 
       return {
         name: ing.name,
@@ -570,52 +627,68 @@ const diagnoseNutrientShortages = (constraints, ingredientsData, selectedIngredi
       };
     });
 
+    console.log(`[diagnose] ${constraint.name}: nutrientId=${nutrientId}, lb=${lb}`);
+    console.log(`  Top allIngCoefs:`, allIngCoefs.filter(c=>c.coef>0).sort((a,b)=>b.coef-a.coef).slice(0,3).map(c=>`${c.name}:${c.coef.toFixed(2)}`));
+
+    // After resolving nutrientId:
+    console.log(`[diagnose] ${constraint.name}: nutrientId=${nutrientId}`);
+
+    // After building allIngCoefs, before maxPossible:
+    const topCoefs = allIngCoefs.filter(c=>c.coef>0).sort((a,b)=>b.coef-a.coef).slice(0,5);
+    console.log(`[diagnose] ${constraint.name} top coefs:`, topCoefs.map(c=>`${c.name}=${c.coef.toFixed(2)}`));
+    console.log(`[diagnose] ${constraint.name} lb=${lb}, forageMin=${forageMin}, byproductMax=${byproductMax}`);
+
+    // ... (maxPossible calculation block is unchanged - it now receives correct coefs) ...
     let maxPossible = 0;
 
     if (isPercentMode) {
       let allocated = 0;
 
-      // 1. Min forage (60%)
-      const bestForage = constraint.vars
-        .filter(v => {
-          const d = ingredientsData.find(i => i.name === v.name);
-          return d && (d.group === 'Grass' || d.group === 'Legumes');
+      // Best forage ingredient, allocated up to forageMin
+      const forageCoefs = allIngCoefs.filter(c => {
+        const d = ingredientsData.find(i => i.name === c.name);
+        return d && (d.group === 'Grass' || d.group === 'Legumes');
+      }).sort((a, b) => b.coef - a.coef);
+
+      const byproductCoefs = allIngCoefs.filter(c => {
+        const d = ingredientsData.find(i => i.name === c.name);
+        return d && (d.group === 'Industrial by-products' || d.group === 'Agricultural by-products');
+      }).sort((a, b) => b.coef - a.coef);
+
+      // AFTER
+      const otherCoefs = allIngCoefs
+        .filter(c => {
+          const d = ingredientsData.find(i => i.name === c.name);
+          return d != null; // include all groups including Vitamin-Mineral
         })
-        .sort((a, b) => (b.coef || 0) - (a.coef || 0))[0];
+        .sort((a, b) => b.coef - a.coef);
 
-      if (bestForage && forageMin > 0) {
-        maxPossible += bestForage.coef * forageMin * percentScale; // ✅ × percentScale
-        allocated += forageMin;
+      // Fill forage slot: between forageMin and forageMax (100%)
+      const forageAlloc = Math.min(100, 100 - 0); // forage can go up to 100%
+      const bestForage = forageCoefs[0];
+      if (bestForage) {
+        const actualForageAlloc = Math.min(100, Math.max(forageMin, 
+          bestForage.coef >= (byproductCoefs[0]?.coef || 0) ? 100 - byproductMax : forageMin
+        ));
+        maxPossible += bestForage.coef * actualForageAlloc;
+        allocated += actualForageAlloc;
       }
 
-      // 2. Max byproducts (up to 40%)
+      // Fill byproduct slot: up to byproductMax
       const bpAlloc = Math.min(byproductMax, 100 - allocated);
-      if (bpAlloc > 0) {
-        const bestBP = constraint.vars
-          .filter(v => {
-            const d = ingredientsData.find(i => i.name === v.name);
-            return d && (d.group === 'Industrial by-products' || d.group === 'Agricultural by-products');
-          })
-          .sort((a, b) => (b.coef || 0) - (a.coef || 0))[0];
-
-        if (bestBP) {
-          maxPossible += bestBP.coef * bpAlloc * percentScale; // ✅ × percentScale
-          allocated += bpAlloc;
-        }
+      const bestBP = byproductCoefs[0];
+      if (bestBP && bpAlloc > 0) {
+        maxPossible += bestBP.coef * bpAlloc;
+        allocated += bpAlloc;
       }
 
-      // 3. Remaining to best ingredient
+      // Fill remaining with best available
       const remaining = 100 - allocated;
-      if (remaining > 0) {
-        const best = constraint.vars
-          .sort((a, b) => (b.coef || 0) - (a.coef || 0))[0];
-        if (best) {
-          maxPossible += best.coef * remaining * percentScale; // ✅ × percentScale
-        }
+      if (remaining > 0 && otherCoefs[0]) {
+        maxPossible += otherCoefs[0].coef * remaining;
       }
-
     } else {
-      // gram mode stays the same but also uses allIngCoefs
+      // Gram mode - now receives correct DM coefs
       let allocatedDM = 0;
 
       const bestForage = allIngCoefs
@@ -646,7 +719,40 @@ const diagnoseNutrientShortages = (constraints, ingredientsData, selectedIngredi
         if (bestOther) maxPossible += bestOther.coef * remainingDM;
       }
     }
-    
+
+    // Check if minimum possible exceeds the upper bound (ceiling violation)
+if (constraint.bnds.ub !== undefined && constraint.bnds.ub > 0) {
+  const ub = constraint.bnds.ub;
+
+  // Compute minPossible: forced minimum contribution from forageMin allocation
+  let minPossible = 0;
+  if (isPercentMode) {
+    const worstForage = allIngCoefs
+      .filter(c => {
+        const d = ingredientsData.find(i => i.name === c.name);
+        return d && (d.group === 'Grass' || d.group === 'Legumes');
+      })
+      .sort((a, b) => a.coef - b.coef)[0]; // lowest coef forage
+
+    if (worstForage) {
+      minPossible += worstForage.coef * forageMin;
+    }
+  }
+
+      if (minPossible > ub * 1.01) {
+        gaps.push({
+          type: 'ceiling_exceeded',
+          severity: 'high',
+          nutrient: constraint.name,
+          required: Number(ub.toFixed(1)),
+          minPossible: Number(minPossible.toFixed(1)),
+          shortage: Number((minPossible - ub).toFixed(1)),
+          message: `${constraint.name} minimum achievable (${minPossible.toFixed(0)}g) exceeds maximum allowed (${ub.toFixed(0)}g).`,
+          recommendation: `Reduce forage minimum, remove high-${constraint.name} forages, or increase the ${constraint.name} maximum.`
+        });
+      }
+    }
+
     if (lb > 0 && maxPossible < lb * 0.99) {
       gaps.push({
         type: 'shortage',
@@ -739,8 +845,7 @@ const formatInput = async (data) => {
 
           let finalCoef;
           if (isPercentMode) {
-            // === PERCENT MODE = DM-BASIS FORMULATION ===
-            finalCoef = rawValue;          // nutrient fraction on DM basis
+            finalCoef = rawValue * (dmTarget / 100); // now in grams per 1% of diet
           } else {
             // gram mode (as-fed grams)
             finalCoef = isDM ? dmDecimal : dmDecimal * rawValue;
@@ -751,14 +856,8 @@ const formatInput = async (data) => {
 
         bnds: {
           type: bndType,
-          lb: isPercentMode 
-            ? (Number(nutrient.minimum) / dmTarget) * 100   // convert grams → % of DM
-            : (Number(nutrient.minimum) || 0),
-          ub: nutrient.maximum 
-            ? (isPercentMode 
-                ? (Number(nutrient.maximum) / dmTarget) * 100 
-                : Number(nutrient.maximum))
-            : undefined
+          lb: Number(nutrient.minimum) || 0,  // stay in grams
+          ub: Number(nutrient.maximum) || undefined
         }
       };
     });
@@ -807,30 +906,30 @@ const formatInput = async (data) => {
   // === GROUP CONSTRAINTS (Pure percentages in percent mode) ===
   if (isPercentMode) {
     constraints.push({
-      name: "Group: Grasses & Legumes (60-100%)",
-      vars: ingredients.map(ing => {
-        const isForage = forageIngredients.some(f => f.name === ing.name);
-        return { name: ing.name, coef: isForage ? 1 : 0 };
-      }),
-      bnds: {
-        type: "GLP_DB",
-        lb: 60,
-        ub: 100
-      }
-    });
- 
-    constraints.push({
-      name: "Group: Byproducts (0-40%)",
-      vars: ingredients.map(ing => {
-        const isByproduct = byproductIngredients.some(b => b.name === ing.name);
-        return { name: ing.name, coef: isByproduct ? 1 : 0 };
-      }),
-      bnds: {
-        type: "GLP_UP",
-        lb: 0,
-        ub: 40
-      }
-    });
+    name: "Group: Grasses & Legumes (70-100%)",
+    vars: ingredients.map(ing => {
+      const isForage = forageIngredients.some(f => f.name === ing.name);
+      return { name: ing.name, coef: isForage ? 1 : 0 };
+    }),
+    bnds: {
+      type: "GLP_DB",
+      lb: 70,
+      ub: 100
+    }
+  });
+
+  constraints.push({
+    name: "Group: Byproducts (0-30%)",
+    vars: ingredients.map(ing => {
+      const isByproduct = byproductIngredients.some(b => b.name === ing.name);
+      return { name: ing.name, coef: isByproduct ? 1 : 0 };
+    }),
+    bnds: {
+      type: "GLP_UP",
+      lb: 0,
+      ub: 30
+    }
+  });
  
     constraints.push({
       name: "Group: Vitamin-Mineral (0-3%)",
@@ -882,7 +981,7 @@ const formatInput = async (data) => {
       }),
       bnds: {
         type: "GLP_DB",
-        lb: dmTarget * 0.60,
+        lb: dmTarget * 0.70,
         ub: dmTarget
       }
     });
@@ -901,7 +1000,7 @@ const formatInput = async (data) => {
       bnds: {
         type: "GLP_UP",
         lb: 0,
-        ub: dmTarget * 0.40
+        ub: dmTarget * 0.30
       }
     });
  
@@ -1002,17 +1101,38 @@ const formatInput = async (data) => {
  
   // === INGREDIENT VARIABLE BOUNDS ===
   const variableBounds = ingredients.map(ingredient => {
-    const bndType = ingredient.maximum ? "GLP_DB" : "GLP_LO";
-    let lb = Number(ingredient.minimum) || 0;
-    let ub = Number(ingredient.maximum) || (isPercentMode ? 100 : (weight || 100000));
- 
-    return {
-      name: ingredient.name,
-      type: bndType,
-      lb: lb,
-      ub: ub
-    };
-  });
+  let lb = Number(ingredient.minimum) || 0;
+  let ub = Number(ingredient.maximum) || (isPercentMode ? 100 : (weight || 100000));
+
+  // ── Hard constraint from ingredient DB record ──────────────────────────
+  const ingData = ingredientsData.find(d =>
+    d._id?.toString() === ingredient.ingredient_id?.toString()
+  );
+  const hardConstraint = Number(ingData?.constraint || 0);
+
+  if (hardConstraint > 0) {
+    // constraint is always stored as a % — convert to grams if in gram/kg mode
+    const hardUb = isPercentMode
+      ? hardConstraint                        // e.g. 15 → 15% directly
+      : (hardConstraint / 100) * (weight || dmTarget);  // e.g. 15 → 15% of total weight in grams
+
+    ub = Math.min(ub, hardUb);
+    lb = Math.min(lb, ub);  // prevent lb > ub
+    console.log(`[HardConstraint] ${ingredient.name}: constraint=${hardConstraint}% → ub=${ub.toFixed(2)} (${isPercentMode ? 'percent' : 'gram'} mode)`);
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
+  const bndType = (ub < (isPercentMode ? 100 : (weight || 100000)) || ingredient.maximum)
+    ? "GLP_DB"
+    : "GLP_LO";
+
+  return {
+    name: ingredient.name,
+    type: bndType,
+    lb: lb,
+    ub: ub
+  };
+});
  
   console.log("\n=== FINAL SOLVER CHECK ===");
   console.log("Mode:", isPercentMode ? "PERCENT (variables sum to 100%)" : "GRAM");
@@ -1032,9 +1152,7 @@ const formatInput = async (data) => {
   };
 }
 
-
 const determineOptimizedNutrients = (optimizedIngredientsArray, constraints, type, dmTarget, dmNutrientId) => {
-  // Convert array to easy lookup map: name → value
   const optimizedMap = {};
   optimizedIngredientsArray.forEach(ing => {
     optimizedMap[ing.name] = ing.value;
@@ -1047,30 +1165,23 @@ const determineOptimizedNutrients = (optimizedIngredientsArray, constraints, typ
       const involved = constraint.vars.find(v => v.name === ingredient);
       if (!involved) return;
 
-      const value = optimizedMap[ingredient];
-
-      if (type === 'percent') {
-        // DM-basis percent mode
-        optimizedNutrientValue += (value / 100) * dmTarget * involved.coef;
-      } else {
-        // Gram mode
-        optimizedNutrientValue += involved.coef * value;
-      }
+      // In both modes: coef is already scaled correctly
+      // percent mode: coef = rawValue * (dmTarget/100), value = % → product = grams
+      // gram mode:    coef = dmDecimal * rawValue,      value = grams → product = grams
+      optimizedNutrientValue += involved.coef * optimizedMap[ingredient];
     });
 
     return {
       name: constraint.name,
-      value: Number(optimizedNutrientValue.toFixed(2))   // grams
+      value: Number(optimizedNutrientValue.toFixed(2))
     };
   });
 
-  // === ALWAYS ADD DRY MATTER (in both modes) ===
   result.push({
     name: "Dry Matter",
-    value: Number(dmTarget.toFixed(2))   // exactly the target (6720 g)
+    value: Number(dmTarget.toFixed(2))
   });
 
-  // Optional: sort so DM appears at the end (or wherever you prefer)
   return result.sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -1105,6 +1216,7 @@ const simplex = async (req, res) => {
     const constraintsMap = {};
     const subjects = [];
     
+    // In simplex(), replace the subjects-building loop:
     for (let i = 0; i < constraints.length; i++) {
       const constraintCode = 'c' + i;
       constraintsMap[constraintCode] = constraints[i].name;
@@ -1112,7 +1224,7 @@ const simplex = async (req, res) => {
       subjects.push({
         name: constraintCode,
         vars: constraints[i].vars,
-        bnds: constraints[i].bnds
+        bnds: { ...constraints[i].bnds }  // ← shallow copy so we don't mutate original
       });
       subjects[i].bnds.type = glpk[subjects[i].bnds.type];
     }
@@ -1121,11 +1233,10 @@ const simplex = async (req, res) => {
     for (let i = 0; i < variableBounds.length; i++) {
       varsSubjects.push({
         name: variableBounds[i].name,
-        type: variableBounds[i].type,
+        type: glpk[variableBounds[i].type],  // ← convert here directly, don't mutate original
         ub: variableBounds[i].ub,
         lb: variableBounds[i].lb
       });
-      varsSubjects[i].type = glpk[varsSubjects[i].type];
     }
 
     console.log("=== PRE-SOLVE FEASIBILITY CHECK ===");
@@ -1233,7 +1344,7 @@ const simplex = async (req, res) => {
     } else {
       console.log("❌ Optimal solution NOT found. Starting diagnosis...");
 
-      const structuralGaps = smartDiagnosis(constraints, variableBounds, isPercentMode ? 'percent' : 'gram');
+      const structuralGaps = smartDiagnosis(constraints, variableBounds, isPercentMode ? 'percent' : 'gram', ingredientsData, output.result.vars);
       const dmConstraintForScale = constraints.find(c =>
           c.name?.toLowerCase().includes("dry matter") || c.name?.toLowerCase() === "dm"
         );
@@ -1241,21 +1352,19 @@ const simplex = async (req, res) => {
           ? dmConstraintForScale.bnds.lb / 100
           : 1;
       const nutrientGaps = diagnoseNutrientShortages(
-        constraints, 
-        ingredientsData,
-        req.body.ingredients,
+        constraints, ingredientsData, req.body.ingredients,
         isPercentMode ? 'percent' : 'gram',
         percentScale,
-        dmTarget          // ←←← added
+        dmTarget,
+        dmNutrientId,
+        req.body.nutrients 
       );
 
-      const smartIngredientSuggestions = suggestByGroupEnhanced(
-        nutrientGaps,
-        ingredientsData,
-        req.body.ingredients,
-        constraints,
-        isPercentMode ? 'percent' : 'gram'
-      );
+const smartIngredientSuggestions = suggestByGroupEnhanced(
+  nutrientGaps, ingredientsData, req.body.ingredients,
+  constraints, isPercentMode ? 'percent' : 'gram',
+  req.body.nutrients   // ← ADD THIS
+);
 
       let priorityAdvice = "Unknown infeasibility.";
       let suggestion = "Try relaxing tight constraints or adding high-nutrient ingredients.";

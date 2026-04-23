@@ -11,6 +11,7 @@ const ingredientSchema = new Schema({
     url: { type: String, default: '' },      // The WebP/Optimized URL from Cloudinary
     public_id: { type: String, default: '' } // Needed if you want to delete/replace the file later
   },
+  constraint: { type: Number, default: 0 }, // 0 = no constraint, 1 = required, 2 = excluded
   nutrients: [{
     nutrient: { type: Schema.Types.ObjectId, ref: 'Nutrient' },
     value: { type: Number }

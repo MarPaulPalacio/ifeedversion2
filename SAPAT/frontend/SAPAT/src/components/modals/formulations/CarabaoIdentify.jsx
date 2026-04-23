@@ -242,7 +242,7 @@ function CarabaoIdentify({
             {/* Body Weight */}
             <div className='form-control w-full'>
               <label className="label">
-                <span className="label-text">{t('Body Weight')}</span>
+                <span className="label-text">{t('Body Weight (kg)')}</span>
               </label>
               <input
                 type="number"
