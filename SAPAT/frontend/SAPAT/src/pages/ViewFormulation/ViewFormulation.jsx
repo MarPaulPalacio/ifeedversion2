@@ -2213,10 +2213,10 @@ function ViewFormulation({
             {/* Total Cost */}
             <div className="flex items-center justify-end gap-1 pr-2 ">
               <span className="text-sm font-medium text-gray-600">
-                {t('Total cost (per {{weight}} kg):', { weight })}
+                {ispercentcompute ? t('Total cost (per {{weight}} kg, manual %):', { weight: percentweight }) :t('Total cost (per {{weight}} kg, manual %):', { weight: weight })}
               </span>
               <span className="text-green-button text-lg font-bold underline">
-                ₱ {cost && cost.toFixed(2)}
+                {ispercentcompute ? `₱ ${cost && cost.toFixed(2)}` : `₱ ${cost && cost.toFixed(2)}`}
               </span>
             </div>
             

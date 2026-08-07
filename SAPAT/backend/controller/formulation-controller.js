@@ -1190,7 +1190,6 @@ const getGroupFormulationFormulations = async (req, res) => {
     // 2. Filter formulations where the user is either owner or in collaborators
     const accessibleFormulations = (group.formulationDetails || []).filter((form) => {
       const isOwner = (form.collaborators || []).some(c => c.userId.toString() === userId && c.access === 'owner');
-      console.log("Is Owner: ", group.formulationDetails)
       const hasAccess = (form.collaborators || []).some(c => c.userId.toString() === userId);
       return isOwner || hasAccess;
     });
